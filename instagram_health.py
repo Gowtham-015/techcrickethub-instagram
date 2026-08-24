@@ -130,6 +130,19 @@ class InstagramHealthTracker:
         """Returns copy of current health status summary."""
         return self._load_health()
 
+    def get_production_health_summary(self) -> Dict[str, Any]:
+        """Returns structured production health diagnosis (HEALTHY, DEGRADED, STOPPED)."""
+        data = self._load_health()
+        status = data.get("status", "STOPPED")
+
+        if status == "RUNNING":
+            health_label = "DEGRADED" if data.get("last_error") else "HEALTHY"
+        else:
+            health_label = "STOPPED"
+
+        data["health_label"] = health_label
+        return data
+
     def reset_test_state(self) -> None:
         """Resets health state file for clean testing."""
         self._save_health(self._default_state())
