@@ -27,7 +27,14 @@ from instagram_queue import InstagramQueue, InstagramQueueItem
 from instagram_repetition_guard import InstagramRepetitionGuard
 from instagram_scheduler import InstagramScheduler
 from instagram_smart_scheduler import InstagramSmartScheduler
+from instagram_production_audit import InstagramProductionAuditStore
+from instagram_production_gate import InstagramProductionGate
 from local_content_source import LocalContentSource
+from instagram_real_news_source import InstagramRealNewsSource
+from instagram_cricket_data_provider import FallbackCricketProvider
+from instagram_cricket_match_intelligence import InstagramCricketMatchIntelligence
+from instagram_cricket_balancer import InstagramCricketBalancer
+from instagram_source_verifier import InstagramSourceVerifier
 from security import RedactingFormatter, redact_token
 
 
@@ -52,7 +59,7 @@ class InstagramAutomationEngine:
         self.lock_path = lock_path or os.path.join(base_dir, "data", "instagram_automation.lock")
 
         self.config = config or Config.load_from_env(validate=False)
-        self.source = source or LocalContentSource()
+        self.source = source or InstagramRealNewsSource(config=self.config)
         self.queue = queue or InstagramQueue(max_queue_size=self.config.max_queue_size)
         self.pipeline = InstagramContentPipeline(dry_run=self.config.dry_run)
         self.scheduler = scheduler or InstagramScheduler(
@@ -64,6 +71,14 @@ class InstagramAutomationEngine:
         self.analytics_store = analytics_store or InstagramAnalyticsStore(
             retention_days=self.config.analytics_retention_days
         )
+        self.gate = InstagramProductionGate(config=self.config, health_tracker=self.health_tracker)
+        self.audit_store = InstagramProductionAuditStore()
+
+        # Phase 13 Real Content & Cricket Modules
+        self.cricket_provider = FallbackCricketProvider()
+        self.match_intel = InstagramCricketMatchIntelligence(provider=self.cricket_provider, config=self.config)
+        self.cricket_balancer = InstagramCricketBalancer(config=self.config)
+        self.source_verifier = InstagramSourceVerifier()
 
         self.normalizer = InstagramContentNormalizer()
         self.acquirer = InstagramMediaAcquirer()
@@ -206,10 +221,17 @@ class InstagramAutomationEngine:
 
             for raw_item in items_to_process:
                 try:
-                    # 2. Normalization
+                    # 2. Normalization & Source Verification
                     content = self.normalizer.normalize(raw_item)
                     content_id = (content.metadata or {}).get("content_id")
                     media_url = content.image_url if content.media_type == "IMAGE" else content.video_url
+
+                    if isinstance(raw_item, dict):
+                        ver_res = self.source_verifier.verify_item(raw_item)
+                        if not ver_res.is_valid:
+                            self.logger.info(f"Source verification failed for ID '{content_id}': {ver_res.reasons}")
+                            failed_count += 1
+                            continue
 
                     self._safe_record_event(
                         "DISCOVERED",
@@ -230,7 +252,7 @@ class InstagramAutomationEngine:
                         )
                         continue
 
-                    # 4. Category Intelligence
+                    # 4. Category Intelligence & Match Priority
                     detected_cat, conf = self.category_intel.detect_category(
                         title=content.title,
                         summary=content.summary,
@@ -244,8 +266,19 @@ class InstagramAutomationEngine:
                     if media_url:
                         asset = self.acquirer.acquire_media(url=media_url, media_type=content.media_type)
 
-                    # 6. Content Scoring & Priority
+                    # 6. Content Scoring, Match Priority & 75% Cricket Balancer
                     score_obj = self.scorer.score_content(content, asset=asset)
+
+                    # Apply Match-Day priority multiplier
+                    match_summary = self.match_intel.analyze_matches()
+                    if match_summary.is_match_day and content.category == "cricket":
+                        score_obj.total_score = min(100, int(score_obj.total_score * match_summary.priority_multiplier))
+
+                    # Apply 75% Cricket Deficit Priority Boost
+                    existing_queue_dicts = [{"category": i.category} for i in self.queue.get_all_items()]
+                    balance = self.cricket_balancer.evaluate_balance(existing_queue_dicts)
+                    if balance.priority_boost_active and content.category == "cricket":
+                        score_obj.total_score = min(100, int(score_obj.total_score * 1.25))
                     if score_obj.decision == "REJECT":
                         self.logger.info(
                             f"Content ID '{content_id}' rejected by ContentScorer: Score {score_obj.total_score}/100"
@@ -329,8 +362,9 @@ class InstagramAutomationEngine:
                     failed_count += 1
                     self.logger.warning(f"Unexpected item processing error: {redact_token(str(e))}")
 
-            # 10. Process Due Items via Scheduler (respects INSTAGRAM_DRY_RUN)
-            scheduler_results: List[PipelineResult] = self.scheduler.process_due_items()
+            # 10. Process Due Items via Scheduler (respects INSTAGRAM_DRY_RUN & rate limits)
+            limit = getattr(self.config, "max_posts_per_cycle", 1)
+            scheduler_results: List[PipelineResult] = self.scheduler.process_due_items(limit=limit)
 
             due_processed = len(scheduler_results)
             for res in scheduler_results:
@@ -342,8 +376,19 @@ class InstagramAutomationEngine:
                             media_type=res.media_type,
                             status="SKIPPED",
                         )
+                        self.audit_store.record_audit(
+                            content_id=res.details.get("content_id", "scheduled-item"),
+                            media_type=res.media_type,
+                            category="cricket",
+                            status="SKIPPED",
+                            creation_id=res.creation_id or "",
+                            media_id=res.media_id or "",
+                            dry_run=True,
+                            production_mode="DRY_RUN",
+                        )
                     else:
                         published_count += 1
+                        self.health_tracker.record_publish_success(media_id=res.media_id or "")
                         self._safe_record_event(
                             "PUBLISHED",
                             category="cricket",
@@ -352,14 +397,37 @@ class InstagramAutomationEngine:
                             creation_id=res.creation_id,
                             status="PUBLISHED",
                         )
+                        self.audit_store.record_audit(
+                            content_id=res.details.get("content_id", "scheduled-item"),
+                            media_type=res.media_type,
+                            category="cricket",
+                            status="PUBLISHED",
+                            creation_id=res.creation_id or "",
+                            media_id=res.media_id or "",
+                            dry_run=False,
+                            production_mode="PRODUCTION",
+                        )
                 else:
                     failed_count += 1
+                    self.health_tracker.record_publish_failure(
+                        error=res.message or "Scheduler execution failure",
+                        max_consecutive_failures=getattr(self.config, "max_consecutive_publish_failures", 3),
+                    )
                     self._safe_record_event(
                         "FAILED",
                         category="cricket",
                         media_type=res.media_type,
                         error=res.message,
                         status="FAILED",
+                    )
+                    self.audit_store.record_audit(
+                        content_id=res.details.get("content_id", "scheduled-item"),
+                        media_type=res.media_type,
+                        category="cricket",
+                        status="FAILED",
+                        error_type=res.message or "Execution failed",
+                        dry_run=self.config.dry_run,
+                        production_mode="PRODUCTION" if not self.config.dry_run else "DRY_RUN",
                     )
 
             self.logger.info(

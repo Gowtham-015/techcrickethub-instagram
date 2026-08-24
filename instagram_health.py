@@ -49,6 +49,16 @@ class InstagramHealthTracker:
             "analytics_events_recorded": 0,
             "optimization_runs": 0,
             "optimization_recommendations": 0,
+            "production_enabled": False,
+            "production_gate_status": "DRY_RUN",
+            "api_connected": False,
+            "last_live_test_at": None,
+            "last_published_at": None,
+            "last_publish_error": None,
+            "consecutive_publish_failures": 0,
+            "production_paused": False,
+            "pause_reason": None,
+            "live_test_count": 0,
         }
 
     def _load_health(self) -> Dict[str, Any]:
@@ -61,6 +71,8 @@ class InstagramHealthTracker:
         temp_path = f"{self.health_path}.tmp"
         if data.get("last_error"):
             data["last_error"] = redact_token(data["last_error"])
+        if data.get("last_publish_error"):
+            data["last_publish_error"] = redact_token(data["last_publish_error"])
         with open(temp_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
         os.replace(temp_path, self.health_path)
@@ -117,6 +129,50 @@ class InstagramHealthTracker:
 
         self._save_health(data)
 
+    def record_publish_success(self, media_id: str, is_live_test: bool = False) -> None:
+        """Records successful publishing attempt and resets consecutive failures."""
+        data = self._load_health()
+        now_iso = datetime.now(timezone.utc).isoformat()
+        data["last_published_at"] = now_iso
+        data["consecutive_publish_failures"] = 0
+        data["last_publish_error"] = None
+        data["items_published"] = int(data.get("items_published") or 0) + 1
+
+        if is_live_test:
+            data["last_live_test_at"] = now_iso
+            data["live_test_count"] = int(data.get("live_test_count") or 0) + 1
+
+        self._save_health(data)
+
+    def record_publish_failure(self, error: str, max_consecutive_failures: int = 3) -> None:
+        """Records publish failure and triggers safety pause if limit reached."""
+        data = self._load_health()
+        now_iso = datetime.now(timezone.utc).isoformat()
+        clean_err = redact_token(error)
+
+        failures = int(data.get("consecutive_publish_failures") or 0) + 1
+        data["consecutive_publish_failures"] = failures
+        data["last_publish_error"] = clean_err
+        data["last_error"] = clean_err
+        data["items_failed"] = int(data.get("items_failed") or 0) + 1
+
+        if failures >= max_consecutive_failures:
+            data["production_paused"] = True
+            data["pause_reason"] = "CONSECUTIVE_PUBLISH_FAILURES"
+
+        self._save_health(data)
+
+    def reset_production_state(self) -> Dict[str, Any]:
+        """Safely resets temporary production pause state & failure counters."""
+        data = self._load_health()
+        data["consecutive_publish_failures"] = 0
+        data["production_paused"] = False
+        data["pause_reason"] = None
+        data["live_test_count"] = 0
+        data["last_publish_error"] = None
+        self._save_health(data)
+        return data
+
     def record_analytics_activity(self, events_added: int = 1, optimization_run: bool = False) -> None:
         """Records analytics activity counters."""
         data = self._load_health()
@@ -131,12 +187,15 @@ class InstagramHealthTracker:
         return self._load_health()
 
     def get_production_health_summary(self) -> Dict[str, Any]:
-        """Returns structured production health diagnosis (HEALTHY, DEGRADED, STOPPED)."""
+        """Returns structured production health diagnosis (HEALTHY, DEGRADED, PAUSED, STOPPED)."""
         data = self._load_health()
         status = data.get("status", "STOPPED")
+        paused = data.get("production_paused", False)
 
-        if status == "RUNNING":
-            health_label = "DEGRADED" if data.get("last_error") else "HEALTHY"
+        if paused:
+            health_label = "PAUSED"
+        elif status == "RUNNING":
+            health_label = "DEGRADED" if (data.get("last_error") or data.get("last_publish_error")) else "HEALTHY"
         else:
             health_label = "STOPPED"
 

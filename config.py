@@ -45,6 +45,22 @@ class Config:
     analytics_retention_days: int = 90
     optimization_enabled: bool = True
     analytics_timezone: str = "Asia/Kolkata"
+    production_enabled: bool = False
+    live_test_enabled: bool = False
+    max_live_test_posts: int = 1
+    max_posts_per_cycle: int = 1
+    require_confirmation: bool = True
+    max_consecutive_publish_failures: int = 3
+    cricket_target_percent: int = 75
+    rolling_window_size: int = 30
+    max_cricket_news_age_hours: int = 12
+    max_tech_news_age_hours: int = 24
+    match_day_cricket_priority: float = 1.5
+    live_match_priority: float = 2.0
+    cricket_api_url: str = "https://api.cricapi.com/v1"
+    cricket_api_key: str = ""
+    tech_rss_feeds: str = "https://feeds.feedburner.com/TechCrunch/,https://news.ycombinator.com/rss"
+    cricket_rss_feeds: str = "https://www.espncricinfo.com/rss/content/story/feeds/0.xml"
 
     @classmethod
     def load_from_env(cls, env_path: Optional[str] = None, validate: bool = True) -> "Config":
@@ -182,6 +198,44 @@ class Config:
 
         analytics_timezone = os.getenv("INSTAGRAM_ANALYTICS_TIMEZONE", "Asia/Kolkata").strip()
 
+        prod_enabled_str = os.getenv("INSTAGRAM_PRODUCTION_ENABLED", "false").strip().lower()
+        production_enabled = prod_enabled_str in ("true", "1", "yes", "on")
+
+        live_test_enabled_str = os.getenv("INSTAGRAM_LIVE_TEST_ENABLED", "false").strip().lower()
+        live_test_enabled = live_test_enabled_str in ("true", "1", "yes", "on")
+
+        max_live_test_str = os.getenv("INSTAGRAM_MAX_LIVE_TEST_POSTS", "1").strip()
+        try:
+            max_live_test_posts = int(max_live_test_str)
+        except ValueError:
+            max_live_test_posts = 1
+
+        max_posts_cycle_str = os.getenv("INSTAGRAM_MAX_POSTS_PER_CYCLE", "1").strip()
+        try:
+            max_posts_per_cycle = int(max_posts_cycle_str)
+        except ValueError:
+            max_posts_per_cycle = 1
+
+        req_confirm_str = os.getenv("INSTAGRAM_PRODUCTION_REQUIRE_CONFIRMATION", "true").strip().lower()
+        require_confirmation = req_confirm_str not in ("false", "0", "no", "off")
+
+        max_failures_str = os.getenv("INSTAGRAM_MAX_CONSECUTIVE_PUBLISH_FAILURES", "3").strip()
+        try:
+            max_consecutive_publish_failures = int(max_failures_str)
+        except ValueError:
+            max_consecutive_publish_failures = 3
+
+        cricket_target_percent = int(os.getenv("INSTAGRAM_CRICKET_TARGET_PERCENT", "75").strip())
+        rolling_window_size = int(os.getenv("INSTAGRAM_ROLLING_WINDOW_SIZE", "30").strip())
+        max_cricket_news_age_hours = int(os.getenv("INSTAGRAM_MAX_CRICKET_NEWS_AGE_HOURS", "12").strip())
+        max_tech_news_age_hours = int(os.getenv("INSTAGRAM_MAX_TECH_NEWS_AGE_HOURS", "24").strip())
+        match_day_cricket_priority = float(os.getenv("INSTAGRAM_MATCH_DAY_CRICKET_PRIORITY", "1.5").strip())
+        live_match_priority = float(os.getenv("INSTAGRAM_LIVE_MATCH_PRIORITY", "2.0").strip())
+        cricket_api_url = os.getenv("INSTAGRAM_CRICKET_API_URL", "https://api.cricapi.com/v1").strip()
+        cricket_api_key = os.getenv("INSTAGRAM_CRICKET_API_KEY", "").strip()
+        tech_rss_feeds = os.getenv("INSTAGRAM_TECH_RSS_FEEDS", "https://feeds.feedburner.com/TechCrunch/,https://news.ycombinator.com/rss").strip()
+        cricket_rss_feeds = os.getenv("INSTAGRAM_CRICKET_RSS_FEEDS", "https://www.espncricinfo.com/rss/content/story/feeds/0.xml").strip()
+
         try:
             timeout_seconds = float(timeout_str)
         except ValueError:
@@ -224,6 +278,22 @@ class Config:
             analytics_retention_days=analytics_retention_days,
             optimization_enabled=optimization_enabled,
             analytics_timezone=analytics_timezone,
+            production_enabled=production_enabled,
+            live_test_enabled=live_test_enabled,
+            max_live_test_posts=max_live_test_posts,
+            max_posts_per_cycle=max_posts_per_cycle,
+            require_confirmation=require_confirmation,
+            max_consecutive_publish_failures=max_consecutive_publish_failures,
+            cricket_target_percent=cricket_target_percent,
+            rolling_window_size=rolling_window_size,
+            max_cricket_news_age_hours=max_cricket_news_age_hours,
+            max_tech_news_age_hours=max_tech_news_age_hours,
+            match_day_cricket_priority=match_day_cricket_priority,
+            live_match_priority=live_match_priority,
+            cricket_api_url=cricket_api_url,
+            cricket_api_key=cricket_api_key,
+            tech_rss_feeds=tech_rss_feeds,
+            cricket_rss_feeds=cricket_rss_feeds,
         )
 
         if validate:
