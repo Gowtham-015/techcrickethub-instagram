@@ -1,0 +1,27 @@
+# Environment & Credentials
+.env
+.env.*
+!.env.example
+
+# Python Virtual Environment
+venv/
+ENV/
+env/
+.venv/
+
+# Python Cache & Build
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs & Data
+*.log
+logs/
+data/
+scratch/
+*.tmp
+*.bak
+.DS_Store
