@@ -1,0 +1,46 @@
+name: TechCricketHub Instagram Automation 24/7
+
+on:
+  schedule:
+    # Runs automatically every 30 minutes 24/7
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run Mode (true for Dry Run simulation, false for Real Instagram publishing)'
+        required: false
+        default: 'true'
+
+jobs:
+  automation-cycle:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Instagram Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Test Suite
+        run: |
+          python -m pytest tests/ -v
+
+      - name: Execute Instagram Automation Cycle
+        env:
+          INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID }}
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_DRY_RUN: ${{ github.event.inputs.dry_run || vars.INSTAGRAM_DRY_RUN || 'true' }}
+          INSTAGRAM_AUTOMATION_ENABLED: 'true'
+          INSTAGRAM_SCHEDULER_ENABLED: 'true'
+          INSTAGRAM_TIMEZONE: 'Asia/Kolkata'
+        run: |
+          python main.py --run-once
