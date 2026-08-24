@@ -61,7 +61,7 @@ class InstagramMediaDeduplicator:
 
             if content_id and entry_id and entry_id == content_id:
                 return True
-            if url_hash and entry_hash and entry_hash == url_hash:
+            if url_hash and entry_hash and entry_hash == url_hash and "maxresdefault.jpg" not in (url or ""):
                 return True
 
         return False

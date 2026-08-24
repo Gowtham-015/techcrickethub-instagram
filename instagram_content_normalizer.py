@@ -19,7 +19,7 @@ class InstagramContentNormalizer:
         if not raw or not isinstance(raw, dict):
             raise InstagramConfigError("Content item must be a non-empty dictionary.")
 
-        raw_id = str(raw.get("id") or "").strip()
+        raw_id = str(raw.get("content_id") or raw.get("id") or "").strip()
         raw_title = str(raw.get("title") or "").strip()
         raw_summary = str(raw.get("summary") or "").strip()
         raw_category = str(raw.get("category") or "cricket").strip().lower()
