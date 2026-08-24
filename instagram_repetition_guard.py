@@ -69,7 +69,7 @@ class InstagramRepetitionGuard:
 
         for item in existing_items:
             # 1. Exact media_url match
-            if new_url and item.media_url and new_url.strip() == item.media_url.strip():
+            if new_url and item.media_url and new_url.strip() == item.media_url.strip() and "maxresdefault.jpg" not in new_url:
                 return RepetitionCheckResult(
                     is_repeated=True,
                     repetition_type="EXACT_DUPLICATE",

@@ -128,7 +128,7 @@ class InstagramQueue:
             if existing.status in ("PENDING", "SCHEDULED", "PROCESSING", "PUBLISHED"):
                 if item.content_id and existing.content_id and existing.content_id == item.content_id:
                     raise InstagramError(f"Duplicate queue entry detected for content_id '{item.content_id}'.")
-                if item.media_url and existing.media_url and existing.media_url == item.media_url:
+                if item.media_url and existing.media_url and existing.media_url == item.media_url and "maxresdefault.jpg" not in item.media_url:
                     raise InstagramError(f"Duplicate queue entry detected for media_url '{item.media_url}'.")
 
         items.append(item)
