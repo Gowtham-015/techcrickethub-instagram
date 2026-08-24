@@ -1,6 +1,8 @@
 name: TechCricketHub Instagram Automation 24/7
 
 on:
+  push:
+    branches: [ main ]
   schedule:
     # Runs automatically every 30 minutes 24/7
     - cron: '*/30 * * * *'
