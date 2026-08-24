@@ -15,6 +15,14 @@ jobs:
   automation-cycle:
     runs-on: ubuntu-latest
 
+    env:
+      INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID || '37982406558040899' }}
+      INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN || 'dummy_test_token_for_mocking' }}
+      INSTAGRAM_DRY_RUN: ${{ github.event.inputs.dry_run || vars.INSTAGRAM_DRY_RUN || 'true' }}
+      INSTAGRAM_AUTOMATION_ENABLED: 'true'
+      INSTAGRAM_SCHEDULER_ENABLED: 'true'
+      INSTAGRAM_TIMEZONE: 'Asia/Kolkata'
+
     steps:
       - name: Checkout Instagram Repository
         uses: actions/checkout@v4
@@ -35,12 +43,5 @@ jobs:
           python -m pytest tests/ -v
 
       - name: Execute Instagram Automation Cycle
-        env:
-          INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID }}
-          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
-          INSTAGRAM_DRY_RUN: ${{ github.event.inputs.dry_run || vars.INSTAGRAM_DRY_RUN || 'true' }}
-          INSTAGRAM_AUTOMATION_ENABLED: 'true'
-          INSTAGRAM_SCHEDULER_ENABLED: 'true'
-          INSTAGRAM_TIMEZONE: 'Asia/Kolkata'
         run: |
           python main.py --run-once

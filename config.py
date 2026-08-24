@@ -4,10 +4,13 @@ from dataclasses import dataclass
 from typing import Optional
 from dotenv import load_dotenv
 from exceptions import InstagramConfigError
+from security import redact_token
 
 
 @dataclass
 class Config:
+    """Dataclass holding Instagram Business API configuration and parameters."""
+
     user_id: str
     access_token: str
     api_version: str = "v26.0"
@@ -26,7 +29,7 @@ class Config:
     heartbeat_interval_seconds: int = 300
     max_items_per_cycle: int = 10
     content_score_threshold: int = 35
-    max_category_percentage: float = 40.0
+    max_category_percentage: int = 40
     category_window_size: int = 10
     max_consecutive_reels: int = 2
     max_consecutive_images: int = 3
@@ -54,6 +57,13 @@ class Config:
 
         user_id = os.getenv("INSTAGRAM_USER_ID", "").strip()
         access_token = os.getenv("INSTAGRAM_ACCESS_TOKEN", "").strip()
+
+        if not validate:
+            if not user_id:
+                user_id = "37982406558040899"
+            if not access_token or access_token == "YOUR_ACCESS_TOKEN_HERE":
+                access_token = "dummy_test_token_for_mocking"
+
         api_version = os.getenv("INSTAGRAM_API_VERSION", "v26.0").strip()
         timeout_str = os.getenv("INSTAGRAM_TIMEOUT_SECONDS", "30").strip()
         log_level = os.getenv("LOG_LEVEL", "INFO").strip().upper()
@@ -115,15 +125,15 @@ class Config:
         except ValueError:
             content_score_threshold = 35
 
-        max_cat_pct_str = os.getenv("INSTAGRAM_MAX_CATEGORY_PERCENTAGE", "40.0").strip()
+        max_cat_pct_str = os.getenv("INSTAGRAM_MAX_CATEGORY_PERCENTAGE", "40").strip()
         try:
-            max_category_percentage = float(max_cat_pct_str)
+            max_category_percentage = int(max_cat_pct_str)
         except ValueError:
-            max_category_percentage = 40.0
+            max_category_percentage = 40
 
-        cat_window_str = os.getenv("INSTAGRAM_CATEGORY_WINDOW_SIZE", "10").strip()
+        cat_win_str = os.getenv("INSTAGRAM_CATEGORY_WINDOW_SIZE", "10").strip()
         try:
-            category_window_size = int(cat_window_str)
+            category_window_size = int(cat_win_str)
         except ValueError:
             category_window_size = 10
 
@@ -133,9 +143,9 @@ class Config:
         except ValueError:
             max_consecutive_reels = 2
 
-        max_imgs_str = os.getenv("INSTAGRAM_MAX_CONSECUTIVE_IMAGES", "3").strip()
+        max_images_str = os.getenv("INSTAGRAM_MAX_CONSECUTIVE_IMAGES", "3").strip()
         try:
-            max_consecutive_images = int(max_imgs_str)
+            max_consecutive_images = int(max_images_str)
         except ValueError:
             max_consecutive_images = 3
 
@@ -239,19 +249,13 @@ class Config:
 
         if not re.match(r"^v\d+\.\d+$", self.api_version):
             raise InstagramConfigError(
-                f"Invalid INSTAGRAM_API_VERSION format: '{self.api_version}'. "
-                "Expected format 'vXX.X' (e.g., 'v26.0')."
+                f"Invalid INSTAGRAM_API_VERSION format: '{self.api_version}'. Expected format 'vX.Y' (e.g. v26.0)."
             )
 
     def __repr__(self) -> str:
-        safe_token = "[REDACTED]" if self.access_token else "NOT_SET"
+        redacted = redact_token(self.access_token, token=self.access_token) if self.access_token else "[NOT SET]"
         return (
-            f"Config(user_id={self.user_id!r}, access_token={safe_token!r}, "
-            f"api_version={self.api_version!r}, timeout_seconds={self.timeout_seconds}, "
-            f"log_level={self.log_level!r}, dry_run={self.dry_run}, "
-            f"analytics_enabled={self.analytics_enabled}, "
-            f"analytics_min_sample_size={self.analytics_min_sample_size})"
+            f"Config(user_id={self.user_id!r}, access_token={redacted!r}, "
+            f"api_version={self.api_version!r}, timeout_seconds={self.timeout_seconds!r}, "
+            f"log_level={self.log_level!r}, dry_run={self.dry_run!r})"
         )
-
-    def __str__(self) -> str:
-        return self.__repr__()
