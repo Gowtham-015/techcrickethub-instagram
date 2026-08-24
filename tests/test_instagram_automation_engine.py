@@ -21,6 +21,7 @@ def engine_env(tmp_path):
     history_file = str(tmp_path / "history.json")
 
     config = Config.load_from_env(validate=False)
+    config.dry_run = True
     queue = InstagramQueue(queue_path=queue_file)
     health = InstagramHealthTracker(health_path=health_file)
     source = MagicMock(spec=InstagramContentSource)

@@ -11,7 +11,7 @@ on:
       dry_run:
         description: 'Run Mode (true for Dry Run simulation, false for Real Instagram publishing)'
         required: false
-        default: 'true'
+        default: 'false'
 
 jobs:
   automation-cycle:
@@ -20,7 +20,7 @@ jobs:
     env:
       INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID || '37982406558040899' }}
       INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN || 'dummy_test_token_for_mocking' }}
-      INSTAGRAM_DRY_RUN: ${{ github.event.inputs.dry_run || vars.INSTAGRAM_DRY_RUN || 'true' }}
+      INSTAGRAM_DRY_RUN: ${{ github.event.inputs.dry_run || vars.INSTAGRAM_DRY_RUN || 'false' }}
       INSTAGRAM_AUTOMATION_ENABLED: 'true'
       INSTAGRAM_SCHEDULER_ENABLED: 'true'
       INSTAGRAM_TIMEZONE: 'Asia/Kolkata'
