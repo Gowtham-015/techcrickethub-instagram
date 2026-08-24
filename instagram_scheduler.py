@@ -104,7 +104,7 @@ class InstagramScheduler:
         scheduled_dt = self.parse_iso_datetime(item.scheduled_at)
         return scheduled_dt <= now
 
-    def process_due_items(self, limit: Optional[int] = None) -> List[PipelineResult]:
+    def process_due_items(self, limit: Optional[int] = None, force_due: bool = False) -> List[PipelineResult]:
         """Loads due PENDING/SCHEDULED items from queue, executes processing through the pipeline,
 
         records progress, handles retries, and enforces dry-run safety.
@@ -118,7 +118,7 @@ class InstagramScheduler:
             now = datetime.now(timezone.utc)
 
             due_items = [
-                i for i in items if i.status in ("PENDING", "SCHEDULED") and self.is_due(i, now_dt=now)
+                i for i in items if i.status in ("PENDING", "SCHEDULED") and (force_due or self.is_due(i, now_dt=now))
             ]
 
             if limit and limit > 0:

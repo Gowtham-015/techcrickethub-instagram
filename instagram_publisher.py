@@ -107,14 +107,37 @@ class InstagramImagePublisher:
 
             self.client.logger.info(f"Media container created successfully. creation_id: {creation_id}")
 
-            # 4. Publish media container (Step 2)
-            self.client.logger.info(f"Publishing container {creation_id}...")
-            publish_response = self.client.post(
-                f"/{self.client.user_id}/media_publish",
-                data={"creation_id": creation_id},
-            )
+            # 4. Check container status / wait for processing
+            import time
+            for attempt in range(1, 6):
+                try:
+                    status_res = self.client.get(f"/{creation_id}", params={"fields": "status_code"})
+                    sc = str(status_res.get("status_code", "")).upper()
+                    if sc in ("FINISHED", "READY", ""):
+                        break
+                    self.client.logger.info(f"Container status is '{sc}'. Waiting 2s for Meta processing...")
+                    time.sleep(2)
+                except Exception:
+                    time.sleep(2)
 
-            media_id = publish_response.get("id")
+            # 5. Publish media container (Step 2) with retry if processing
+            media_id = None
+            for pub_attempt in range(1, 4):
+                try:
+                    self.client.logger.info(f"Publishing container {creation_id} (Attempt {pub_attempt}/3)...")
+                    publish_response = self.client.post(
+                        f"/{self.client.user_id}/media_publish",
+                        data={"creation_id": creation_id},
+                    )
+                    media_id = publish_response.get("id")
+                    if media_id:
+                        break
+                except InstagramAPIError as e:
+                    if "Media ID is not available" in str(e) and pub_attempt < 3:
+                        self.client.logger.info("Meta container processing in progress. Retrying publish in 3s...")
+                        time.sleep(3)
+                        continue
+                    raise e
             if not media_id:
                 raise InstagramAPIError(
                     "Media publish request succeeded but no 'id' (media_id) was returned by Meta API.",

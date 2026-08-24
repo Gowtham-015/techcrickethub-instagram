@@ -1652,6 +1652,32 @@ def real_content_preview() -> bool:
     except Exception as e:
         print("Status: FAILED")
         print(f"Error: {e}")
+def publish_now() -> bool:
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+
+    print("Publishing Enqueued Content Now")
+    print("--------------------------------")
+    try:
+        config = Config.load_from_env(validate=False)
+        scheduler = InstagramScheduler(config=config)
+        results = scheduler.process_due_items(limit=1, force_due=True)
+
+        if not results:
+            print("No pending queue items found to publish.")
+            return False
+
+        for r in results:
+            print(f"Publication Result: Success={r.success}, Media ID={r.media_id}, Dry Run={r.dry_run}")
+            print(f"Message: {r.message}")
+
+        return True
+    except Exception as e:
+        print("Status: FAILED")
+        print(f"Error: {e}")
         return False
 
 
@@ -1838,6 +1864,11 @@ def main():
         help="Safely reset production failure counters and pause state",
     )
     parser.add_argument(
+        "--publish-now",
+        action="store_true",
+        help="Instantly publish the top queued item to Instagram immediately without waiting for schedule timer",
+    )
+    parser.add_argument(
         "--production-check",
         action="store_true",
         help="Run complete non-publishing production readiness check across all modules",
@@ -1986,6 +2017,9 @@ def main():
         sys.exit(0 if success else 1)
     elif args.real_content_preview:
         success = real_content_preview()
+        sys.exit(0 if success else 1)
+    elif args.publish_now:
+        success = publish_now()
         sys.exit(0 if success else 1)
     else:
         parser.print_help()
