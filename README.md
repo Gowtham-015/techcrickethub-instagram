@@ -1,4 +1,4 @@
-# TechCricketHub Instagram Automation (Phases 1 - 10)
+# TechCricketHub Instagram Automation (Phases 1 - 11)
 
 Clean, secure, and completely independent Python application for automating Instagram Business operations using Meta's Graph API (`https://graph.instagram.com/v26.0/`).
 
@@ -69,14 +69,13 @@ Clean, secure, and completely independent Python application for automating Inst
 - **Posting Window Time Analytics (`instagram_time_analytics.py`)**: Maps event timestamps to `Asia/Kolkata` local posting windows (`MORNING` 08:00–10:00, `AFTERNOON` 13:00–15:00, `EVENING` 18:00–21:00, `NIGHT`).
 - **Engagement Abstraction (`instagram_engagement.py`)**: `InstagramEngagementProvider` & `LocalEngagementProvider` interface safely returning `ENGAGEMENT_DATA_UNAVAILABLE` when real API metrics do not exist (prevents fake data).
 - **Adaptive Optimizer (`instagram_optimizer.py`)**: `InstagramOptimizer` evaluates local publishing performance events and produces conservative reliability recommendations for category adjustment, media mix, time slot preference, and content score thresholds. Enforces minimum sample size protection (`INSTAGRAM_ANALYTICS_MIN_SAMPLE_SIZE=10`).
-- **Phase 10 CLI Commands**:
-  - `python main.py --analytics-status`: Displays publishing metrics overview.
-  - `python main.py --analytics-category`: Displays per-category analytics table.
-  - `python main.py --analytics-media`: Displays per-media type analytics.
-  - `python main.py --analytics-time`: Displays posting window IST analytics.
-  - `python main.py --analytics-score`: Displays content score bucket performance.
-  - `python main.py --optimization-preview`: Displays adaptive recommendations.
-  - `python main.py --analytics-test`: Runs end-to-end local analytics simulation test.
+
+### Phase 11: Production Deployment & 24/7 Runtime
+- **Containerization Specification**: `Dockerfile` and `.dockerignore` for containerized Python 3.10 background service execution (`CMD ["python", "main.py", "--run"]`).
+- **Background Worker Blueprint**: `Procfile` (`worker: python main.py --run`) and `render.yaml` for Render/Railway/Fly background worker deployment.
+- **Production Status Telemetry**: `python main.py --production-status` and `python main.py --production-test` CLI commands.
+- **24/7 Cloud Execution Capability**: Operates continuously on cloud background worker environments without requiring user's laptop to remain ON.
+- **Dry-Run Safety Protected**: `INSTAGRAM_DRY_RUN=true` remains active by default on cloud deployments until explicit user approval.
 
 ---
 
@@ -142,32 +141,50 @@ INSTAGRAM_ANALYTICS_TIMEZONE=Asia/Kolkata
 
 ---
 
+## 24/7 Cloud Deployment Guide
+
+### Option A: Render (Recommended Background Worker)
+1. Log in to [Render Dashboard](https://dashboard.render.com/).
+2. Click **New +** -> **Blueprint**.
+3. Connect repository `Gowtham-015/techcrickethub-instagram`.
+4. Render will auto-detect `render.yaml`.
+5. Configure Environment Variables in Render Dashboard (`INSTAGRAM_USER_ID`, `INSTAGRAM_ACCESS_TOKEN`).
+6. Deploy! Render will run `python main.py --run` continuously 24/7.
+
+### Option B: Docker Container
+```bash
+docker build -t techcrickethub-instagram .
+docker run -d --name instagram-bot \
+  -e INSTAGRAM_USER_ID="37982406558040899" \
+  -e INSTAGRAM_ACCESS_TOKEN="YOUR_TOKEN" \
+  -e INSTAGRAM_DRY_RUN="true" \
+  techcrickethub-instagram
+```
+
+---
+
 ## Usage & Verification
 
 ### Running Unit Tests
 
-Run the full test suite (169 mocked unit tests):
+Run the full test suite (173 mocked unit tests):
 
 ```bash
 python -m pytest tests/ -v
 ```
 
-### Running Analytics CLI Commands
+### Running Production CLI Commands
 
 ```bash
-python main.py --analytics-status
-python main.py --analytics-category
-python main.py --analytics-media
-python main.py --analytics-time
-python main.py --analytics-score
-python main.py --optimization-preview
-python main.py --analytics-test
+python main.py --production-status
+python main.py --production-test
+python main.py --run
 ```
 
 ---
 
 ## Safety & Isolation Policies
-- **Phase 10 is completely standalone. Telegram integration is intentionally NOT implemented.**
+- **Phase 11 is completely standalone. Telegram integration is intentionally NOT implemented.**
 - `INSTAGRAM_DRY_RUN=true`, `INSTAGRAM_SCHEDULER_ENABLED=false`, and `INSTAGRAM_AUTOMATION_ENABLED=false` are **enabled by default**.
 - Access tokens are strictly redacted (`[REDACTED]`) across all logs, exceptions, formatters, sanitizers, validators, `PipelineResult`, `InstagramQueueItem`, `InstagramHealthTracker`, `InstagramAnalyticsEvent`, and representation methods.
 - `.env` is ignored by Git and must never be committed.
