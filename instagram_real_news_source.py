@@ -110,14 +110,34 @@ class InstagramRealNewsSource(InstagramContentSource):
                     logger.info(f"Skipping stale {category} article ({int(age_hours)}h old): '{title}'")
                     continue
 
-                # Extract image or video url if present in enclosure or media tag
+                # Extract image url from enclosure, media tags, or img src in description
                 image_url = None
                 enclosure = item.find("enclosure")
                 if enclosure is not None:
                     enc_url = enclosure.get("url", "")
                     enc_type = enclosure.get("type", "")
-                    if "image" in enc_type or enc_url.endswith((".jpg", ".jpeg", ".png")):
+                    if "image" in enc_type or enc_url.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
                         image_url = enc_url
+
+                if not image_url:
+                    namespaces = {"media": "http://search.yahoo.com/mrss/"}
+                    for media_tag in ("media:content", "media:thumbnail"):
+                        media_elem = item.find(media_tag, namespaces)
+                        if media_elem is not None and media_elem.get("url"):
+                            image_url = media_elem.get("url")
+                            break
+
+                if not image_url and description:
+                    img_match = re.search(r'<img[^>]+src=["\'](https?://[^"\']+)["\']', description, re.IGNORECASE)
+                    if img_match:
+                        image_url = img_match.group(1)
+
+                # Fallback: Authentic Category Match Image (Cricket Stadium / Tech Banner)
+                if not image_url or "pbYX4gp_5kE" in image_url:
+                    if category == "cricket":
+                        image_url = "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=1080&auto=format&fit=crop"
+                    else:
+                        image_url = "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1080&auto=format&fit=crop"
 
                 content_id = self.generate_stable_id(link, source_domain)
 
@@ -133,7 +153,7 @@ class InstagramRealNewsSource(InstagramContentSource):
                         "collected_at": now.isoformat(),
                         "content_type": "NEWS",
                         "media_type": "IMAGE",
-                        "image_url": image_url or self.config.test_image_url or "https://i.ytimg.com/vi/pbYX4gp_5kE/maxresdefault.jpg",
+                        "image_url": image_url,
                         "video_url": None,
                     }
                 )
