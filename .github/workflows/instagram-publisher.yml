@@ -1,10 +1,8 @@
-name: TechCricketHub Instagram Automation 24/7
+name: TechCricketHub Instagram Publisher (Phase 13.7)
 
 on:
-  push:
-    branches: [ main ]
   schedule:
-    # Runs automatically every 30 minutes 24/7
+    # Runs automatically every 30 minutes 24/7 independently of local laptop
     - cron: '*/30 * * * *'
   workflow_dispatch:
     inputs:
@@ -17,7 +15,7 @@ permissions:
   contents: write
 
 jobs:
-  automation-cycle:
+  publish-job:
     runs-on: ubuntu-latest
 
     env:
@@ -41,7 +39,7 @@ jobs:
           python-version: '3.10'
           cache: 'pip'
 
-      - name: Install Dependencies
+      - name: Install System & Python Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
