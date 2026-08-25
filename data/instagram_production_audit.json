@@ -89,5 +89,18 @@
     "duration": 0.0,
     "dry_run": false,
     "production_mode": "PRODUCTION"
+  },
+  {
+    "timestamp": "2026-08-25T20:10:35.303787+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "IMAGE",
+    "category": "cricket",
+    "status": "FAILED",
+    "creation_id": "",
+    "media_id": "",
+    "error_type": "API access blocked.",
+    "duration": 0.0,
+    "dry_run": false,
+    "production_mode": "PRODUCTION"
   }
 ]
