@@ -1,5 +1,6 @@
 import hashlib
 import logging
+import os
 import re
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone, timedelta
@@ -132,16 +133,32 @@ class InstagramRealNewsSource(InstagramContentSource):
                     if img_match:
                         image_url = img_match.group(1)
 
+                content_id = self.generate_stable_id(link, source_domain)
+
                 if image_url:
                     if image_url.startswith("http://"):
                         image_url = "https://" + image_url[7:]
                 else:
-                    if category == "cricket":
-                        image_url = "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=1080&auto=format&fit=crop"
-                    else:
-                        image_url = "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1080&auto=format&fit=crop"
+                    # Generate branded news card image matching title & summary
+                    try:
+                        from instagram_graphic_card_generator import InstagramGraphicCardGenerator
 
-                content_id = self.generate_stable_id(link, source_domain)
+                        card_gen = InstagramGraphicCardGenerator()
+                        card_path = card_gen.create_news_card(
+                            title=title,
+                            summary=clean_desc,
+                            category=category,
+                            source_name=source_domain,
+                            content_id=content_id,
+                        )
+                        rel_filename = os.path.basename(card_path)
+                        image_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/{rel_filename}"
+                    except Exception as gen_err:
+                        logger.warning(f"Graphic card generation failed for {content_id}: {gen_err}")
+                        if category == "cricket":
+                            image_url = "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=1080&auto=format&fit=crop"
+                        else:
+                            image_url = "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1080&auto=format&fit=crop"
 
                 results.append(
                     {
