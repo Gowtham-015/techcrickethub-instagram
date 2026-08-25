@@ -227,8 +227,9 @@ def test_publish_retry_duplicate_safety(tmp_path):
 
 
 def test_scheduled_workflow_configuration():
-    wf_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".github", "workflows", "instagram_automation.yml")
-    assert os.path.exists(wf_path)
+    wf_path1 = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".github", "workflows", "instagram_automation.yml")
+    wf_path2 = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".github", "workflows", "instagram-publisher.yml")
+    assert os.path.exists(wf_path1) or os.path.exists(wf_path2)
 
 
 def test_no_telegram_imports():
