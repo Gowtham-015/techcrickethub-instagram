@@ -1,0 +1,17 @@
+{
+  "worker_id": "Gowtham-19844",
+  "worker_status": "RUNNING",
+  "started_at": "2026-08-25T19:33:20.226621+00:00",
+  "last_heartbeat": "2026-08-25T19:33:20.226621+00:00",
+  "uptime_seconds": 0,
+  "last_cycle": "N/A",
+  "last_publish_attempt": "N/A",
+  "last_publish_success": "N/A",
+  "last_publish_failure": "N/A",
+  "last_error": "None",
+  "next_cycle": "in 60s",
+  "queue_size": 0,
+  "published_count": 0,
+  "failed_count": 0,
+  "duplicate_count": 0
+}

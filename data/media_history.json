@@ -1,0 +1,18 @@
+{
+  "processed": [
+    {
+      "content_id": "sample-001",
+      "media_hash": "a9471232eb0d113275e2b23ee1386a3a27e239bae1d87928a2b2cfd5a578f458",
+      "url": "https://i.ytimg.com/vi/pbYX4gp_5kE/maxresdefault.jpg",
+      "status": "SKIPPED",
+      "processed_at": "2026-08-24T15:17:53.124285+00:00"
+    },
+    {
+      "content_id": "sample-003",
+      "media_hash": "22fa99e895acd3a88aee186666b146e288f23a9df7a3d59dacfba161944390f5",
+      "url": "https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/person-bicycle-car-detection.mp4",
+      "status": "SKIPPED",
+      "processed_at": "2026-08-24T15:17:53.283495+00:00"
+    }
+  ]
+}

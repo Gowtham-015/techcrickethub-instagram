@@ -1,0 +1,67 @@
+[
+  {
+    "timestamp": "2026-08-24T18:43:30.224816+00:00",
+    "content_id": "live-test-001",
+    "media_type": "IMAGE",
+    "category": "technology",
+    "status": "VALIDATED",
+    "creation_id": "",
+    "media_id": "",
+    "error_type": "",
+    "duration": 0.447,
+    "dry_run": true,
+    "production_mode": "LIVE_TEST"
+  },
+  {
+    "timestamp": "2026-08-25T02:31:35.560315+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "IMAGE",
+    "category": "cricket",
+    "status": "PUBLISHED",
+    "creation_id": "18089536874300654",
+    "media_id": "18124667563740116",
+    "error_type": "",
+    "duration": 0.0,
+    "dry_run": false,
+    "production_mode": "PRODUCTION"
+  },
+  {
+    "timestamp": "2026-08-25T03:49:44.147107+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "IMAGE",
+    "category": "cricket",
+    "status": "PUBLISHED",
+    "creation_id": "18089555036300654",
+    "media_id": "18166007158464271",
+    "error_type": "",
+    "duration": 0.0,
+    "dry_run": false,
+    "production_mode": "PRODUCTION"
+  },
+  {
+    "timestamp": "2026-08-25T03:50:42.185141+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "IMAGE",
+    "category": "cricket",
+    "status": "PUBLISHED",
+    "creation_id": "18089555282300654",
+    "media_id": "18108370304110140",
+    "error_type": "",
+    "duration": 0.0,
+    "dry_run": false,
+    "production_mode": "PRODUCTION"
+  },
+  {
+    "timestamp": "2026-08-25T03:51:33.741144+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "IMAGE",
+    "category": "cricket",
+    "status": "PUBLISHED",
+    "creation_id": "18089555375300654",
+    "media_id": "17960729291982067",
+    "error_type": "",
+    "duration": 0.0,
+    "dry_run": false,
+    "production_mode": "PRODUCTION"
+  }
+]

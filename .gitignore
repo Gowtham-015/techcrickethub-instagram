@@ -20,7 +20,9 @@ htmlcov/
 # Logs & Data
 *.log
 logs/
-data/
+data/*
+!data/*.json
+!data/.gitkeep
 scratch/
 *.tmp
 *.bak

@@ -1,0 +1,52 @@
+[
+  {
+    "id": "sample-001",
+    "title": "India Announces Roster Updates Ahead of Upcoming Tournament",
+    "summary": "Key players return to training sessions following medical clearances prior to the upcoming international bilateral series.",
+    "category": "cricket",
+    "source": "SportsDesk",
+    "image_url": "https://i.ytimg.com/vi/pbYX4gp_5kE/maxresdefault.jpg",
+    "video_url": null,
+    "media_type": "IMAGE"
+  },
+  {
+    "id": "sample-002",
+    "title": "Breakthrough AI Architecture Unveiled for Automated Workflows",
+    "summary": "Research teams introduce high-efficiency benchmarks demonstrating 10x faster execution and lower latency for cloud processing.",
+    "category": "technology",
+    "source": "TechInsight",
+    "image_url": "https://i.ytimg.com/vi/pbYX4gp_5kE/maxresdefault.jpg",
+    "video_url": null,
+    "media_type": "IMAGE"
+  },
+  {
+    "id": "sample-003",
+    "title": "Next-Gen Autonomous Detection Reel Highlights",
+    "summary": "Demonstration clip showing real-time detection performance on edge computing units.",
+    "category": "technology",
+    "source": "TechCricketHub Labs",
+    "image_url": null,
+    "video_url": "https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/person-bicycle-car-detection.mp4",
+    "media_type": "REEL"
+  },
+  {
+    "id": "sample-004",
+    "title": "Championship Final Match Set for Weekend Showdown",
+    "summary": "Both teams complete final training drills ahead of the decisive weekend championship match.",
+    "category": "sports",
+    "source": "GameDay Digest",
+    "image_url": "https://i.ytimg.com/vi/pbYX4gp_5kE/maxresdefault.jpg",
+    "video_url": null,
+    "media_type": "IMAGE"
+  },
+  {
+    "id": "sample-005",
+    "title": "Blockbuster Movie Teaser Breaks Online Viewing Records",
+    "summary": "The official teaser trailer amassed millions of views within hours across streaming channels.",
+    "category": "entertainment",
+    "source": "CinemaNow",
+    "image_url": null,
+    "video_url": "https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/person-bicycle-car-detection.mp4",
+    "media_type": "REEL"
+  }
+]
