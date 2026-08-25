@@ -112,29 +112,71 @@ class InstagramReelGenerator:
                 frame_img.save(frame_path)
                 frames.append(frame_path)
 
-            # Check if cv2 or moviepy is available to combine into MP4
+            # Use imageio_ffmpeg binary via subprocess to generate Meta-compliant faststart H.264 + AAC MP4 Reel
             try:
-                import cv2
-                import numpy as np
+                import imageio_ffmpeg
+                import subprocess
 
-                fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-                writer = cv2.VideoWriter(file_path, fourcc, 1.0, (1080, 1920))
+                ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+                frame_0 = frames[0]
 
-                for frame_path in frames:
-                    img_np = cv2.imread(frame_path)
-                    for _ in range(2):  # 2 seconds per frame = 6 seconds total
-                        writer.write(img_np)
-                writer.release()
+                cmd = [
+                    ffmpeg_exe,
+                    "-y",
+                    "-loop",
+                    "1",
+                    "-i",
+                    frame_0,
+                    "-f",
+                    "lavfi",
+                    "-i",
+                    "sine=frequency=220:sample_rate=48000",
+                    "-c:v",
+                    "libx264",
+                    "-t",
+                    "10",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-movflags",
+                    "+faststart",
+                    "-c:a",
+                    "aac",
+                    "-b:a",
+                    "128k",
+                    "-ar",
+                    "48000",
+                    "-r",
+                    "30",
+                    file_path,
+                ]
 
-            except ImportError:
-                # If cv2 unavailable, create frame zero as fallback preview image
-                logger.info("OpenCV unavailable for video assembly. Reel generation skipped cleanly.")
-                return {
-                    "success": False,
-                    "action": "SKIP_REEL",
-                    "reason": "Video rendering encoder library (OpenCV/MoviePy) not installed.",
-                    "reel_path": None,
-                }
+                res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+                if res.returncode != 0:
+                    logger.warning(f"ffmpeg execution failed: {res.stderr.decode('utf-8', errors='ignore')}")
+                    raise RuntimeError("FFmpeg encoding failed.")
+
+            except Exception as vid_err:
+                logger.warning(f"FFmpeg encoding error: {vid_err}, trying cv2 fallback")
+                try:
+                    import cv2
+                    import numpy as np
+
+                    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+                    writer = cv2.VideoWriter(file_path, fourcc, 24.0, (1080, 1920))
+
+                    for frame_path in frames:
+                        img_np = cv2.imread(frame_path)
+                        for _ in range(48):
+                            writer.write(img_np)
+                    writer.release()
+                except Exception as cv_err:
+                    logger.info(f"Video assembly failed: {cv_err}")
+                    return {
+                        "success": False,
+                        "action": "SKIP_REEL",
+                        "reason": f"Video encoding error: {cv_err}",
+                        "reel_path": None,
+                    }
 
             # Cleanup frame PNGs
             for f in frames:

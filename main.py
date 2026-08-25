@@ -1,4 +1,6 @@
 import argparse
+import os
+import shutil
 import sys
 from config import Config
 from exceptions import InstagramError
@@ -186,17 +188,42 @@ def test_reel_publishing() -> bool:
 
         video_url = None
         if reel_res.get("success") and reel_res.get("reel_path"):
-            rel_name = os.path.basename(reel_res["reel_path"])
-            # Copy to media/generated
+            reel_file_path = reel_res["reel_path"]
+            rel_name = os.path.basename(reel_file_path)
             gen_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "media", "generated")
             os.makedirs(gen_dir, exist_ok=True)
             dst_path = os.path.join(gen_dir, rel_name)
-            import shutil
-            shutil.copy(reel_res["reel_path"], dst_path)
-            video_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/{rel_name}"
+            shutil.copy(reel_file_path, dst_path)
+
+            # Upload to direct Range-supported video host (catbox.moe) for Meta API compliance
+            try:
+                import requests
+                with open(dst_path, "rb") as f:
+                    up_resp = requests.post(
+                        "https://catbox.moe/user/api.php",
+                        files={"fileToUpload": f},
+                        data={"reqtype": "fileupload"},
+                        timeout=15,
+                    )
+                if up_resp.status_code == 200 and up_resp.text.startswith("https://"):
+                    video_url = up_resp.text.strip()
+                    print(f"Uploaded Reel Video to Direct Host: {video_url}")
+            except Exception as up_err:
+                print(f"Direct host upload fallback warning: {up_err}")
+
+            if not video_url:
+                # Commit and push to GitHub as fallback
+                import subprocess
+                import time
+                subprocess.run(["git", "add", "media/generated/"], check=False)
+                subprocess.run(["git", "commit", "-m", f"Add generated reel {rel_name}"], check=False)
+                subprocess.run(["git", "push", "origin", "main"], check=False)
+                time.sleep(5)
+                video_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/{rel_name}"
 
         if not video_url:
-            video_url = config.test_reel_video_url
+            print(f"ERROR: Failed to render dynamic story Reel MP4 video for '{title}'. Reason: {reel_res.get('reason')}")
+            return False
 
         generator = InstagramCaptionGenerator()
         caption = generator.generate_caption(
