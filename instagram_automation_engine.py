@@ -37,6 +37,8 @@ from instagram_cricket_balancer import InstagramCricketBalancer
 from instagram_source_verifier import InstagramSourceVerifier
 from instagram_content_bundle import ContentBundle, ContentIntegrityValidator
 from instagram_media_verifier import InstagramMediaVerifier
+from instagram_final_publish_guard import InstagramFinalPublishGuard
+from instagram_cloud_runtime import InstagramCloudRuntime
 from security import RedactingFormatter, redact_token
 
 
@@ -83,6 +85,8 @@ class InstagramAutomationEngine:
         self.source_verifier = InstagramSourceVerifier()
         self.bundle_validator = ContentIntegrityValidator()
         self.media_verifier = InstagramMediaVerifier()
+        self.final_publish_guard = InstagramFinalPublishGuard(config=self.config)
+        self.cloud_runtime = InstagramCloudRuntime(config=self.config)
 
         self.normalizer = InstagramContentNormalizer()
         self.acquirer = InstagramMediaAcquirer()
@@ -205,6 +209,7 @@ class InstagramAutomationEngine:
         scheduled due-item processing, analytics tracking, and health recording.
         """
         cycle_start = time.time()
+        self.cloud_runtime.record_cycle_start()
         self.logger.info("Starting automation cycle...")
 
         discovered_count = 0
@@ -382,15 +387,31 @@ class InstagramAutomationEngine:
                         )
                         continue
 
+                    # 8. Final Publish Guard Pre-Check
+                    guard_res = self.final_publish_guard.verify_and_guard(bundle)
+                    if not guard_res.is_valid:
+                        self.logger.info(
+                            f"Content ID '{content_id}' blocked by Final Publish Guard: {guard_res.message}"
+                        )
+                        duplicate_count += 1
+                        self._safe_record_event(
+                            "DUPLICATE",
+                            content_id=content_id,
+                            category=content.category,
+                            media_type=content.media_type,
+                            content_score=score_obj.total_score,
+                        )
+                        continue
+
                     valid_count += 1
 
-                    # 8. Smart Scheduling Timestamp Calculation
+                    # 9. Smart Scheduling Timestamp Calculation
                     scheduled_slot = self.smart_scheduler.calculate_next_slot(
                         queue_items=existing_items,
                         media_type=content.media_type,
                     )
 
-                    # 9. Enqueue Item
+                    # 10. Enqueue Item
                     queue_item = InstagramQueueItem(
                         queue_id=f"q-{content_id or int(time.time())}",
                         content_id=content_id,
@@ -401,6 +422,11 @@ class InstagramAutomationEngine:
                         category=content.category,
                         scheduled_at=scheduled_slot.isoformat(),
                         status="PENDING",
+                        source_url=source_url_val or "",
+                        source_domain=source_domain_val or "",
+                        summary=content.summary or "",
+                        facts=getattr(content, "facts", []) or [],
+                        hashtags=content.hashtags or [],
                     )
                     self.queue.enqueue(queue_item)
                     queued_count += 1
@@ -502,8 +528,14 @@ class InstagramAutomationEngine:
             cycle_error = redact_token(str(e))
             self.logger.error(f"Cycle execution error: {cycle_error}")
 
-        # 11. Record metrics in Health Tracker
+        # 11. Record metrics in Health Tracker & Cloud Runtime
         self.health_tracker.record_cycle(
+            processed=valid_count,
+            published=published_count,
+            failed=failed_count,
+            error=cycle_error,
+        )
+        self.cloud_runtime.record_cycle_complete(
             processed=valid_count,
             published=published_count,
             failed=failed_count,

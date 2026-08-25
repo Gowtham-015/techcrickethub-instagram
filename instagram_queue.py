@@ -38,10 +38,19 @@ class InstagramQueueItem:
     last_error: Optional[str] = None
     published_media_id: Optional[str] = None
     created_media_container_id: Optional[str] = None
+    source_url: str = ""
+    source_domain: str = ""
+    summary: str = ""
+    facts: Optional[List[str]] = None
+    hashtags: Optional[List[str]] = None
 
     def __post_init__(self):
         if not self.created_at:
             self.created_at = datetime.now(timezone.utc).isoformat()
+        if self.facts is None:
+            self.facts = []
+        if self.hashtags is None:
+            self.hashtags = []
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
@@ -66,6 +75,11 @@ class InstagramQueueItem:
             last_error=redact_token(data.get("last_error")) if data.get("last_error") else None,
             published_media_id=data.get("published_media_id"),
             created_media_container_id=data.get("created_media_container_id"),
+            source_url=data.get("source_url") or "",
+            source_domain=data.get("source_domain") or "",
+            summary=data.get("summary") or "",
+            facts=data.get("facts") or [],
+            hashtags=data.get("hashtags") or [],
         )
 
 

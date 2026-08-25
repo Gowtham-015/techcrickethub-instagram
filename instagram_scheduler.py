@@ -7,8 +7,10 @@ from typing import List, Optional
 
 from config import Config
 from exceptions import InstagramConfigError, InstagramError
+from config import Config
+from exceptions import InstagramConfigError, InstagramError
 from instagram_content_bundle import ContentBundle
-from instagram_final_duplicate_gate import InstagramFinalDuplicateGate
+from instagram_final_publish_guard import InstagramFinalPublishGuard
 from instagram_pipeline import InstagramContent, InstagramContentPipeline, PipelineResult
 from instagram_publish_lock import InstagramPublishLock
 from instagram_queue import InstagramQueue, InstagramQueueItem
@@ -18,7 +20,7 @@ from security import RedactingFormatter, redact_token
 class InstagramScheduler:
     """Standalone scheduler for Instagram content items with process locking, timezone handling,
 
-    retry policies, final duplicate gate, and dry-run execution safety.
+    retry policies, final publish guard, and dry-run execution safety.
     """
 
     def __init__(
@@ -34,7 +36,7 @@ class InstagramScheduler:
         self.config = config or Config.load_from_env(validate=False)
         self.queue = queue or InstagramQueue(max_queue_size=self.config.max_queue_size)
         self.pipeline = pipeline or InstagramContentPipeline(dry_run=self.config.dry_run)
-        self.final_duplicate_gate = InstagramFinalDuplicateGate(config=self.config)
+        self.final_publish_guard = InstagramFinalPublishGuard(config=self.config)
 
         self.logger = logging.getLogger("InstagramScheduler")
         self.logger.setLevel(logging.INFO)
@@ -135,33 +137,34 @@ class InstagramScheduler:
 
                 # Acquire atomic publish lock
                 with InstagramPublishLock(timeout_seconds=5.0):
-                    # 1. Re-read published history & run Final Duplicate Gate
+                    # 1. Reconstruct full ContentBundle & run Final Publish Guard
                     bundle = ContentBundle(
-                        content_id=item.content_id,
+                        content_id=item.content_id or "",
                         category=item.category,
                         title=item.title,
-                        summary="",
-                        source_url=f"https://www.techcrickethub.com/stories/{item.content_id}",
-                        source_domain="techcrickethub.com",
+                        summary=getattr(item, "summary", "") or "",
+                        source_url=getattr(item, "source_url", "") or f"https://www.techcrickethub.com/stories/{item.content_id}",
+                        source_domain=getattr(item, "source_domain", "") or "techcrickethub.com",
                         published_at=item.scheduled_at,
                         media_url=item.media_url,
                         media_type=item.media_type,
                         caption=item.caption,
-                        hashtags=[],
+                        hashtags=getattr(item, "hashtags", []) or [],
                     )
 
-                    gate_res = self.final_duplicate_gate.check_final_duplicate(bundle)
-                    if not gate_res.is_valid:
+                    guard_res = self.final_publish_guard.verify_and_guard(bundle)
+                    if not guard_res.is_valid:
                         self.logger.warning(
-                            f"Item '{item.queue_id}' blocked by Final Duplicate Gate: {gate_res.message}"
+                            f"Item '{item.queue_id}' blocked by Final Publish Guard: {guard_res.message}"
                         )
-                        self.queue.update_status(item.queue_id, "DUPLICATE", last_error=gate_res.message)
+                        self.queue.update_status(item.queue_id, "DUPLICATE", last_error=guard_res.message)
                         res = PipelineResult(
                             success=False,
-                            message=gate_res.message,
-                            content_id=item.content_id,
-                            media_type=item.media_type,
                             dry_run=self.config.dry_run,
+                            media_type=item.media_type,
+                            status="DUPLICATE",
+                            message=guard_res.message,
+                            error=guard_res.message,
                         )
                         results.append(res)
                         continue
@@ -172,7 +175,7 @@ class InstagramScheduler:
                     # Convert to InstagramContent model
                     content = InstagramContent(
                         title=item.title,
-                        summary="",
+                        summary=getattr(item, "summary", "") or "",
                         category=item.category,
                         image_url=item.media_url if item.media_type == "IMAGE" else None,
                         video_url=item.media_url if item.media_type == "REEL" else None,
@@ -191,7 +194,7 @@ class InstagramScheduler:
                             self.queue.update_status(item.queue_id, "SKIPPED", last_error=res.message)
                         else:
                             self.logger.info(f"Item '{item.queue_id}' published successfully. Media ID: {res.media_id}")
-                            self.final_duplicate_gate.record_published_item(
+                            self.final_publish_guard.record_published_item(
                                 bundle=bundle,
                                 media_id=res.media_id or "",
                             )

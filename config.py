@@ -64,6 +64,10 @@ class Config:
     tech_rss_feeds: str = "https://feeds.feedburner.com/TechCrunch/,https://news.ycombinator.com/rss"
     cricket_rss_feeds: str = "https://www.espncricinfo.com/rss/content/story/feeds/0.xml"
     final_duplicate_gate_enabled: bool = True
+    final_publish_guard_enabled: bool = True
+    fact_fingerprint_enabled: bool = True
+    caption_integrity_enabled: bool = True
+    graphic_dedup_enabled: bool = True
     publish_lock_enabled: bool = True
     published_history_enabled: bool = True
     cloud_runtime_enabled: bool = True
@@ -311,6 +315,10 @@ class Config:
             reel_target_percent=reel_target_percent,
             image_target_percent=image_target_percent,
             final_duplicate_gate_enabled=os.getenv("INSTAGRAM_FINAL_DUPLICATE_GATE_ENABLED", "true").strip().lower() in ("true", "1", "yes", "on"),
+            final_publish_guard_enabled=os.getenv("INSTAGRAM_FINAL_PUBLISH_GUARD_ENABLED", "true").strip().lower() in ("true", "1", "yes", "on"),
+            fact_fingerprint_enabled=os.getenv("INSTAGRAM_FACT_FINGERPRINT_ENABLED", "true").strip().lower() in ("true", "1", "yes", "on"),
+            caption_integrity_enabled=os.getenv("INSTAGRAM_CAPTION_INTEGRITY_ENABLED", "true").strip().lower() in ("true", "1", "yes", "on"),
+            graphic_dedup_enabled=os.getenv("INSTAGRAM_GRAPHIC_DEDUP_ENABLED", "true").strip().lower() in ("true", "1", "yes", "on"),
             publish_lock_enabled=os.getenv("INSTAGRAM_PUBLISH_LOCK_ENABLED", "true").strip().lower() in ("true", "1", "yes", "on"),
             published_history_enabled=os.getenv("INSTAGRAM_PUBLISHED_HISTORY_ENABLED", "true").strip().lower() in ("true", "1", "yes", "on"),
             cloud_runtime_enabled=os.getenv("INSTAGRAM_CLOUD_RUNTIME_ENABLED", "true").strip().lower() in ("true", "1", "yes", "on"),
