@@ -281,7 +281,7 @@ class InstagramFinalPublishGuard:
             for item in published_items:
                 pub_media = item.get("media_url", "")
                 if pub_media and "maxresdefault.jpg" not in pub_media:
-                    if self.canonicalize_url(pub_media) == norm_media_url:
+                    if self.canonicalize_url(pub_media) == norm_media_url or pub_media.strip() == bundle.media_url.strip():
                         return GuardResult(
                             is_valid=False,
                             error_code="DUPLICATE_MEDIA_URL",
