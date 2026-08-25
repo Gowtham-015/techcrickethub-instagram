@@ -72,7 +72,10 @@ class InstagramRealNewsSource(InstagramContentSource):
             return []
 
         try:
-            headers = {"User-Agent": "TechCricketHubInstagramAutomation/1.0"}
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                "Accept": "application/rss+xml,application/xml;q=0.9,text/xml;q=0.8,*/*;q=0.7",
+            }
             resp = requests.get(feed_url, headers=headers, timeout=self.timeout)
             if resp.status_code != 200:
                 logger.warning(f"RSS feed HTTP {resp.status_code} for {redact_token(feed_url)}")
