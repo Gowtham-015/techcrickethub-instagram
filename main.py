@@ -77,20 +77,40 @@ def test_instagram_connection() -> bool:
 
 
 def test_image_publishing() -> bool:
-    print("Instagram Image Publishing Test")
-    print("-------------------------------")
-    print("WARNING: This command will publish a REAL image post to @techcrickethub.")
+    print("Instagram Image Publishing Test (REAL NEWS ONLY)")
+    print("-----------------------------------------------")
+    print("WARNING: This command will publish a REAL acquired news image post to @techcrickethub.")
 
     try:
         config = Config.load_from_env()
-        test_image_url = config.test_image_url or "https://i.ytimg.com/vi/pbYX4gp_5kE/maxresdefault.jpg"
+        source = InstagramRealNewsSource(config=config)
+        items = source.get_content_items()
 
-        if not test_image_url:
-            print("ERROR: INSTAGRAM_TEST_IMAGE_URL is not configured.")
-            print("Set a publicly accessible HTTPS JPEG image URL in .env.")
+        if not items:
+            print("ERROR: No live news items acquired from source feeds.")
             return False
 
-        test_caption = "Test image from TechCricketHub Automation 🚀"
+        # Pick newest Cricket or Tech news item
+        item = items[0]
+        title = item["title"]
+        summary = item["summary"]
+        category = item["category"]
+        source_name = item["source_name"]
+        image_url = item["image_url"]
+
+        print(f"\nAcquired Real News Item:")
+        print(f"Title: {title}")
+        print(f"Category: {category}")
+        print(f"Source: {source_name}")
+        print(f"Image URL: {image_url}")
+
+        generator = InstagramCaptionGenerator()
+        caption = generator.generate_caption(
+            title=title,
+            summary=summary,
+            category=category,
+            source=source_name,
+        )
 
         client = InstagramAPIClient(
             user_id=config.user_id,
@@ -100,47 +120,91 @@ def test_image_publishing() -> bool:
         )
         publisher = InstagramImagePublisher(client=client)
 
-        result = publisher.publish_image(image_url=test_image_url, caption=test_caption)
+        result = publisher.publish_image(image_url=image_url, caption=caption)
 
         if result.success:
-            print("Status: SUCCESS")
+            print("\nStatus: SUCCESS")
             print(f"Instagram User ID: {config.user_id}")
             print(f"Creation Container ID: {result.creation_id}")
             print(f"Published Media ID: {result.media_id}")
             print(f"Message: {result.message}")
             return True
         else:
-            print("Status: FAILED")
+            print("\nStatus: FAILED")
             if result.creation_id:
                 print(f"Creation Container ID: {result.creation_id}")
             print(f"Error Message: {result.message}")
             return False
 
     except InstagramError as e:
-        print("Status: FAILED")
+        print("\nStatus: FAILED")
         print(f"Error: {e}")
         return False
     except Exception as e:
-        print("Status: FAILED")
+        print("\nStatus: FAILED")
         print(f"Unexpected Error: {e}")
         return False
 
 
 def test_reel_publishing() -> bool:
-    print("Instagram Reel Publishing Test")
-    print("------------------------------")
-    print("WARNING: This command will publish a REAL Reel to Instagram.")
+    print("Instagram Reel Publishing Test (REAL CRICKET NEWS REEL)")
+    print("-----------------------------------------------------")
+    print("WARNING: This command will generate and publish a REAL Cricket story Reel to @techcrickethub.")
 
     try:
         config = Config.load_from_env()
-        test_video_url = config.test_reel_video_url
+        source = InstagramRealNewsSource(config=config)
+        items = [i for i in source.get_content_items() if i.get("category") == "cricket"]
 
-        if not test_video_url:
-            print("ERROR: TEST_REEL_VIDEO_URL is not configured.")
-            print("Set a publicly accessible HTTPS MP4 video URL in .env.")
+        if not items:
+            items = source.get_content_items()
+
+        if not items:
+            print("ERROR: No live news items acquired from source feeds.")
             return False
 
-        test_caption = "Test Reel from TechCricketHub Automation 🎬🚀"
+        item = items[0]
+        title = item["title"]
+        summary = item["summary"]
+        source_name = item["source_name"]
+
+        print(f"\nAcquired Real News Story for Reel:")
+        print(f"Title: {title}")
+        print(f"Summary: {summary}")
+        print(f"Source: {source_name}")
+
+        # Generate custom animated vertical video Reel from real story facts
+        reel_gen = InstagramReelGenerator()
+        reel_res = reel_gen.generate_reel_from_facts(
+            {
+                "content_id": item["content_id"],
+                "title": title,
+                "summary": summary,
+                "source_name": source_name,
+            }
+        )
+
+        video_url = None
+        if reel_res.get("success") and reel_res.get("reel_path"):
+            rel_name = os.path.basename(reel_res["reel_path"])
+            # Copy to media/generated
+            gen_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "media", "generated")
+            os.makedirs(gen_dir, exist_ok=True)
+            dst_path = os.path.join(gen_dir, rel_name)
+            import shutil
+            shutil.copy(reel_res["reel_path"], dst_path)
+            video_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/{rel_name}"
+
+        if not video_url:
+            video_url = config.test_reel_video_url
+
+        generator = InstagramCaptionGenerator()
+        caption = generator.generate_caption(
+            title=title,
+            summary=summary,
+            category="cricket",
+            source=source_name,
+        )
 
         client = InstagramAPIClient(
             user_id=config.user_id,
@@ -150,27 +214,27 @@ def test_reel_publishing() -> bool:
         )
         publisher = InstagramReelPublisher(client=client)
 
-        result: PublishResult = publisher.publish_reel(video_url=test_video_url, caption=test_caption)
+        result: PublishResult = publisher.publish_reel(video_url=video_url, caption=caption)
 
         if result.success:
-            print("Status: SUCCESS")
+            print("\nStatus: SUCCESS")
             print(f"Creation ID: {result.creation_id}")
             print(f"Media ID: {result.media_id}")
             print(f"Message: {result.message}")
             return True
         else:
-            print("Status: FAILED")
+            print("\nStatus: FAILED")
             if result.creation_id:
                 print(f"Creation ID: {result.creation_id}")
             print(f"Error Message: {result.message}")
             return False
 
     except InstagramError as e:
-        print("Status: FAILED")
+        print("\nStatus: FAILED")
         print(f"Error: {e}")
         return False
     except Exception as e:
-        print("Status: FAILED")
+        print("\nStatus: FAILED")
         print(f"Unexpected Error: {e}")
         return False
 

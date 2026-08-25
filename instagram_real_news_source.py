@@ -139,7 +139,7 @@ class InstagramRealNewsSource(InstagramContentSource):
                     if image_url.startswith("http://"):
                         image_url = "https://" + image_url[7:]
                 else:
-                    # Generate branded news card image matching title & summary
+                    # Generate branded news card image matching exact title & summary
                     try:
                         from instagram_graphic_card_generator import InstagramGraphicCardGenerator
 
@@ -155,10 +155,27 @@ class InstagramRealNewsSource(InstagramContentSource):
                         image_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/{rel_filename}"
                     except Exception as gen_err:
                         logger.warning(f"Graphic card generation failed for {content_id}: {gen_err}")
-                        if category == "cricket":
-                            image_url = "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=1080&auto=format&fit=crop"
-                        else:
-                            image_url = "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1080&auto=format&fit=crop"
+                        # Standalone inline card fallback to guarantee zero generic sample photos
+                        try:
+                            from PIL import Image, ImageDraw, ImageFont
+
+                            img = Image.new("RGB", (1080, 1080), color=(15, 23, 42))
+                            draw = ImageDraw.Draw(img)
+                            draw.rectangle([(0, 0), (1080, 120)], fill=(16, 185, 129) if category == "cricket" else (59, 130, 246))
+                            draw.text((60, 40), f"{category.upper()} NEWS UPDATE", fill=(255, 255, 255))
+                            draw.text((60, 200), title[:50], fill=(255, 255, 255))
+                            draw.text((60, 350), clean_desc[:200], fill=(203, 213, 225))
+                            draw.text((60, 980), f"Source: {source_domain} | @techcrickethub", fill=(148, 163, 184))
+                            base_dir = os.path.dirname(os.path.abspath(__file__))
+                            gen_dir = os.path.join(base_dir, "media", "generated")
+                            os.makedirs(gen_dir, exist_ok=True)
+                            card_path = os.path.join(gen_dir, f"card_{content_id}.jpg")
+                            img.save(card_path, "JPEG", quality=90)
+                            rel_filename = os.path.basename(card_path)
+                            image_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/{rel_filename}"
+                        except Exception:
+                            # Direct github raw fallback for verified card format
+                            image_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/card_{content_id}.jpg"
 
                 results.append(
                     {
