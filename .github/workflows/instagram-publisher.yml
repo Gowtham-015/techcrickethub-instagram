@@ -19,8 +19,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID }}
-      INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+      INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID || '37982406558040899' }}
+      INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN || 'IGAAW7oCvAZBS1BZAFowdVRmMC1rOTZANS1VINkM2WUdTbjd2cHFXNUQxZAHBNOWp0UWZA5U3pvWXR6eThFNENzUmJuZA25LQ3YwZAWVSSnFDeHM0akhGbEVoQWdOZAzJWSUtjMkVtVlBMR3BBc1o2amJKTjJsS29Qb3NERGhqTGxGWGVOVQZDZD' }}
       INSTAGRAM_DRY_RUN: ${{ github.event.inputs.dry_run || vars.INSTAGRAM_DRY_RUN || 'false' }}
       INSTAGRAM_PRODUCTION_ENABLED: 'true'
       INSTAGRAM_AUTOMATION_ENABLED: 'true'
@@ -58,4 +58,4 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Chore: update published history [skip ci]" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Chore: update published history [skip ci]" && git push || true)
