@@ -1,9 +1,9 @@
 {
-  "worker_id": "cloud-worker-2330",
+  "worker_id": "cloud-worker-2229",
   "runtime_status": "RUNNING",
-  "started_at": "2026-08-25T21:22:01.825973+00:00",
-  "last_heartbeat": "2026-08-25T21:22:07.281344+00:00",
-  "uptime_seconds": 5,
+  "started_at": "2026-08-25T21:34:46.687879+00:00",
+  "last_heartbeat": "2026-08-25T21:34:57.898976+00:00",
+  "uptime_seconds": 11,
   "laptop_required": false,
   "cloud_worker_required": true,
   "continuous_runtime": true,
@@ -11,7 +11,7 @@
   "items_processed": 0,
   "items_published": 0,
   "items_failed": 0,
-  "last_cycle": "2026-08-25T21:22:01.827036+00:00",
-  "last_success": "2026-08-25T21:22:07.281335+00:00",
+  "last_cycle": "2026-08-25T21:34:46.688640+00:00",
+  "last_success": "2026-08-25T21:34:57.898972+00:00",
   "last_error": null
 }
