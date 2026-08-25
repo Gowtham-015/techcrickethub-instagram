@@ -180,5 +180,18 @@
     "duration": 0.0,
     "dry_run": false,
     "production_mode": "PRODUCTION"
+  },
+  {
+    "timestamp": "2026-08-25T21:00:50.113621+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "IMAGE",
+    "category": "cricket",
+    "status": "PUBLISHED",
+    "creation_id": "18089798879300654",
+    "media_id": "17903648625334062",
+    "error_type": "",
+    "duration": 0.0,
+    "dry_run": false,
+    "production_mode": "PRODUCTION"
   }
 ]
