@@ -47,9 +47,12 @@ class InstagramCricketBalancer:
         recent_items = items[-self.window_size :] if items else []
         total = len(recent_items)
 
-        cricket_count = sum(
-            1 for item in recent_items if str(item.get("category", "")).lower() == "cricket"
-        )
+        def _get_cat(it: Any) -> str:
+            if isinstance(it, dict):
+                return str(it.get("category", "")).lower()
+            return str(getattr(it, "category", "")).lower()
+
+        cricket_count = sum(1 for item in recent_items if _get_cat(item) == "cricket")
         non_cricket_count = total - cricket_count
 
         pct = (cricket_count / total * 100.0) if total > 0 else 100.0

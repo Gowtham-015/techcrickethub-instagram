@@ -752,7 +752,10 @@ def run_once() -> bool:
         print(f"Published: {metrics['published']}")
         print(f"Failed: {metrics['failed']}")
         print(f"\nMode: {'DRY_RUN' if metrics['dry_run'] else 'REAL'}")
-        print("NO REAL INSTAGRAM POSTS WERE PUBLISHED")
+        if metrics['published'] > 0:
+            print(f"SUCCESSFULLY PUBLISHED {metrics['published']} REAL ITEM(S) TO INSTAGRAM!")
+        else:
+            print("NO REAL INSTAGRAM POSTS WERE PUBLISHED THIS CYCLE")
         return True
 
     except Exception as e:
