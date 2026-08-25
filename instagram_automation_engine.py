@@ -35,6 +35,8 @@ from instagram_cricket_data_provider import FallbackCricketProvider
 from instagram_cricket_match_intelligence import InstagramCricketMatchIntelligence
 from instagram_cricket_balancer import InstagramCricketBalancer
 from instagram_source_verifier import InstagramSourceVerifier
+from instagram_content_bundle import ContentBundle, ContentIntegrityValidator
+from instagram_media_verifier import InstagramMediaVerifier
 from security import RedactingFormatter, redact_token
 
 
@@ -79,6 +81,8 @@ class InstagramAutomationEngine:
         self.match_intel = InstagramCricketMatchIntelligence(provider=self.cricket_provider, config=self.config)
         self.cricket_balancer = InstagramCricketBalancer(config=self.config)
         self.source_verifier = InstagramSourceVerifier()
+        self.bundle_validator = ContentIntegrityValidator()
+        self.media_verifier = InstagramMediaVerifier()
 
         self.normalizer = InstagramContentNormalizer()
         self.acquirer = InstagramMediaAcquirer()
@@ -261,7 +265,55 @@ class InstagramAutomationEngine:
                     if detected_cat and detected_cat != "unknown":
                         content.category = detected_cat
 
-                    # 5. Media Verification
+                    source_url_val = getattr(content, "source_url", (content.metadata or {}).get("source_url", ""))
+                    source_domain_val = getattr(content, "source_domain", (content.metadata or {}).get("source_domain", ""))
+
+                    # 5. Media Verification & Content Bundle Integrity Check
+                    if media_url and media_url.startswith("https://"):
+                        m_res = self.media_verifier.verify_and_deduplicate(
+                            url=media_url,
+                            media_type=content.media_type,
+                            content_id=content_id,
+                            source_url=source_url_val,
+                        )
+                        if not m_res.is_valid:
+                            self.logger.info(f"Media verification failed for '{content_id}': {m_res.message}")
+                            failed_count += 1
+                            self._safe_record_event(
+                                "MEDIA_FAILED",
+                                content_id=content_id,
+                                category=content.category,
+                                media_type=content.media_type,
+                                error=m_res.message,
+                            )
+                            continue
+
+                    bundle = ContentBundle(
+                        content_id=content_id,
+                        category=content.category,
+                        title=content.title,
+                        summary=content.summary,
+                        source_url=source_url_val or "",
+                        source_domain=source_domain_val or "",
+                        published_at=getattr(content, "published_at", "") or "",
+                        media_url=media_url or "",
+                        media_type=content.media_type,
+                        caption=content.caption or "",
+                        hashtags=content.hashtags or [],
+                    )
+                    b_res = self.bundle_validator.validate_bundle(bundle)
+                    if not b_res.is_valid:
+                        self.logger.info(f"ContentBundle integrity check failed for '{content_id}': {b_res.message}")
+                        failed_count += 1
+                        self._safe_record_event(
+                            "CONTENT_INTEGRITY_FAILED",
+                            content_id=content_id,
+                            category=content.category,
+                            media_type=content.media_type,
+                            error=b_res.message,
+                        )
+                        continue
+
                     asset = None
                     if media_url:
                         asset = self.acquirer.acquire_media(url=media_url, media_type=content.media_type)
