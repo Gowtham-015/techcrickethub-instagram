@@ -2,5 +2,10 @@
   "hashes": [
     "abc123sha256hash999"
   ],
-  "urls": []
+  "urls": [
+    "https://p.imgci.com/db/PICTURES/CMS/421400/421449.jpg"
+  ],
+  "graphic_hashes": [
+    "64e07992b238ce437fae7fc08a507d5bc0ff6bbbfac0669ee0c7e2767425b451"
+  ]
 }
