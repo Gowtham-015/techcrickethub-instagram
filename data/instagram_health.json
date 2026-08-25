@@ -2,13 +2,13 @@
   "status": "STOPPED",
   "started_at": null,
   "last_heartbeat": null,
-  "last_cycle_at": "2026-08-25T23:48:25.639124+00:00",
-  "last_success_at": "2026-08-25T23:48:25.639124+00:00",
+  "last_cycle_at": "2026-08-25T23:55:25.914522+00:00",
+  "last_success_at": "2026-08-25T23:55:25.914522+00:00",
   "last_error": "User is performing too many actions",
-  "cycles_completed": 33,
+  "cycles_completed": 34,
   "items_processed": 40,
   "items_published": 25,
-  "items_failed": 89,
+  "items_failed": 93,
   "uptime_seconds": 0,
   "consecutive_publish_failures": 1,
   "production_paused": true,
@@ -17,5 +17,5 @@
   "last_publish_error": "User is performing too many actions",
   "last_published_at": "2026-08-25T21:00:50.100402+00:00",
   "last_live_test_at": "2026-08-24T18:43:30.224089+00:00",
-  "analytics_events_recorded": 751
+  "analytics_events_recorded": 773
 }
