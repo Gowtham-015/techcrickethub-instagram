@@ -104,8 +104,8 @@ class InstagramRepetitionGuard:
                 )
             elif sim >= self.similarity_threshold:
                 return RepetitionCheckResult(
-                    is_repeated=False,  # Flagged as similar but allowed
-                    repetition_type="SIMILAR_CONTENT",
+                    is_repeated=True,
+                    repetition_type="NEAR_DUPLICATE",
                     similarity_score=sim,
                     reason=f"Similar title detected (similarity {sim}) with queue_id '{item.queue_id}'.",
                 )

@@ -270,13 +270,23 @@ class InstagramAutomationEngine:
                     score_obj = self.scorer.score_content(content, asset=asset)
 
                     # Apply Match-Day priority multiplier
+                    # 6. Content Scoring & Balance Enforcement
                     match_summary = self.match_intel.analyze_matches()
                     if match_summary.is_match_day and content.category == "cricket":
+                        score_obj = self.scorer.score_content(content, asset=asset)
                         score_obj.total_score = min(100, int(score_obj.total_score * match_summary.priority_multiplier))
+                    else:
+                        score_obj = self.scorer.score_content(content, asset=asset)
 
-                    # Apply 75% Cricket Deficit Priority Boost
-                    existing_queue_dicts = [{"category": i.category} for i in self.queue.get_all_items()]
-                    balance = self.cricket_balancer.evaluate_balance(existing_queue_dicts)
+                    balance = self.cricket_balancer.evaluate_balance(self.queue.get_all_items())
+                    if balance.status == "CRICKET_DEFICIT" and content.category != "cricket":
+                        self.logger.info(
+                            f"Rejecting non-cricket content '{content_id}' due to CRICKET_DEFICIT "
+                            f"({balance.cricket_percentage}% < {balance.target_percentage}%)."
+                        )
+                        failed_count += 1
+                        continue
+
                     if balance.priority_boost_active and content.category == "cricket":
                         score_obj.total_score = min(100, int(score_obj.total_score * 1.25))
                     if score_obj.decision == "REJECT":
