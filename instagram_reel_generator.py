@@ -24,59 +24,123 @@ class InstagramReelGenerator:
         self.output_dir = output_dir or os.path.join(base_dir, "data", "generated_reels")
         os.makedirs(self.output_dir, exist_ok=True)
 
+    def get_font(self, size: int) -> Any:
+        """Loads a clean TrueType font at requested size, falling back to default."""
+        font_paths = [
+            "C:/Windows/Fonts/arialbd.ttf",
+            "C:/Windows/Fonts/arial.ttf",
+            "C:/Windows/Fonts/calibrib.ttf",
+            "C:/Windows/Fonts/segoeui.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        ]
+        for path in font_paths:
+            if os.path.exists(path):
+                try:
+                    return ImageFont.truetype(path, size)
+                except Exception:
+                    pass
+        try:
+            return ImageFont.load_default(size=size)
+        except Exception:
+            return ImageFont.load_default()
+
+    def wrap_text(self, text: str, max_chars_per_line: int = 32) -> list:
+        """Wraps text into clean lines for vertical 9:16 layout."""
+        words = text.split()
+        lines = []
+        current_line = []
+        current_length = 0
+        for word in words:
+            if current_length + len(word) + 1 <= max_chars_per_line:
+                current_line.append(word)
+                current_length += len(word) + 1
+            else:
+                if current_line:
+                    lines.append(" ".join(current_line))
+                current_line = [word]
+                current_length = len(word)
+        if current_line:
+            lines.append(" ".join(current_line))
+        return lines
+
     def render_frame(
         self,
         title: str,
         subtitle: str,
         fact_text: str,
         source: str,
+        bg_image_path: Optional[str] = None,
         width: int = 1080,
         height: int = 1920,
         frame_idx: int = 0,
     ) -> Any:
-        """Renders an original 1080x1920 vertical graphic frame from verified facts."""
-        img = Image.new("RGB", (width, height), color=(15, 23, 42))  # Dark slate theme
+        """Renders an original 1080x1920 vertical graphic frame with match photo background and dark gradient overlay."""
+        # 1. Base Image background
+        if bg_image_path and os.path.exists(bg_image_path):
+            try:
+                base_img = Image.open(bg_image_path).convert("RGB")
+                # Crop/resize to 1080x1920 9:16 aspect ratio
+                img_ratio = base_img.width / base_img.height
+                target_ratio = width / height
+                if img_ratio > target_ratio:
+                    new_width = int(height * img_ratio)
+                    resized = base_img.resize((new_width, height), Image.Resampling.LANCZOS)
+                    left = (new_width - width) // 2
+                    img = resized.crop((left, 0, left + width, height))
+                else:
+                    new_height = int(width / img_ratio)
+                    resized = base_img.resize((width, new_height), Image.Resampling.LANCZOS)
+                    top = (new_height - height) // 2
+                    img = resized.crop((0, top, width, top + height))
+            except Exception as e:
+                logger.warning(f"Error loading bg_image_path: {e}")
+                img = Image.new("RGB", (width, height), color=(15, 23, 42))
+        else:
+            img = Image.new("RGB", (width, height), color=(15, 23, 42))
+
+        # 2. Add dark gradient overlay to bottom half for high contrast readability
+        draw = ImageDraw.Draw(img, "RGBA")
+        # Gradient overlay from y=700 to 1920
+        overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        overlay_draw = ImageDraw.Draw(overlay)
+        # Top banner overlay (y=0 to 220)
+        overlay_draw.rectangle([(0, 0), (width, 220)], fill=(15, 23, 42, 220))
+        # Bottom card overlay (y=800 to 1920)
+        overlay_draw.rectangle([(0, 800), (width, height)], fill=(15, 23, 42, 235))
+        img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
         draw = ImageDraw.Draw(img)
 
-        # Header accent bar (Cricket green / tech blue)
-        draw.rectangle([(0, 0), (width, 120)], fill=(16, 185, 129))
+        # 3. Fonts
+        font_header = self.get_font(42)
+        font_title = self.get_font(48)
+        font_fact = self.get_font(34)
+        font_footer = self.get_font(28)
 
-        try:
-            title_font = ImageFont.load_default()
-            subtitle_font = ImageFont.load_default()
-        except Exception:
-            title_font = None
-            subtitle_font = None
+        # 4. Top Category Header Bar
+        draw.rectangle([(0, 0), (width, 110)], fill=(16, 185, 129))
+        draw.text((60, 32), "★  LIVE CRICKET TEST MATCH UPDATE", fill=(255, 255, 255), font=font_header)
 
-        # Title
-        draw.text((60, 200), title[:40], fill=(255, 255, 255), font=title_font)
-        draw.line([(60, 260), (width - 60, 260)], fill=(51, 65, 85), width=4)
+        # 5. Title Card Box
+        draw.rectangle([(50, 840), (1030, 1100)], fill=(30, 41, 59), outline=(16, 185, 129), width=4)
+        title_lines = self.wrap_text(title, max_chars_per_line=30)
+        y_title = 860
+        for t_line in title_lines[:3]:
+            draw.text((80, y_title), t_line, fill=(255, 255, 255), font=font_title)
+            y_title += 56
 
-        # Subtitle / Tournament
-        draw.text((60, 300), subtitle[:50], fill=(52, 211, 153), font=subtitle_font)
+        # 6. Fact Details Box
+        draw.rectangle([(50, 1140), (1030, 1720)], fill=(24, 32, 47), outline=(71, 85, 105), width=3)
+        fact_lines = self.wrap_text(fact_text, max_chars_per_line=36)
+        y_fact = 1170
+        for f_line in fact_lines[:8]:
+            draw.text((80, y_fact), f_line, fill=(226, 232, 240), font=font_fact)
+            y_fact += 48
 
-        # Fact details card
-        draw.rectangle([(60, 420), (width - 60, 1400)], fill=(30, 41, 59), outline=(71, 85, 105), width=2)
-        
-        # Wrapped text for facts
-        words = fact_text.split()
-        line = ""
-        y_offset = 480
-        for word in words:
-            if len(line + " " + word) < 30:
-                line += " " + word
-            else:
-                draw.text((100, y_offset), line.strip(), fill=(241, 245, 249), font=title_font)
-                y_offset += 60
-                line = word
-        if line:
-            draw.text((100, y_offset), line.strip(), fill=(241, 245, 249), font=title_font)
-
-        # Mandatory Source Attribution Footer
-        draw.rectangle([(0, height - 160), (width, height)], fill=(15, 23, 42))
-        draw.line([(0, height - 160), (width, height - 160)], fill=(51, 65, 85), width=2)
-        draw.text((60, height - 120), f"Data Source: {source}", fill=(148, 163, 184), font=subtitle_font)
-        draw.text((60, height - 70), "TechCricketHub Automation", fill=(100, 116, 139), font=subtitle_font)
+        # 7. Mandatory Source Attribution Footer Bar
+        draw.rectangle([(0, height - 140), (width, height)], fill=(15, 23, 42))
+        draw.line([(0, height - 140), (width, height - 140)], fill=(51, 65, 85), width=3)
+        draw.text((60, height - 95), f"Source: {source}", fill=(148, 163, 184), font=font_footer)
+        draw.text((700, height - 95), "@techcrickethub", fill=(52, 211, 153), font=font_footer)
 
         return img
 
@@ -93,6 +157,22 @@ class InstagramReelGenerator:
         title = item.get("title", "Cricket Match Update")
         summary = item.get("summary", "Verified match statistics and update.")
         source = item.get("source_name") or item.get("source") or "Verified Data Provider"
+        bg_image_path = item.get("bg_image_path") or item.get("image_path") or item.get("image_url")
+
+        # Download remote bg_image_url if passed
+        temp_bg_path = None
+        if bg_image_path and str(bg_image_path).startswith("http"):
+            try:
+                import requests
+                r = requests.get(bg_image_path, timeout=10)
+                if r.status_code == 200:
+                    temp_bg_path = os.path.join(self.output_dir, f"temp_bg_{content_id}.jpg")
+                    with open(temp_bg_path, "wb") as f:
+                        f.write(r.content)
+                    bg_image_path = temp_bg_path
+            except Exception as e:
+                logger.warning(f"Error downloading bg image for reel: {e}")
+                bg_image_path = None
 
         filename = f"reel_{content_id}.mp4"
         file_path = os.path.join(self.output_dir, filename)
@@ -103,14 +183,21 @@ class InstagramReelGenerator:
             for idx in range(3):
                 frame_img = self.render_frame(
                     title=title,
-                    subtitle="CRICKET MATCH INTELLIGENCE",
+                    subtitle="LIVE CRICKET TEST MATCH UPDATE",
                     fact_text=summary,
                     source=source,
+                    bg_image_path=bg_image_path,
                     frame_idx=idx,
                 )
                 frame_path = os.path.join(self.output_dir, f"frame_{idx}.png")
                 frame_img.save(frame_path)
                 frames.append(frame_path)
+
+            if temp_bg_path and os.path.exists(temp_bg_path):
+                try:
+                    os.remove(temp_bg_path)
+                except Exception:
+                    pass
 
             # Use imageio_ffmpeg binary via subprocess to generate Meta-compliant faststart H.264 + AAC MP4 Reel
             try:
