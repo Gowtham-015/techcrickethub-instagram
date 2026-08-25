@@ -364,7 +364,7 @@ class InstagramAutomationEngine:
 
             # 10. Process Due Items via Scheduler (respects INSTAGRAM_DRY_RUN & rate limits)
             limit = getattr(self.config, "max_posts_per_cycle", 1)
-            scheduler_results: List[PipelineResult] = self.scheduler.process_due_items(limit=limit)
+            scheduler_results: List[PipelineResult] = self.scheduler.process_due_items(limit=limit, force_due=True)
 
             due_processed = len(scheduler_results)
             for res in scheduler_results:
@@ -377,7 +377,7 @@ class InstagramAutomationEngine:
                             status="SKIPPED",
                         )
                         self.audit_store.record_audit(
-                            content_id=res.details.get("content_id", "scheduled-item"),
+                            content_id=getattr(res, "content_id", "scheduled-item"),
                             media_type=res.media_type,
                             category="cricket",
                             status="SKIPPED",
@@ -398,7 +398,7 @@ class InstagramAutomationEngine:
                             status="PUBLISHED",
                         )
                         self.audit_store.record_audit(
-                            content_id=res.details.get("content_id", "scheduled-item"),
+                            content_id=getattr(res, "content_id", "scheduled-item"),
                             media_type=res.media_type,
                             category="cricket",
                             status="PUBLISHED",
@@ -421,7 +421,7 @@ class InstagramAutomationEngine:
                         status="FAILED",
                     )
                     self.audit_store.record_audit(
-                        content_id=res.details.get("content_id", "scheduled-item"),
+                        content_id=getattr(res, "content_id", "scheduled-item"),
                         media_type=res.media_type,
                         category="cricket",
                         status="FAILED",

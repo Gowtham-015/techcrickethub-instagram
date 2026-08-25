@@ -132,8 +132,10 @@ class InstagramRealNewsSource(InstagramContentSource):
                     if img_match:
                         image_url = img_match.group(1)
 
-                # Fallback: Authentic Category Match Image (Cricket Stadium / Tech Banner)
-                if not image_url or "pbYX4gp_5kE" in image_url:
+                if image_url:
+                    if image_url.startswith("http://"):
+                        image_url = "https://" + image_url[7:]
+                else:
                     if category == "cricket":
                         image_url = "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=1080&auto=format&fit=crop"
                     else:

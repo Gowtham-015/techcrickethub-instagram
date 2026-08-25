@@ -130,8 +130,12 @@ class InstagramImagePublisher:
                         data={"creation_id": creation_id},
                     )
                     media_id = publish_response.get("id")
-                    if media_id:
-                        break
+                    if not media_id:
+                        raise InstagramAPIError(
+                            "Media publish request succeeded but no 'id' (media_id) was returned by Meta API.",
+                            token=self.client.access_token,
+                        )
+                    break
                 except InstagramAPIError as e:
                     if "Media ID is not available" in str(e) and pub_attempt < 3:
                         self.client.logger.info("Meta container processing in progress. Retrying publish in 3s...")
