@@ -166,6 +166,17 @@ class InstagramFinalPublishGuard:
         if not getattr(self.config, "final_publish_guard_enabled", True):
             return GuardResult(is_valid=True, error_code="SUCCESS", message="Guard disabled.", bundle=bundle)
 
+        # 0. Sample / Fake Video URL Rejection
+        if bundle.media_type == "REEL" and bundle.media_url:
+            lowered_media = bundle.media_url.lower()
+            if "ai_commentary.mp4" in lowered_media or "sample" in lowered_media or "test_video" in lowered_media:
+                return GuardResult(
+                    is_valid=False,
+                    error_code="INVALID_MEDIA",
+                    message=f"Sample / fake video URL '{redact_url(bundle.media_url)}' barred from live Reel publishing.",
+                    bundle=bundle,
+                )
+
         published_items = self.get_published_history()
 
         # 1. Canonical Source URL Check
