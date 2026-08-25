@@ -63,6 +63,15 @@ class Config:
     cricket_api_key: str = ""
     tech_rss_feeds: str = "https://feeds.feedburner.com/TechCrunch/,https://news.ycombinator.com/rss"
     cricket_rss_feeds: str = "https://www.espncricinfo.com/rss/content/story/feeds/0.xml"
+    final_duplicate_gate_enabled: bool = True
+    publish_lock_enabled: bool = True
+    published_history_enabled: bool = True
+    cloud_runtime_enabled: bool = True
+    heartbeat_interval_seconds: int = 60
+    heartbeat_timeout_seconds: int = 300
+    publish_retry_limit: int = 3
+    missed_post_max_age_hours: int = 6
+    final_title_similarity_threshold: float = 0.65
 
     @classmethod
     def load_from_env(cls, env_path: Optional[str] = None, validate: bool = True) -> "Config":
@@ -301,6 +310,14 @@ class Config:
             cricket_rss_feeds=cricket_rss_feeds,
             reel_target_percent=reel_target_percent,
             image_target_percent=image_target_percent,
+            final_duplicate_gate_enabled=os.getenv("INSTAGRAM_FINAL_DUPLICATE_GATE_ENABLED", "true").strip().lower() in ("true", "1", "yes", "on"),
+            publish_lock_enabled=os.getenv("INSTAGRAM_PUBLISH_LOCK_ENABLED", "true").strip().lower() in ("true", "1", "yes", "on"),
+            published_history_enabled=os.getenv("INSTAGRAM_PUBLISHED_HISTORY_ENABLED", "true").strip().lower() in ("true", "1", "yes", "on"),
+            cloud_runtime_enabled=os.getenv("INSTAGRAM_CLOUD_RUNTIME_ENABLED", "true").strip().lower() in ("true", "1", "yes", "on"),
+            heartbeat_timeout_seconds=int(os.getenv("INSTAGRAM_HEARTBEAT_TIMEOUT_SECONDS", "300").strip()),
+            publish_retry_limit=int(os.getenv("INSTAGRAM_PUBLISH_RETRY_LIMIT", "3").strip()),
+            missed_post_max_age_hours=int(os.getenv("INSTAGRAM_MISSED_POST_MAX_AGE_HOURS", "6").strip()),
+            final_title_similarity_threshold=float(os.getenv("INSTAGRAM_FINAL_TITLE_SIMILARITY_THRESHOLD", "0.65").strip()),
         )
 
         if validate:
