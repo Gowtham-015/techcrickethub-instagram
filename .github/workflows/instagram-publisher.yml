@@ -1,9 +1,9 @@
-name: TechCricketHub Instagram Publisher (Phase 13.8)
+name: TechCricketHub Instagram Publisher
 
 on:
   schedule:
-    # Staggered cron schedule off the hour boundary to prevent GitHub Actions high-load delays
-    - cron: '7,22,37,52 * * * *'
+    # Staggered 3-times-an-hour schedule off the hour boundary
+    - cron: '7,27,47 * * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -56,7 +56,9 @@ jobs:
 
       - name: Sync Latest State
         run: |
-          git pull origin main --rebase || true
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull origin main --rebase
 
       - name: Execute Production Publisher
         run: |
@@ -67,6 +69,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git pull origin main --rebase || true
           git add -f data/*.json || true
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Chore: update published history [skip ci]" && git push origin main || true)
+          if ! git diff --quiet || ! git diff --staged --quiet; then
+            git pull origin main --rebase
+            git commit -m "Chore: update published history [skip ci]"
+            git push origin main
+          fi

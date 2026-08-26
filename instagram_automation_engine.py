@@ -336,14 +336,6 @@ class InstagramAutomationEngine:
                         score_obj = self.scorer.score_content(content, asset=asset)
 
                     balance = self.cricket_balancer.evaluate_balance(self.queue.get_all_items())
-                    if balance.status == "CRICKET_DEFICIT" and content.category != "cricket":
-                        self.logger.info(
-                            f"Rejecting non-cricket content '{content_id}' due to CRICKET_DEFICIT "
-                            f"({balance.cricket_percentage}% < {balance.target_percentage}%)."
-                        )
-                        failed_count += 1
-                        continue
-
                     if balance.priority_boost_active and content.category == "cricket":
                         score_obj.total_score = min(100, int(score_obj.total_score * 1.25))
                     elif getattr(balance, "should_prefer_tech", False) and content.category != "cricket":

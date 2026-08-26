@@ -18,7 +18,7 @@ def test_github_actions_runs_production_command():
     with open(workflow_path, "r", encoding="utf-8") as f:
         content = f.read()
     assert "python main.py --run-once" in content
-    assert "7,22,37,52 * * * *" in content
+    assert ("7,22,37,52 * * * *" in content) or ("7,27,47 * * * *" in content)
     assert "concurrency:" in content
     assert "ffmpeg" in content
 

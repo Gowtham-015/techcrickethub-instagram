@@ -2704,6 +2704,11 @@ def main():
         help="Run Phase 13.8 Reel video pipeline validation",
     )
     parser.add_argument(
+        "--real-reel-test",
+        action="store_true",
+        help="Run real Reel video pipeline test",
+    )
+    parser.add_argument(
         "--content-distribution",
         action="store_true",
         help="Display Phase 13.8 75/25 Cricket/Tech and 60/40 Reel/Image distribution",
@@ -2896,7 +2901,7 @@ def main():
     elif args.production_diagnostics:
         success = production_diagnostics()
         sys.exit(0 if success else 1)
-    elif args.reel_production_test:
+    elif args.reel_production_test or getattr(args, "real_reel_test", False):
         success = reel_production_test()
         sys.exit(0 if success else 1)
     elif args.content_distribution:

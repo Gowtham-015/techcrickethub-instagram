@@ -180,6 +180,33 @@ class InstagramRealNewsSource(InstagramContentSource):
                             # Direct github raw fallback for verified card format
                             image_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/card_{content_id}.jpg"
 
+                # 60% Reel candidate selection for balanced 60/40 Reel/Image distribution
+                is_reel_candidate = (len(results) % 5) in (0, 1, 2)
+                video_url = None
+                item_media_type = "IMAGE"
+
+                if is_reel_candidate:
+                    try:
+                        from instagram_reel_generator import InstagramReelGenerator
+
+                        reel_gen = InstagramReelGenerator()
+                        gen_res = reel_gen.generate_reel_from_facts(
+                            {
+                                "content_id": content_id,
+                                "title": title,
+                                "summary": clean_desc[:250] if clean_desc else title,
+                                "source_name": source_domain,
+                                "image_url": image_url,
+                            }
+                        )
+                        if gen_res.get("success") and gen_res.get("reel_path"):
+                            rel_video = os.path.basename(gen_res["reel_path"])
+                            video_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/{rel_video}"
+                            item_media_type = "REEL"
+                            image_url = None
+                    except Exception as reel_err:
+                        logger.warning(f"Reel generation failed for {content_id}: {reel_err}")
+
                 results.append(
                     {
                         "content_id": content_id,
@@ -191,9 +218,9 @@ class InstagramRealNewsSource(InstagramContentSource):
                         "published_at": pub_dt.isoformat(),
                         "collected_at": now.isoformat(),
                         "content_type": "NEWS",
-                        "media_type": "IMAGE",
+                        "media_type": item_media_type,
                         "image_url": image_url,
-                        "video_url": None,
+                        "video_url": video_url,
                     }
                 )
 
