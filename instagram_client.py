@@ -160,3 +160,14 @@ class InstagramAPIClient:
             )
 
         return json_response
+
+    def verify_published_media(self, media_id: str) -> bool:
+        """Verifies that a published Instagram media ID exists on Meta Graph API."""
+        if not media_id or not str(media_id).strip():
+            return False
+        try:
+            res = self.get(f"/{media_id}", params={"fields": "id,media_type,timestamp,permalink"})
+            return str(res.get("id", "")) == str(media_id).strip()
+        except Exception as e:
+            self.logger.warning(f"Verification of published media_id '{media_id}' failed: {redact_token(str(e))}")
+            return False

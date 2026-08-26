@@ -193,12 +193,26 @@ class InstagramReelPublisher:
 
             self.client.logger.info(f"Instagram Reel published successfully. media_id: {media_id}")
 
+            # 5. Post-publish Meta Graph API verification
+            is_confirmed = False
+            try:
+                is_confirmed = self.client.verify_published_media(str(media_id))
+            except Exception:
+                is_confirmed = False
+
+            status_label = "PUBLISHED_CONFIRMED" if is_confirmed else "PUBLISHED"
+            msg = (
+                "Instagram Reel published and verified on Meta API."
+                if is_confirmed
+                else "Instagram Reel published successfully (Pending API propagation)."
+            )
+
             return PublishResult(
                 success=True,
                 creation_id=str(creation_id),
                 media_id=str(media_id),
-                status="PUBLISHED",
-                message="Instagram Reel published successfully.",
+                status=status_label,
+                message=msg,
             )
 
         except InstagramError as e:

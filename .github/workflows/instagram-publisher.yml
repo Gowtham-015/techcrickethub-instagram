@@ -64,16 +64,7 @@ jobs:
 
       - name: Execute Production Publisher
         run: |
-          echo "CONTENT DISCOVERED"
-          echo "REEL CANDIDATE FOUND"
-          echo "REEL GENERATED"
-          echo "VIDEO VERIFIED"
-          echo "DUPLICATE CHECK PASSED"
           python main.py --run-once
-          echo "INSTAGRAM CONTAINER CREATED"
-          echo "INSTAGRAM CONTAINER FINISHED"
-          echo "INSTAGRAM MEDIA PUBLISHED"
-          echo "MEDIA ID STORED"
 
       - name: Commit & Push Persistent History
         if: always()
