@@ -34,6 +34,7 @@ from instagram_real_news_source import InstagramRealNewsSource
 from instagram_cricket_data_provider import FallbackCricketProvider
 from instagram_cricket_match_intelligence import InstagramCricketMatchIntelligence
 from instagram_cricket_balancer import InstagramCricketBalancer
+from instagram_reel_balancer import InstagramReelBalancer
 from instagram_source_verifier import InstagramSourceVerifier
 from instagram_content_bundle import ContentBundle, ContentIntegrityValidator
 from instagram_media_verifier import InstagramMediaVerifier
@@ -82,6 +83,7 @@ class InstagramAutomationEngine:
         self.cricket_provider = FallbackCricketProvider()
         self.match_intel = InstagramCricketMatchIntelligence(provider=self.cricket_provider, config=self.config)
         self.cricket_balancer = InstagramCricketBalancer(config=self.config)
+        self.reel_balancer = InstagramReelBalancer(config=self.config)
         self.source_verifier = InstagramSourceVerifier()
         self.bundle_validator = ContentIntegrityValidator()
         self.media_verifier = InstagramMediaVerifier()
@@ -272,6 +274,22 @@ class InstagramAutomationEngine:
 
                     source_url_val = getattr(content, "source_url", (content.metadata or {}).get("source_url", ""))
                     source_domain_val = getattr(content, "source_domain", (content.metadata or {}).get("source_domain", ""))
+                    rights_val = raw_item.get("media_rights_status") if isinstance(raw_item, dict) else "ORIGINAL_GENERATED"
+
+                    # 4b. Enforce strict REEL No-Fallback policy
+                    if content.media_type == "REEL" and (not media_url or not media_url.startswith("http")):
+                        self.logger.warning(
+                            f"Reel candidate '{content_id}' rejected: REEL_REQUIRED_BUT_MEDIA_UNAVAILABLE"
+                        )
+                        failed_count += 1
+                        self._safe_record_event(
+                            "REEL_REQUIRED_BUT_MEDIA_UNAVAILABLE",
+                            content_id=content_id,
+                            category=content.category,
+                            media_type=content.media_type,
+                            error="REEL_REQUIRED_BUT_MEDIA_UNAVAILABLE",
+                        )
+                        continue
 
                     # 5. Media Verification & Content Bundle Integrity Check
                     if media_url and media_url.startswith("https://"):
@@ -303,6 +321,7 @@ class InstagramAutomationEngine:
                         published_at=getattr(content, "published_at", "") or "",
                         media_url=media_url or "",
                         media_type=content.media_type,
+                        media_rights_status=rights_val or "UNKNOWN",
                         caption=content.caption or "",
                         hashtags=content.hashtags or [],
                     )
@@ -340,6 +359,10 @@ class InstagramAutomationEngine:
                         score_obj.total_score = min(100, int(score_obj.total_score * 1.25))
                     elif getattr(balance, "should_prefer_tech", False) and content.category != "cricket":
                         score_obj.total_score = min(100, int(score_obj.total_score * 1.5))
+
+                    reel_bal = self.reel_balancer.evaluate_balance(self.queue.get_all_items())
+                    if getattr(reel_bal, "should_prefer_reels", False) and content.media_type == "REEL":
+                        score_obj.total_score = min(100, int(score_obj.total_score * 1.3))
                     if score_obj.decision == "REJECT":
                         self.logger.info(
                             f"Content ID '{content_id}' rejected by ContentScorer: Score {score_obj.total_score}/100"

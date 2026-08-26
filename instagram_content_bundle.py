@@ -25,6 +25,7 @@ class ContentBundle:
     caption: str = ""
     hashtags: List[str] = field(default_factory=list)
     match_context: Dict[str, Any] = field(default_factory=dict)
+    media_rights_status: str = "UNKNOWN"  # OWNED, LICENSED, AUTHORIZED, PUBLIC_DOMAIN, CC_LICENSE_ALLOWED, USER_PROVIDED_WITH_PERMISSION, ORIGINAL_GENERATED, UNKNOWN, RESTRICTED
     verification_status: str = "PENDING"  # VERIFIED, REJECTED, CONTENT_INTEGRITY_FAILED
 
     def calculate_media_hash(self, media_bytes: Optional[bytes] = None) -> str:
@@ -51,6 +52,7 @@ class ContentBundle:
             "caption": self.caption,
             "hashtags": self.hashtags,
             "match_context": self.match_context,
+            "media_rights_status": self.media_rights_status,
             "verification_status": self.verification_status,
         }
 
@@ -121,6 +123,25 @@ class ContentIntegrityValidator:
                     ),
                     bundle=bundle,
                 )
+
+        # Validate media rights status
+        allowed_rights = {
+            "OWNED",
+            "LICENSED",
+            "AUTHORIZED",
+            "PUBLIC_DOMAIN",
+            "CC_LICENSE_ALLOWED",
+            "USER_PROVIDED_WITH_PERMISSION",
+            "ORIGINAL_GENERATED",
+        }
+        rights_status = (bundle.media_rights_status or "UNKNOWN").strip().upper()
+        if rights_status not in allowed_rights:
+            return ContentIntegrityResult(
+                is_valid=False,
+                error_code="MEDIA_RIGHTS_UNKNOWN" if rights_status == "UNKNOWN" else "MEDIA_RIGHTS_RESTRICTED",
+                message=f"ContentBundle '{bundle.content_id}' rejected due to unallowed media_rights_status: '{rights_status}'",
+                bundle=bundle,
+            )
 
         bundle.verification_status = "VERIFIED"
         return ContentIntegrityResult(

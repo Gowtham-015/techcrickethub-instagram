@@ -47,13 +47,15 @@ class InstagramRealNewsSource(InstagramContentSource):
         """Uploads a local generated image/video file to Catbox for instant 200 OK public HTTPS URL."""
         if not local_path or not os.path.exists(local_path):
             return fallback_url
+        if os.getenv("SKIP_CATBOX_UPLOAD", "false").lower() in ("true", "1", "yes"):
+            return fallback_url
         try:
             with open(local_path, "rb") as f:
                 resp = requests.post(
                     "https://catbox.moe/user/api.php",
                     data={"reqtype": "fileupload"},
                     files={"fileToUpload": f},
-                    timeout=15,
+                    timeout=3,
                 )
                 if resp.status_code == 200 and resp.text.strip().startswith("https://files.catbox.moe/"):
                     return resp.text.strip()
@@ -113,7 +115,7 @@ class InstagramRealNewsSource(InstagramContentSource):
 
             source_domain = feed_url.split("/")[2] if "//" in feed_url else feed_url
 
-            for item in items[:15]:
+            for item in items[:3]:
                 title = (item.findtext("title") or "").strip()
                 link = (item.findtext("link") or "").strip()
                 description = (item.findtext("description") or "").strip()
@@ -201,12 +203,14 @@ class InstagramRealNewsSource(InstagramContentSource):
                             # Direct github raw fallback for verified card format
                             image_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/card_{content_id}.jpg"
 
-                # 60% Reel candidate selection for balanced 60/40 Reel/Image distribution
-                is_reel_candidate = (len(results) % 5) in (0, 1, 2)
+                # 80% Reel candidate selection for target >= 80% Reels distribution
+                is_reel_candidate = (len(results) % 5) in (0, 1, 2, 3)
                 video_url = None
-                item_media_type = "IMAGE"
+                item_media_type = "REEL" if is_reel_candidate else "IMAGE"
+                media_rights_status = "UNKNOWN"
 
                 if is_reel_candidate:
+                    image_url = None  # Do NOT assign image fallback URL for REEL candidates
                     try:
                         from instagram_reel_generator import InstagramReelGenerator
 
@@ -217,17 +221,21 @@ class InstagramRealNewsSource(InstagramContentSource):
                                 "title": title,
                                 "summary": clean_desc[:250] if clean_desc else title,
                                 "source_name": source_domain,
-                                "image_url": image_url,
+                                "category": category,
                             }
                         )
                         if gen_res.get("success") and gen_res.get("reel_path"):
                             rel_video = os.path.basename(gen_res["reel_path"])
                             raw_video_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/{rel_video}"
                             video_url = self.upload_to_public_host(gen_res["reel_path"], raw_video_url)
-                            item_media_type = "REEL"
-                            image_url = None
+                            media_rights_status = "ORIGINAL_GENERATED"
+                        else:
+                            logger.warning(f"Reel generation returned unsuccessful for {content_id}: REEL_GENERATION_FAILED")
                     except Exception as reel_err:
                         logger.warning(f"Reel generation failed for {content_id}: {reel_err}")
+                else:
+                    # For explicit IMAGE slots, assign rights status
+                    media_rights_status = "ORIGINAL_GENERATED" if image_url and "githubusercontent" in image_url or "catbox.moe" in image_url else "AUTHORIZED"
 
                 results.append(
                     {
@@ -237,12 +245,17 @@ class InstagramRealNewsSource(InstagramContentSource):
                         "category": category,
                         "source_name": source_domain,
                         "source_url": link,
+                        "discovery_source": feed_url,
+                        "original_source": link,
+                        "source_domain": source_domain,
                         "published_at": pub_dt.isoformat(),
+                        "verified_at": now.isoformat(),
                         "collected_at": now.isoformat(),
                         "content_type": "NEWS",
                         "media_type": item_media_type,
                         "image_url": image_url,
                         "video_url": video_url,
+                        "media_rights_status": media_rights_status,
                     }
                 )
 

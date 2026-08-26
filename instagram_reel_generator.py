@@ -280,6 +280,7 @@ class InstagramReelGenerator:
                 "reel_path": file_path,
                 "duration_seconds": 6.0,
                 "source_attributed": source,
+                "media_rights_status": "ORIGINAL_GENERATED",
             }
 
         except Exception as e:

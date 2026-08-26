@@ -16,6 +16,7 @@ class MediaAsset:
     is_https: bool = True
     size_bytes: Optional[int] = None
     status_code: Optional[int] = None
+    media_rights_status: str = "UNKNOWN"
 
     @classmethod
     def from_url(

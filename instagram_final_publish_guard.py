@@ -177,6 +177,25 @@ class InstagramFinalPublishGuard:
                     bundle=bundle,
                 )
 
+        # 0b. Media Rights Validation
+        allowed_rights = {
+            "OWNED",
+            "LICENSED",
+            "AUTHORIZED",
+            "PUBLIC_DOMAIN",
+            "CC_LICENSE_ALLOWED",
+            "USER_PROVIDED_WITH_PERMISSION",
+            "ORIGINAL_GENERATED",
+        }
+        rights_status = (getattr(bundle, "media_rights_status", "UNKNOWN") or "UNKNOWN").strip().upper()
+        if rights_status not in allowed_rights:
+            return GuardResult(
+                is_valid=False,
+                error_code="MEDIA_RIGHTS_UNKNOWN" if rights_status == "UNKNOWN" else "MEDIA_RIGHTS_RESTRICTED",
+                message=f"Media rights status '{rights_status}' is unallowed for live publishing.",
+                bundle=bundle,
+            )
+
         published_items = self.get_published_history()
 
         # 1. Canonical Source URL Check

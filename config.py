@@ -58,8 +58,9 @@ class Config:
     match_day_cricket_priority: float = 1.5
     live_match_priority: float = 2.0
     cricket_api_url: str = "https://api.cricapi.com/v1"
-    reel_target_percent: int = 60
-    image_target_percent: int = 40
+    reel_target_percent: int = 80
+    image_target_percent: int = 20
+    media_rights_allowed_statuses: str = "OWNED,LICENSED,AUTHORIZED,PUBLIC_DOMAIN,CC_LICENSE_ALLOWED,USER_PROVIDED_WITH_PERMISSION,ORIGINAL_GENERATED"
     cricket_api_key: str = ""
     tech_rss_feeds: str = "https://feeds.feedburner.com/TechCrunch/,https://news.ycombinator.com/rss"
     cricket_rss_feeds: str = "https://www.espncricinfo.com/rss/content/story/feeds/0.xml"
@@ -261,8 +262,8 @@ class Config:
                 f"Invalid INSTAGRAM_TIMEOUT_SECONDS value: '{timeout_str}'. Must be a positive number."
             )
 
-        reel_target_percent = int(os.getenv("INSTAGRAM_REEL_TARGET_PERCENT", "60").strip())
-        image_target_percent = int(os.getenv("INSTAGRAM_IMAGE_TARGET_PERCENT", "40").strip())
+        reel_target_percent = int(os.getenv("INSTAGRAM_REEL_TARGET_PERCENT", "80").strip())
+        image_target_percent = int(os.getenv("INSTAGRAM_IMAGE_TARGET_PERCENT", "20").strip())
 
         config = cls(
             user_id=user_id,

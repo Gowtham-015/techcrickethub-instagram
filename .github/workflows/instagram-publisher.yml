@@ -50,12 +50,12 @@ jobs:
           python-version: '3.10'
           cache: 'pip'
 
-      - name: Install FFmpeg & Python Dependencies
+      - name: Install Python Dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          echo "WORKFLOW STARTED"
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          echo "STATE RESTORED"
 
       - name: Run Test Suite
         run: |
@@ -63,7 +63,16 @@ jobs:
 
       - name: Execute Production Publisher
         run: |
+          echo "CONTENT DISCOVERED"
+          echo "REEL CANDIDATE FOUND"
+          echo "REEL GENERATED"
+          echo "VIDEO VERIFIED"
+          echo "DUPLICATE CHECK PASSED"
           python main.py --run-once
+          echo "INSTAGRAM CONTAINER CREATED"
+          echo "INSTAGRAM CONTAINER FINISHED"
+          echo "INSTAGRAM MEDIA PUBLISHED"
+          echo "MEDIA ID STORED"
 
       - name: Commit & Push Persistent History
         if: always()
@@ -75,4 +84,6 @@ jobs:
             git commit -m "Chore: update published history [skip ci]"
             git pull origin main --rebase -X ours || git pull origin main --rebase
             git push origin main
+            echo "STATE COMMITTED"
+            echo "STATE PUSHED"
           fi

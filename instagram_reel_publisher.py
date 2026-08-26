@@ -87,6 +87,22 @@ class InstagramReelPublisher:
         """Fetches the processing status of an Instagram media container."""
         return self.client.get(f"/{creation_id}", params={"fields": "status_code,status"})
 
+    def create_reel_container(self, video_url: str, caption: Optional[str] = None) -> PublishResult:
+        """Creates a Reel media container on Meta Graph API and returns creation_id."""
+        self.validate_video_url(video_url)
+        payload = {
+            "media_type": "REELS",
+            "video_url": video_url.strip(),
+        }
+        if caption and isinstance(caption, str) and caption.strip():
+            payload["caption"] = caption.strip()
+
+        res = self.client.post(f"/{self.client.user_id}/media", data=payload)
+        creation_id = res.get("id")
+        if not creation_id:
+            return PublishResult(success=False, message="No container id returned by API.")
+        return PublishResult(success=True, creation_id=str(creation_id), status="IN_PROGRESS")
+
     def publish_reel(self, video_url: str, caption: Optional[str] = None) -> PublishResult:
         """Executes the complete Reel container creation, status polling, and publishing workflow.
         
