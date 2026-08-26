@@ -202,7 +202,7 @@ class InstagramReelPublisher:
 
             status_label = "PUBLISHED_CONFIRMED" if is_confirmed else "PUBLISHED"
             msg = (
-                "Instagram Reel published and verified on Meta API."
+                "Instagram Reel published successfully and verified on Meta API."
                 if is_confirmed
                 else "Instagram Reel published successfully (Pending API propagation)."
             )

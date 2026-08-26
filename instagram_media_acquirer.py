@@ -73,41 +73,12 @@ class InstagramMediaAcquirer:
                 size_bytes = int(length_header)
 
         except requests.Timeout as e:
-            if url and url.startswith("https://"):
-                self.logger.info(f"HTTP HEAD request timeout fallback for {url}")
-                c_type = "video/mp4" if media_type_clean == "REEL" else "image/jpeg"
-                return MediaAsset.from_url(
-                    url=url,
-                    media_type=media_type_clean,
-                    content_type=c_type,
-                    size_bytes=200000,
-                    status_code=200,
-                )
             raise InstagramTimeoutError(f"HTTP HEAD request timed out after {self.timeout}s for URL: '{url}'")
         except requests.RequestException as e:
-            if url and url.startswith("https://"):
-                self.logger.info(f"HTTP HEAD connection fallback for {url}")
-                c_type = "video/mp4" if media_type_clean == "REEL" else "image/jpeg"
-                return MediaAsset.from_url(
-                    url=url,
-                    media_type=media_type_clean,
-                    content_type=c_type,
-                    size_bytes=200000,
-                    status_code=200,
-                )
             raise InstagramConnectionError(f"Failed to connect to remote media server: {e}")
         except InstagramError:
             raise
         except Exception as e:
-            if url and url.startswith("https://"):
-                c_type = "video/mp4" if media_type_clean == "REEL" else "image/jpeg"
-                return MediaAsset.from_url(
-                    url=url,
-                    media_type=media_type_clean,
-                    content_type=c_type,
-                    size_bytes=200000,
-                    status_code=200,
-                )
             raise InstagramConnectionError(f"Unexpected error inspecting remote media: {e}")
 
         # Step 3: Validate Content-Type if present
