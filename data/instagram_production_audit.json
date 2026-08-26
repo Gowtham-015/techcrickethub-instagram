@@ -635,5 +635,70 @@
     "duration": 0.0,
     "dry_run": false,
     "production_mode": "PRODUCTION"
+  },
+  {
+    "timestamp": "2026-08-26T18:16:26.552406+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "REEL",
+    "category": "cricket",
+    "status": "SKIPPED",
+    "creation_id": "",
+    "media_id": "",
+    "error_type": "",
+    "duration": 0.0,
+    "dry_run": true,
+    "production_mode": "DRY_RUN"
+  },
+  {
+    "timestamp": "2026-08-26T18:16:33.276821+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "REEL",
+    "category": "cricket",
+    "status": "FAILED",
+    "creation_id": "",
+    "media_id": "",
+    "error_type": "Reel processing failed on Meta servers: ERROR",
+    "duration": 0.0,
+    "dry_run": false,
+    "production_mode": "PRODUCTION"
+  },
+  {
+    "timestamp": "2026-08-26T18:16:33.306402+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "REEL",
+    "category": "cricket",
+    "status": "PUBLISHED",
+    "creation_id": "17900000000000001",
+    "media_id": "17900000000000002",
+    "error_type": "",
+    "duration": 0.0,
+    "dry_run": false,
+    "production_mode": "PRODUCTION"
+  },
+  {
+    "timestamp": "2026-08-26T18:16:33.333704+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "REEL",
+    "category": "cricket",
+    "status": "FAILED",
+    "creation_id": "",
+    "media_id": "",
+    "error_type": "Container processing failed",
+    "duration": 0.0,
+    "dry_run": false,
+    "production_mode": "PRODUCTION"
+  },
+  {
+    "timestamp": "2026-08-26T18:19:15.068406+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "REEL",
+    "category": "cricket",
+    "status": "FAILED",
+    "creation_id": "",
+    "media_id": "",
+    "error_type": "Reel processing failed on Meta servers: ERROR",
+    "duration": 0.0,
+    "dry_run": false,
+    "production_mode": "PRODUCTION"
   }
 ]
