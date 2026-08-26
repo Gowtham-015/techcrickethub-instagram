@@ -70,8 +70,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f data/*.json || true
-          if ! git diff --quiet || ! git diff --staged --quiet; then
-            git pull origin main --rebase
+          if ! git diff --staged --quiet; then
             git commit -m "Chore: update published history [skip ci]"
+            git pull origin main --rebase -X ours || git pull origin main --rebase
             git push origin main
           fi
