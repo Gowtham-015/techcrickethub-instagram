@@ -25,6 +25,6 @@ def test_telegram_isolation_strict():
 
 def test_config_target_ratios():
     config = Config.load_from_env(validate=False)
-    assert config.reel_target_percent == 60
-    assert config.image_target_percent == 40
+    assert config.reel_target_percent == 80
+    assert config.image_target_percent == 20
     assert config.cricket_target_percent == 75

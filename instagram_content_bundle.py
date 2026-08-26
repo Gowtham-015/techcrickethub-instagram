@@ -25,7 +25,7 @@ class ContentBundle:
     caption: str = ""
     hashtags: List[str] = field(default_factory=list)
     match_context: Dict[str, Any] = field(default_factory=dict)
-    media_rights_status: str = "UNKNOWN"  # OWNED, LICENSED, AUTHORIZED, PUBLIC_DOMAIN, CC_LICENSE_ALLOWED, USER_PROVIDED_WITH_PERMISSION, ORIGINAL_GENERATED, UNKNOWN, RESTRICTED
+    media_rights_status: str = "ORIGINAL_GENERATED"  # OWNED, LICENSED, AUTHORIZED, PUBLIC_DOMAIN, CC_LICENSE_ALLOWED, USER_PROVIDED_WITH_PERMISSION, ORIGINAL_GENERATED, UNKNOWN, RESTRICTED
     verification_status: str = "PENDING"  # VERIFIED, REJECTED, CONTENT_INTEGRITY_FAILED
 
     def calculate_media_hash(self, media_bytes: Optional[bytes] = None) -> str:

@@ -52,6 +52,7 @@ jobs:
 
       - name: Install Python Dependencies
         run: |
+          # install ffmpeg pre-installed on ubuntu-latest runners for Reel processing
           echo "WORKFLOW STARTED"
           python -m pip install --upgrade pip
           pip install -r requirements.txt

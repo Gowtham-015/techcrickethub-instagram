@@ -33,6 +33,7 @@ def engine_env(tmp_path):
             "category": "cricket",
             "media_type": "IMAGE",
             "image_url": "https://example.com/engine_test_image.jpg",
+            "media_rights_status": "ORIGINAL_GENERATED",
         }
     ]
     scheduler = MagicMock(spec=InstagramScheduler)
@@ -101,6 +102,7 @@ def test_engine_error_isolation(engine_env):
             "category": "cricket",
             "media_type": "IMAGE",
             "image_url": "https://example.com/unique_valid_image_2.jpg",
+            "media_rights_status": "ORIGINAL_GENERATED",
         },
     ]
 
