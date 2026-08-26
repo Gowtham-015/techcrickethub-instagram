@@ -44,23 +44,63 @@ class InstagramRealNewsSource(InstagramContentSource):
 
     @staticmethod
     def upload_to_public_host(local_path: str, fallback_url: str) -> str:
-        """Uploads a local generated image/video file to Catbox for instant 200 OK public HTTPS URL."""
+        """Uploads a local generated image/video file to public HTTPS hosts (Catbox, Litterbox, Tmpfiles) with retries."""
         if not local_path or not os.path.exists(local_path):
             return fallback_url
         if os.getenv("SKIP_CATBOX_UPLOAD", "false").lower() in ("true", "1", "yes"):
             return fallback_url
+
+        is_video = local_path.lower().endswith((".mp4", ".mov", ".avi"))
+        timeout = 35 if is_video else 15
+
+        # Attempt 1: Catbox.moe
         try:
             with open(local_path, "rb") as f:
                 resp = requests.post(
                     "https://catbox.moe/user/api.php",
                     data={"reqtype": "fileupload"},
                     files={"fileToUpload": f},
-                    timeout=3,
+                    timeout=timeout,
                 )
                 if resp.status_code == 200 and resp.text.strip().startswith("https://files.catbox.moe/"):
+                    logger.info(f"Public host upload (Catbox) success for {local_path}: {resp.text.strip()}")
                     return resp.text.strip()
         except Exception as e:
-            logger.warning(f"Public host upload fallback for {local_path}: {e}")
+            logger.warning(f"Catbox upload failed for {local_path}: {e}")
+
+        # Attempt 2: Litterbox.catbox.moe (24h temporary retention for Reels)
+        try:
+            with open(local_path, "rb") as f:
+                resp = requests.post(
+                    "https://litterbox.catbox.moe/resources/internals/api.php",
+                    data={"reqtype": "fileupload", "time": "24h"},
+                    files={"fileToUpload": f},
+                    timeout=timeout,
+                )
+                if resp.status_code == 200 and resp.text.strip().startswith("https://litterbox.catbox.moe/"):
+                    logger.info(f"Public host upload (Litterbox) success for {local_path}: {resp.text.strip()}")
+                    return resp.text.strip()
+        except Exception as e:
+            logger.warning(f"Litterbox upload failed for {local_path}: {e}")
+
+        # Attempt 3: Tmpfiles.org
+        try:
+            with open(local_path, "rb") as f:
+                resp = requests.post(
+                    "https://tmpfiles.org/api/v1/upload",
+                    files={"file": f},
+                    timeout=timeout,
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    raw_url = data.get("data", {}).get("url", "")
+                    if raw_url:
+                        direct_url = raw_url.replace("https://tmpfiles.org/", "https://tmpfiles.org/dl/")
+                        logger.info(f"Public host upload (Tmpfiles) success for {local_path}: {direct_url}")
+                        return direct_url
+        except Exception as e:
+            logger.warning(f"Tmpfiles upload failed for {local_path}: {e}")
+
         return fallback_url
 
     @staticmethod
@@ -203,8 +243,14 @@ class InstagramRealNewsSource(InstagramContentSource):
                             # Direct github raw fallback for verified card format
                             image_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/card_{content_id}.jpg"
 
-                # 80% Reel candidate selection for target >= 80% Reels distribution
-                is_reel_candidate = (len(results) % 5) in (0, 1, 2, 3)
+                # 100% Reel selection support when REELS_ONLY is enabled or target is 80-100%
+                reels_only = (
+                    os.getenv("REELS_ONLY", "true").lower() in ("true", "1", "yes")
+                    or os.getenv("FORCE_REELS", "false").lower() in ("true", "1", "yes")
+                    or os.getenv("INSTAGRAM_REELS_ONLY", "false").lower() in ("true", "1", "yes")
+                    or getattr(self.config, "reel_target_percent", 80) == 100
+                )
+                is_reel_candidate = True if reels_only else ((len(results) % 5) in (0, 1, 2, 3))
                 video_url = None
                 item_media_type = "REEL" if is_reel_candidate else "IMAGE"
                 media_rights_status = "UNKNOWN"
@@ -236,7 +282,7 @@ class InstagramRealNewsSource(InstagramContentSource):
                         logger.warning(f"Reel generation failed for {content_id}: {reel_err}")
                 else:
                     # For explicit IMAGE slots, assign rights status
-                    media_rights_status = "ORIGINAL_GENERATED" if image_url and "githubusercontent" in image_url or "catbox.moe" in image_url else "AUTHORIZED"
+                    media_rights_status = "ORIGINAL_GENERATED" if image_url and ("githubusercontent" in image_url or "catbox.moe" in image_url) else "AUTHORIZED"
 
                 results.append(
                     {
