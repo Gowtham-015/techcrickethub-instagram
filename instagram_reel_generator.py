@@ -271,13 +271,15 @@ class InstagramReelGenerator:
                 import subprocess
 
                 ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
-                frame_pattern = os.path.join(self.output_dir, "frame_%04d.png")
+                frame_pattern = "frame_%04d.png"
 
                 cmd = [
                     ffmpeg_exe,
                     "-y",
                     "-framerate",
                     str(fps),
+                    "-start_number",
+                    "0",
                     "-i",
                     frame_pattern,
                     "-f",
@@ -301,7 +303,7 @@ class InstagramReelGenerator:
                     file_path,
                 ]
 
-                res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+                res = subprocess.run(cmd, cwd=self.output_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
                 if res.returncode != 0:
                     logger.warning(f"ffmpeg execution failed: {res.stderr.decode('utf-8', errors='ignore')}")
                     raise RuntimeError("FFmpeg encoding failed.")

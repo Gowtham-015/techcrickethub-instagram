@@ -44,7 +44,7 @@ class InstagramRealNewsSource(InstagramContentSource):
 
     @staticmethod
     def upload_to_public_host(local_path: str, fallback_url: str) -> str:
-        """Uploads a local generated image/video file to public HTTPS hosts (Catbox, Litterbox, Tmpfiles) with retries."""
+        """Uploads a local generated image/video file to Catbox with browser User-Agent headers and retries."""
         if not local_path or not os.path.exists(local_path):
             return fallback_url
         if os.getenv("SKIP_CATBOX_UPLOAD", "false").lower() in ("true", "1", "yes"):
@@ -52,54 +52,26 @@ class InstagramRealNewsSource(InstagramContentSource):
 
         is_video = local_path.lower().endswith((".mp4", ".mov", ".avi"))
         timeout = 35 if is_video else 15
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        }
 
-        # Attempt 1: Catbox.moe
-        try:
-            with open(local_path, "rb") as f:
-                resp = requests.post(
-                    "https://catbox.moe/user/api.php",
-                    data={"reqtype": "fileupload"},
-                    files={"fileToUpload": f},
-                    timeout=timeout,
-                )
-                if resp.status_code == 200 and resp.text.strip().startswith("https://files.catbox.moe/"):
-                    logger.info(f"Public host upload (Catbox) success for {local_path}: {resp.text.strip()}")
-                    return resp.text.strip()
-        except Exception as e:
-            logger.warning(f"Catbox upload failed for {local_path}: {e}")
-
-        # Attempt 2: Litterbox.catbox.moe (24h temporary retention for Reels)
-        try:
-            with open(local_path, "rb") as f:
-                resp = requests.post(
-                    "https://litterbox.catbox.moe/resources/internals/api.php",
-                    data={"reqtype": "fileupload", "time": "24h"},
-                    files={"fileToUpload": f},
-                    timeout=timeout,
-                )
-                if resp.status_code == 200 and resp.text.strip().startswith("https://litterbox.catbox.moe/"):
-                    logger.info(f"Public host upload (Litterbox) success for {local_path}: {resp.text.strip()}")
-                    return resp.text.strip()
-        except Exception as e:
-            logger.warning(f"Litterbox upload failed for {local_path}: {e}")
-
-        # Attempt 3: Tmpfiles.org
-        try:
-            with open(local_path, "rb") as f:
-                resp = requests.post(
-                    "https://tmpfiles.org/api/v1/upload",
-                    files={"file": f},
-                    timeout=timeout,
-                )
-                if resp.status_code == 200:
-                    data = resp.json()
-                    raw_url = data.get("data", {}).get("url", "")
-                    if raw_url:
-                        direct_url = raw_url.replace("https://tmpfiles.org/", "https://tmpfiles.org/dl/")
-                        logger.info(f"Public host upload (Tmpfiles) success for {local_path}: {direct_url}")
-                        return direct_url
-        except Exception as e:
-            logger.warning(f"Tmpfiles upload failed for {local_path}: {e}")
+        # Attempt Catbox.moe upload with retries
+        for attempt in range(3):
+            try:
+                with open(local_path, "rb") as f:
+                    resp = requests.post(
+                        "https://catbox.moe/user/api.php",
+                        data={"reqtype": "fileupload"},
+                        files={"fileToUpload": f},
+                        headers=headers,
+                        timeout=timeout,
+                    )
+                    if resp.status_code == 200 and resp.text.strip().startswith("https://files.catbox.moe/"):
+                        logger.info(f"Public host upload (Catbox) success for {local_path}: {resp.text.strip()}")
+                        return resp.text.strip()
+            except Exception as e:
+                logger.warning(f"Catbox upload attempt {attempt + 1} failed for {local_path}: {e}")
 
         return fallback_url
 
