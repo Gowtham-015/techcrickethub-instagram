@@ -43,6 +43,25 @@ class InstagramRealNewsSource(InstagramContentSource):
         return f"real-{hasher.hexdigest()[:16]}"
 
     @staticmethod
+    def upload_to_public_host(local_path: str, fallback_url: str) -> str:
+        """Uploads a local generated image/video file to Catbox for instant 200 OK public HTTPS URL."""
+        if not local_path or not os.path.exists(local_path):
+            return fallback_url
+        try:
+            with open(local_path, "rb") as f:
+                resp = requests.post(
+                    "https://catbox.moe/user/api.php",
+                    data={"reqtype": "fileupload"},
+                    files={"fileToUpload": f},
+                    timeout=15,
+                )
+                if resp.status_code == 200 and resp.text.strip().startswith("https://files.catbox.moe/"):
+                    return resp.text.strip()
+        except Exception as e:
+            logger.warning(f"Public host upload fallback for {local_path}: {e}")
+        return fallback_url
+
+    @staticmethod
     def parse_rss_date(date_str: Optional[str]) -> Optional[datetime]:
         """Parses common RSS pubDate formats into timezone-aware datetime."""
         if not date_str or not isinstance(date_str, str):
@@ -155,7 +174,8 @@ class InstagramRealNewsSource(InstagramContentSource):
                             content_id=content_id,
                         )
                         rel_filename = os.path.basename(card_path)
-                        image_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/{rel_filename}"
+                        raw_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/{rel_filename}"
+                        image_url = self.upload_to_public_host(card_path, raw_url)
                     except Exception as gen_err:
                         logger.warning(f"Graphic card generation failed for {content_id}: {gen_err}")
                         # Standalone inline card fallback to guarantee zero generic sample photos
@@ -175,7 +195,8 @@ class InstagramRealNewsSource(InstagramContentSource):
                             card_path = os.path.join(gen_dir, f"card_{content_id}.jpg")
                             img.save(card_path, "JPEG", quality=90)
                             rel_filename = os.path.basename(card_path)
-                            image_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/{rel_filename}"
+                            raw_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/{rel_filename}"
+                            image_url = self.upload_to_public_host(card_path, raw_url)
                         except Exception:
                             # Direct github raw fallback for verified card format
                             image_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/card_{content_id}.jpg"
@@ -201,7 +222,8 @@ class InstagramRealNewsSource(InstagramContentSource):
                         )
                         if gen_res.get("success") and gen_res.get("reel_path"):
                             rel_video = os.path.basename(gen_res["reel_path"])
-                            video_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/{rel_video}"
+                            raw_video_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/{rel_video}"
+                            video_url = self.upload_to_public_host(gen_res["reel_path"], raw_video_url)
                             item_media_type = "REEL"
                             image_url = None
                     except Exception as reel_err:

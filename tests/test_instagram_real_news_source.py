@@ -24,7 +24,8 @@ def test_real_news_source_date_parsing():
     assert parsed.day == 24
 
 
-def test_real_news_source_sample_content_excluded():
+def test_real_news_source_sample_content_excluded(monkeypatch):
+    monkeypatch.setattr(InstagramRealNewsSource, "upload_to_public_host", lambda path, fallback: fallback)
     cfg = Config.load_from_env(validate=False)
     source = InstagramRealNewsSource(config=cfg)
     items = source.get_content_items()

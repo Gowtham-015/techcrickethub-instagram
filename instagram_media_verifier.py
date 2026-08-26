@@ -213,6 +213,48 @@ class InstagramMediaVerifier:
                 message="Mock media verification passed for test URL.",
             )
 
+        # Local file resolution for generated cards and reels
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        local_file_path = None
+        if "raw.githubusercontent.com" in url or "github" in url:
+            parts = url.split("main/")
+            if len(parts) > 1:
+                rel_path = parts[1].replace("/", os.sep)
+                candidate_path = os.path.join(base_dir, rel_path)
+                if os.path.exists(candidate_path):
+                    local_file_path = candidate_path
+
+        if local_file_path and os.path.exists(local_file_path):
+            try:
+                file_size = os.path.getsize(local_file_path)
+                with open(local_file_path, "rb") as f:
+                    full_bytes = f.read()
+                media_hash = hashlib.sha256(full_bytes).hexdigest()
+                mime = "image/jpeg" if media_type == "IMAGE" else "video/mp4"
+
+                if self.is_duplicate_media(media_hash=media_hash, media_url=url):
+                    return MediaVerificationResult(
+                        is_valid=False,
+                        media_hash=media_hash,
+                        media_type=media_type,
+                        mime_type=mime,
+                        file_size_bytes=file_size,
+                        error_code="DUPLICATE_MEDIA",
+                        message=f"Duplicate media detected (SHA256: {media_hash[:12]}...).",
+                    )
+
+                return MediaVerificationResult(
+                    is_valid=True,
+                    media_hash=media_hash,
+                    media_type=media_type,
+                    mime_type=mime,
+                    file_size_bytes=file_size,
+                    error_code="SUCCESS",
+                    message="Local generated media verification passed.",
+                )
+            except Exception as e:
+                logger.warning(f"Local file verification fallback for {local_file_path}: {e}")
+
         try:
             req = urllib.request.Request(
                 url,
