@@ -17,12 +17,14 @@ class BalanceMetrics:
     target_percentage: float
     min_cricket_required: int
     max_non_cricket_allowed: int
-    status: str  # BALANCED, CRICKET_DEFICIT
+    status: str  # BALANCED, CRICKET_DEFICIT, TECH_DEFICIT
     priority_boost_active: bool
+    tech_deficit: bool = False
+    should_prefer_tech: bool = False
 
 
 class InstagramCricketBalancer:
-    """Enforces 75% minimum Cricket target distribution over rolling 30-item window."""
+    """Enforces 75% Cricket / 25% Technology target distribution over rolling 30-item window."""
 
     def __init__(self, config: Optional[Config] = None):
         self.config = config or Config.load_from_env(validate=False)
@@ -55,14 +57,16 @@ class InstagramCricketBalancer:
         cricket_count = sum(1 for item in recent_items if _get_cat(item) == "cricket")
         non_cricket_count = total - cricket_count
 
-        pct = (cricket_count / total * 100.0) if total > 0 else 100.0
-        deficit = pct < self.target_pct if total > 0 else False
+        pct = (cricket_count / total * 100.0) if total > 0 else 75.0
+        cricket_deficit = pct < self.target_pct if total > 0 else False
+        tech_deficit = (non_cricket_count < targets["max_non_cricket"]) if total >= 5 else False
 
-        status = "CRICKET_DEFICIT" if deficit else "BALANCED"
+        status = "CRICKET_DEFICIT" if cricket_deficit else "BALANCED"
+        prefer_tech = tech_deficit or (pct >= self.target_pct and non_cricket_count < targets["max_non_cricket"])
 
         logger.info(
             f"CricketBalancer evaluation: Window={total}/{self.window_size}, "
-            f"Cricket={cricket_count} ({round(pct, 1)}%), Target={self.target_pct}%, Status={status}"
+            f"Cricket={cricket_count} ({round(pct, 1)}%), Tech={non_cricket_count}, Target={self.target_pct}%, Status={status}"
         )
 
         return BalanceMetrics(
@@ -74,5 +78,7 @@ class InstagramCricketBalancer:
             min_cricket_required=targets["min_cricket"],
             max_non_cricket_allowed=targets["max_non_cricket"],
             status=status,
-            priority_boost_active=deficit,
+            priority_boost_active=cricket_deficit,
+            tech_deficit=tech_deficit,
+            should_prefer_tech=prefer_tech,
         )

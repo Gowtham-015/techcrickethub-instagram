@@ -346,6 +346,8 @@ class InstagramAutomationEngine:
 
                     if balance.priority_boost_active and content.category == "cricket":
                         score_obj.total_score = min(100, int(score_obj.total_score * 1.25))
+                    elif getattr(balance, "should_prefer_tech", False) and content.category != "cricket":
+                        score_obj.total_score = min(100, int(score_obj.total_score * 1.5))
                     if score_obj.decision == "REJECT":
                         self.logger.info(
                             f"Content ID '{content_id}' rejected by ContentScorer: Score {score_obj.total_score}/100"

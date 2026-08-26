@@ -248,7 +248,10 @@ class Config:
         live_match_priority = float(os.getenv("INSTAGRAM_LIVE_MATCH_PRIORITY", "2.0").strip())
         cricket_api_url = os.getenv("INSTAGRAM_CRICKET_API_URL", "https://api.cricapi.com/v1").strip()
         cricket_api_key = os.getenv("INSTAGRAM_CRICKET_API_KEY", "").strip()
-        tech_rss_feeds = os.getenv("INSTAGRAM_TECH_RSS_FEEDS", "https://feeds.feedburner.com/TechCrunch/,https://news.ycombinator.com/rss").strip()
+        tech_rss_feeds = os.getenv(
+            "INSTAGRAM_TECH_RSS_FEEDS",
+            "https://techcrunch.com/feed/,https://www.theverge.com/rss/index.xml,https://feeds.arstechnica.com/arstechnica/index,https://news.google.com/rss/search?q=technology&hl=en-US&gl=US&ceid=US:en",
+        ).strip()
         cricket_rss_feeds = os.getenv("INSTAGRAM_CRICKET_RSS_FEEDS", "https://www.espncricinfo.com/rss/content/story/feeds/0.xml").strip()
 
         try:

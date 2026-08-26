@@ -2,13 +2,19 @@ import pytest
 from instagram_source_verifier import InstagramSourceVerifier, SourceVerificationResult
 
 
-def test_source_verifier_valid_url():
+def test_source_verifier_valid_url(mocker=None):
     verifier = InstagramSourceVerifier()
-    res = verifier.verify_source("https://i.ytimg.com/vi/pbYX4gp_5kE/maxresdefault.jpg")
-
-    assert isinstance(res, SourceVerificationResult)
-    assert res.is_valid is True
-    assert res.status_code == 200
+    with pytest.MonkeyPatch.context() as mp:
+        mock_resp = pytest.MonkeyPatch()
+        import requests
+        class MockResp:
+            status_code = 200
+            headers = {"Content-Type": "image/jpeg"}
+        mp.setattr(requests, "head", lambda *args, **kwargs: MockResp())
+        res = verifier.verify_source("https://i.ytimg.com/vi/pbYX4gp_5kE/maxresdefault.jpg")
+        assert isinstance(res, SourceVerificationResult)
+        assert res.is_valid is True
+        assert res.status_code == 200
 
 
 def test_source_verifier_missing_url():

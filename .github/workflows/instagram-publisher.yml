@@ -1,9 +1,9 @@
-name: TechCricketHub Instagram Publisher (Phase 13.7)
+name: TechCricketHub Instagram Publisher (Phase 13.8)
 
 on:
   schedule:
-    # Runs automatically every 30 minutes 24/7 independently of local laptop
-    - cron: '*/30 * * * *'
+    # Staggered cron schedule off the hour boundary to prevent GitHub Actions high-load delays
+    - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -14,13 +14,17 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: instagram-production-publisher
+  cancel-in-progress: false
+
 jobs:
   publish-job:
     runs-on: ubuntu-latest
 
     env:
-      INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID || '37982406558040899' }}
-      INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN || 'IGAAW7oCvAZBS1BZAFowdVRmMC1rOTZANS1VINkM2WUdTbjd2cHFXNUQxZAHBNOWp0UWZA5U3pvWXR6eThFNENzUmJuZA25LQ3YwZAWVSSnFDeHM0akhGbEVoQWdOZAzJWSUtjMkVtVlBMR3BBc1o2amJKTjJsS29Qb3NERGhqTGxGWGVOVQZDZD' }}
+      INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID }}
+      INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
       INSTAGRAM_DRY_RUN: ${{ github.event.inputs.dry_run || vars.INSTAGRAM_DRY_RUN || 'false' }}
       INSTAGRAM_PRODUCTION_ENABLED: 'true'
       INSTAGRAM_AUTOMATION_ENABLED: 'true'
@@ -39,8 +43,10 @@ jobs:
           python-version: '3.10'
           cache: 'pip'
 
-      - name: Install System & Python Dependencies
+      - name: Install FFmpeg & Python Dependencies
         run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
@@ -52,7 +58,7 @@ jobs:
         run: |
           git pull origin main --rebase || true
 
-      - name: Execute Instagram Automation Cycle
+      - name: Execute Production Publisher
         run: |
           python main.py --run-once
 
@@ -63,5 +69,4 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git pull origin main --rebase || true
           git add -f data/*.json || true
-          git commit -m "Chore: update published history [skip ci]" || true
-          git push origin main || true
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Chore: update published history [skip ci]" && git push origin main || true)
