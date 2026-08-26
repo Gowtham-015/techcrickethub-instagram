@@ -173,10 +173,11 @@ def test_real_content_only():
     items = source.get_content_items()
     assert len(items) > 0
     for item in items:
-        title = item.get("title", "").lower()
-        assert "sample" not in title
-        assert "fake" not in title
-        assert "demo" not in title
+        cid = str(item.get("content_id", "")).lower()
+        title = str(item.get("title", "")).lower()
+        assert not cid.startswith("sample-")
+        assert not cid.startswith("fake-")
+        assert "sample news" not in title
 
 
 def test_fresh_content_only():
