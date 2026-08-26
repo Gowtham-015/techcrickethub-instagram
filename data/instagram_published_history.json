@@ -161,6 +161,24 @@
       "published_at": "2026-08-26T04:12:45.347420+00:00",
       "instagram_permalink": "",
       "status": "PUBLISHED"
+    },
+    {
+      "instagram_media_id": "18207894739367208",
+      "content_id": "real-59d8d7c62a7d383e",
+      "canonical_source_url": "https://techcrickethub.com/stories/real-59d8d7c62a7d383e",
+      "source_hash": "093a02bc65be8c503f4284c1ec20b00eb46a27f1608bbc2503451e5ae30b1a7a",
+      "title": "OpenAI Jalape\u00f1o: Better than Nvidia Blackwell",
+      "normalized_title": "openai jalape\u00f1o better than nvidia blackwell",
+      "title_hash": "99d4eda06e675633a35b63b9a843d3d682d7085533c2dc5a599f736e8016f8eb",
+      "content_hash": "b1001706a31bca59e7612c33a4f82eb258bee244623ad2ef341dfb8ecf3d2435",
+      "media_hash": "",
+      "media_url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/card_real-59d8d7c62a7d383e.jpg",
+      "caption_hash": "",
+      "category": "ai",
+      "media_type": "IMAGE",
+      "published_at": "2026-08-26T04:35:10.995575+00:00",
+      "instagram_permalink": "",
+      "status": "PUBLISHED"
     }
   ]
 }
