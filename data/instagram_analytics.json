@@ -22274,6 +22274,66 @@
       "media_id": null,
       "creation_id": null,
       "error": null
+    },
+    {
+      "event_id": "ab892a11-1e9b-4579-9f7f-f40d7b113769",
+      "event_type": "DISCOVERED",
+      "content_id": "test-eng-unique-101",
+      "timestamp": "2026-08-26T11:06:48.177498+00:00",
+      "category": "cricket",
+      "media_type": "IMAGE",
+      "content_score": 0,
+      "priority": "NORMAL",
+      "scheduled_at": "",
+      "status": "",
+      "media_id": null,
+      "creation_id": null,
+      "error": null
+    },
+    {
+      "event_id": "a887dc30-7b62-42bd-97bf-ccf56aa39aaf",
+      "event_type": "CONTENT_INTEGRITY_FAILED",
+      "content_id": "test-eng-unique-101",
+      "timestamp": "2026-08-26T11:06:48.203225+00:00",
+      "category": "cricket",
+      "media_type": "IMAGE",
+      "content_score": 0,
+      "priority": "NORMAL",
+      "scheduled_at": "",
+      "status": "",
+      "media_id": null,
+      "creation_id": null,
+      "error": "ContentBundle 'test-eng-unique-101' rejected due to unallowed media_rights_status: 'UNKNOWN'"
+    },
+    {
+      "event_id": "6770fb05-449f-429f-9848-3e5df7fc626b",
+      "event_type": "DISCOVERED",
+      "content_id": "test-eng-valid-unique",
+      "timestamp": "2026-08-26T11:06:48.270872+00:00",
+      "category": "cricket",
+      "media_type": "IMAGE",
+      "content_score": 0,
+      "priority": "NORMAL",
+      "scheduled_at": "",
+      "status": "",
+      "media_id": null,
+      "creation_id": null,
+      "error": null
+    },
+    {
+      "event_id": "1c17bc3e-02cc-4d59-8e33-81682e7dc732",
+      "event_type": "CONTENT_INTEGRITY_FAILED",
+      "content_id": "test-eng-valid-unique",
+      "timestamp": "2026-08-26T11:06:48.294869+00:00",
+      "category": "cricket",
+      "media_type": "IMAGE",
+      "content_score": 0,
+      "priority": "NORMAL",
+      "scheduled_at": "",
+      "status": "",
+      "media_id": null,
+      "creation_id": null,
+      "error": "ContentBundle 'test-eng-valid-unique' rejected due to unallowed media_rights_status: 'UNKNOWN'"
     }
   ]
 }
