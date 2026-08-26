@@ -22334,6 +22334,66 @@
       "media_id": null,
       "creation_id": null,
       "error": "ContentBundle 'test-eng-valid-unique' rejected due to unallowed media_rights_status: 'UNKNOWN'"
+    },
+    {
+      "event_id": "df8024e0-6ae2-4a89-9660-9cbc406afbd1",
+      "event_type": "DISCOVERED",
+      "content_id": "test-eng-unique-101",
+      "timestamp": "2026-08-26T11:38:56.175884+00:00",
+      "category": "cricket",
+      "media_type": "IMAGE",
+      "content_score": 0,
+      "priority": "NORMAL",
+      "scheduled_at": "",
+      "status": "",
+      "media_id": null,
+      "creation_id": null,
+      "error": null
+    },
+    {
+      "event_id": "98632980-0d26-4b54-ae49-7e1e2a8ca2f0",
+      "event_type": "CONTENT_INTEGRITY_FAILED",
+      "content_id": "test-eng-unique-101",
+      "timestamp": "2026-08-26T11:38:56.201164+00:00",
+      "category": "cricket",
+      "media_type": "IMAGE",
+      "content_score": 0,
+      "priority": "NORMAL",
+      "scheduled_at": "",
+      "status": "",
+      "media_id": null,
+      "creation_id": null,
+      "error": "ContentBundle 'test-eng-unique-101' rejected due to unallowed media_rights_status: 'UNKNOWN'"
+    },
+    {
+      "event_id": "b4eaef52-8fe9-4b50-83ae-e6672d53fa04",
+      "event_type": "DISCOVERED",
+      "content_id": "test-eng-valid-unique",
+      "timestamp": "2026-08-26T11:38:56.270633+00:00",
+      "category": "cricket",
+      "media_type": "IMAGE",
+      "content_score": 0,
+      "priority": "NORMAL",
+      "scheduled_at": "",
+      "status": "",
+      "media_id": null,
+      "creation_id": null,
+      "error": null
+    },
+    {
+      "event_id": "30814f1d-ef4b-49a8-a3f7-4d9e07eda239",
+      "event_type": "CONTENT_INTEGRITY_FAILED",
+      "content_id": "test-eng-valid-unique",
+      "timestamp": "2026-08-26T11:38:56.294968+00:00",
+      "category": "cricket",
+      "media_type": "IMAGE",
+      "content_score": 0,
+      "priority": "NORMAL",
+      "scheduled_at": "",
+      "status": "",
+      "media_id": null,
+      "creation_id": null,
+      "error": "ContentBundle 'test-eng-valid-unique' rejected due to unallowed media_rights_status: 'UNKNOWN'"
     }
   ]
 }
