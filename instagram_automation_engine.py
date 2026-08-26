@@ -229,12 +229,20 @@ class InstagramAutomationEngine:
             self.logger.info(f"Discovered {discovered_count} content items from source.")
 
             items_to_process = raw_items[: self.config.max_items_per_cycle]
+            per_item_audits: List[Dict[str, Any]] = []
 
-            for raw_item in items_to_process:
+            for idx, raw_item in enumerate(items_to_process, 1):
+                content_id = "unknown"
+                c_category = "unknown"
+                c_media_type = "UNKNOWN"
+                c_title = "Untitled"
                 try:
                     # 2. Normalization & Source Verification
                     content = self.normalizer.normalize(raw_item)
-                    content_id = (content.metadata or {}).get("content_id")
+                    content_id = (content.metadata or {}).get("content_id") or content_id
+                    c_category = content.category
+                    c_media_type = content.media_type
+                    c_title = content.title
                     media_url = content.image_url if content.media_type == "IMAGE" else content.video_url
 
                     if isinstance(raw_item, dict):
@@ -242,6 +250,11 @@ class InstagramAutomationEngine:
                         if not ver_res.is_valid:
                             self.logger.info(f"Source verification failed for ID '{content_id}': {ver_res.reasons}")
                             failed_count += 1
+                            per_item_audits.append({
+                                "idx": idx, "content_id": content_id, "category": c_category,
+                                "media_type": c_media_type, "title": c_title, "result": "FAILED",
+                                "reason": f"Source verification failed: {ver_res.reasons}"
+                            })
                             continue
 
                     self._safe_record_event(
@@ -261,6 +274,11 @@ class InstagramAutomationEngine:
                             category=content.category,
                             media_type=content.media_type,
                         )
+                        per_item_audits.append({
+                            "idx": idx, "content_id": content_id, "category": c_category,
+                            "media_type": c_media_type, "title": c_title, "result": "DUPLICATE",
+                            "reason": "Duplicate content ID or URL in deduplicator"
+                        })
                         continue
 
                     # 4. Category Intelligence & Match Priority
@@ -271,6 +289,7 @@ class InstagramAutomationEngine:
                     )
                     if detected_cat and detected_cat != "unknown":
                         content.category = detected_cat
+                        c_category = detected_cat
 
                     source_url_val = getattr(content, "source_url", (content.metadata or {}).get("source_url", ""))
                     source_domain_val = getattr(content, "source_domain", (content.metadata or {}).get("source_domain", ""))
@@ -289,6 +308,11 @@ class InstagramAutomationEngine:
                             media_type=content.media_type,
                             error="REEL_REQUIRED_BUT_MEDIA_UNAVAILABLE",
                         )
+                        per_item_audits.append({
+                            "idx": idx, "content_id": content_id, "category": c_category,
+                            "media_type": c_media_type, "title": c_title, "result": "FAILED",
+                            "reason": "REEL_REQUIRED_BUT_MEDIA_UNAVAILABLE"
+                        })
                         continue
 
                     # 5. Media Verification & Content Bundle Integrity Check
@@ -309,6 +333,11 @@ class InstagramAutomationEngine:
                                 media_type=content.media_type,
                                 error=m_res.message,
                             )
+                            per_item_audits.append({
+                                "idx": idx, "content_id": content_id, "category": c_category,
+                                "media_type": c_media_type, "title": c_title, "result": "FAILED",
+                                "reason": f"Media verification failed: {m_res.message}"
+                            })
                             continue
 
                     bundle = ContentBundle(
@@ -336,6 +365,11 @@ class InstagramAutomationEngine:
                             media_type=content.media_type,
                             error=b_res.message,
                         )
+                        per_item_audits.append({
+                            "idx": idx, "content_id": content_id, "category": c_category,
+                            "media_type": c_media_type, "title": c_title, "result": "FAILED",
+                            "reason": f"ContentBundle invalid: {b_res.message}"
+                        })
                         continue
 
                     asset = None
@@ -376,6 +410,11 @@ class InstagramAutomationEngine:
                             content_score=score_obj.total_score,
                             priority=score_obj.priority_label,
                         )
+                        per_item_audits.append({
+                            "idx": idx, "content_id": content_id, "category": c_category,
+                            "media_type": c_media_type, "title": c_title, "result": "FAILED",
+                            "reason": f"Rejected by ContentScorer (Score: {score_obj.total_score})"
+                        })
                         continue
 
                     self._safe_record_event(
@@ -402,6 +441,11 @@ class InstagramAutomationEngine:
                             media_type=content.media_type,
                             content_score=score_obj.total_score,
                         )
+                        per_item_audits.append({
+                            "idx": idx, "content_id": content_id, "category": c_category,
+                            "media_type": c_media_type, "title": c_title, "result": "DUPLICATE",
+                            "reason": f"RepetitionGuard blocked: {rep_res.reason}"
+                        })
                         continue
 
                     # 8. Final Publish Guard Pre-Check
@@ -418,6 +462,11 @@ class InstagramAutomationEngine:
                             media_type=content.media_type,
                             content_score=score_obj.total_score,
                         )
+                        per_item_audits.append({
+                            "idx": idx, "content_id": content_id, "category": c_category,
+                            "media_type": c_media_type, "title": c_title, "result": "DUPLICATE",
+                            "reason": f"FinalPublishGuard blocked: {guard_res.message}"
+                        })
                         continue
 
                     valid_count += 1
@@ -459,13 +508,46 @@ class InstagramAutomationEngine:
                     )
 
                     self.logger.info(f"Enqueued item '{queue_item.queue_id}' (Score: {score_obj.total_score}).")
+                    per_item_audits.append({
+                        "idx": idx, "content_id": content_id, "category": c_category,
+                        "media_type": c_media_type, "title": c_title, "result": "ACCEPTED",
+                        "reason": "Passed all verification checks & enqueued"
+                    })
 
                 except InstagramError as e:
                     failed_count += 1
-                    self.logger.warning(f"Item processing error: {redact_token(str(e))}")
+                    err_msg = redact_token(str(e))
+                    self.logger.warning(f"Item processing error: {err_msg}")
+                    per_item_audits.append({
+                        "idx": idx, "content_id": content_id, "category": c_category,
+                        "media_type": c_media_type, "title": c_title, "result": "FAILED",
+                        "reason": f"InstagramError: {err_msg}"
+                    })
                 except Exception as e:
                     failed_count += 1
-                    self.logger.warning(f"Unexpected item processing error: {redact_token(str(e))}")
+                    err_msg = redact_token(str(e))
+                    self.logger.warning(f"Unexpected item processing error: {err_msg}")
+                    per_item_audits.append({
+                        "idx": idx, "content_id": content_id, "category": c_category,
+                        "media_type": c_media_type, "title": c_title, "result": "FAILED",
+                        "reason": f"Exception: {err_msg}"
+                    })
+
+            if per_item_audits:
+                self.logger.info("========================================")
+                self.logger.info("CONTENT VALIDATION AUDIT")
+                self.logger.info("========================================")
+                for audit in per_item_audits:
+                    self.logger.info(
+                        f"Item {audit['idx']}:\n"
+                        f"  ID: {audit['content_id']}\n"
+                        f"  Category: {audit['category']}\n"
+                        f"  Media Type: {audit['media_type']}\n"
+                        f"  Title: '{audit['title'][:60]}'\n"
+                        f"  Result: {audit['result']}\n"
+                        f"  Reason: {audit['reason']}"
+                    )
+                self.logger.info("========================================")
 
             # 10. Process Due Items via Scheduler (respects INSTAGRAM_DRY_RUN & rate limits)
             limit = getattr(self.config, "max_posts_per_cycle", 1)

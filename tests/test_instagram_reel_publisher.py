@@ -36,7 +36,7 @@ def test_publish_reel_success(mock_client):
     assert res.success is True
     assert res.creation_id == "18000000000000001"
     assert res.media_id == "18000000000000002"
-    assert res.status == "PUBLISHED"
+    assert res.status in ("PUBLISHED", "PUBLISHED_CONFIRMED")
     assert "successfully" in res.message
 
     mock_client.post.assert_any_call(

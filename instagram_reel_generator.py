@@ -255,7 +255,7 @@ class InstagramReelGenerator:
                     bg_image_path=bg_image_path,
                     progress=progress,
                 )
-                frame_path = os.path.join(self.output_dir, f"frame_{frame_idx:04d}.png")
+                frame_path = os.path.join(self.output_dir, f"frame_{content_id}_{frame_idx:04d}.png")
                 frame_img.save(frame_path)
                 frames.append(frame_path)
 
@@ -271,7 +271,7 @@ class InstagramReelGenerator:
                 import subprocess
 
                 ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
-                frame_pattern = "frame_%04d.png"
+                frame_pattern = os.path.join(self.output_dir, f"frame_{content_id}_%04d.png").replace("\\", "/")
 
                 cmd = [
                     ffmpeg_exe,

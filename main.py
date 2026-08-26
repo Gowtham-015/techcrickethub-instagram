@@ -2486,6 +2486,134 @@ def publishing_status() -> bool:
         return False
 
 
+def publish_test() -> bool:
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+
+    print("========================================")
+    print("REAL INSTAGRAM PUBLISH TEST")
+    print("========================================")
+    config = Config.load_from_env(validate=False)
+    mode_label = "PRODUCTION" if config.production_enabled and not config.dry_run else "TEST / DRY_RUN"
+    print(f"Mode: {mode_label}")
+    print(f"Dry Run: {'TRUE' if config.dry_run else 'FALSE'}")
+    print()
+
+    source = InstagramRealNewsSource(config=config)
+    items = source.get_content_items()
+    reel_candidates = [i for i in items if i.get("media_type") == "REEL" and i.get("video_url")]
+
+    if not reel_candidates:
+        print("Story: FAIL (No news items acquired)")
+        print("\nFINAL:")
+        print("  ACTUAL INSTAGRAM REEL PUBLISHED: NO")
+        print("  REASON: NO REEL CANDIDATE ACQUIRED")
+        print("========================================")
+        return False
+
+    candidate = reel_candidates[0]
+    content_id = candidate.get("content_id", "test-reel-001")
+    title = candidate.get("title", "Real Reel Test")
+    summary = candidate.get("summary", "Summary text")
+    media_url = candidate.get("video_url", "")
+    category = candidate.get("category", "cricket")
+
+    print(f"Story: PASS ('{title[:60]}...')")
+    print(f"Source: PASS ({candidate.get('source_domain', 'RSS')})")
+
+    bundle = ContentBundle(
+        content_id=content_id,
+        category=category,
+        title=title,
+        summary=summary,
+        source_url=candidate.get("source_url", ""),
+        source_domain=candidate.get("source_domain", ""),
+        published_at=candidate.get("published_at", ""),
+        media_url=media_url,
+        media_type="REEL",
+        media_rights_status=candidate.get("media_rights_status", "ORIGINAL_GENERATED"),
+        caption=title,
+    )
+
+    validator = ContentIntegrityValidator()
+    val_res = validator.validate_bundle(bundle)
+    print(f"Content Integrity: {'PASS' if val_res.is_valid else 'FAIL'}")
+
+    guard = InstagramFinalPublishGuard(config=config)
+    g_res = guard.verify_and_guard(bundle)
+    print(f"Duplicate Guard: {'PASS' if g_res.is_valid else 'FAIL'}")
+
+    if not g_res.is_valid:
+        print(f"Guard Reason: {g_res.message}")
+        print("\nFINAL:")
+        print("  ACTUAL INSTAGRAM REEL PUBLISHED: NO")
+        print("  REASON: DUPLICATE GUARD REJECTION")
+        print("========================================")
+        return False
+
+    print("\nMedia:")
+    print("  Type: REEL")
+    print("  MIME: video/mp4")
+
+    media_acc = InstagramMediaVerifier.validate_meta_media_accessibility(media_url, media_type="REEL")
+
+    if config.dry_run or not config.production_enabled:
+        print("\nMeta:")
+        print("  Container Creation: SKIPPED (DRY_RUN mode active)")
+        print("  Processing: SKIPPED")
+        print("  Media Publish: SKIPPED")
+        print("\nInstagram:")
+        print("  Media ID: NONE")
+        print("  Publication Verification: SKIPPED")
+        print("\nFINAL:")
+        print("  ACTUAL INSTAGRAM REEL PUBLISHED: NO")
+        print("  REASON: DRY_RUN MODE ACTIVE")
+        print("========================================")
+        return True
+
+    try:
+        client = InstagramAPIClient(user_id=config.user_id, access_token=config.access_token)
+        reel_pub = InstagramReelPublisher(client=client)
+        pub_res = reel_pub.publish_reel(video_url=media_url, caption=bundle.caption)
+
+        print("\nMeta:")
+        print(f"  Container Creation: {'PASS' if pub_res.creation_id else 'FAIL'}")
+        print(f"  Container ID: {pub_res.creation_id}")
+        print(f"  Processing: {'FINISHED' if pub_res.success else 'FAILED'}")
+        print(f"  Media Publish: {'PASS' if pub_res.media_id else 'FAIL'}")
+
+        is_confirmed = False
+        if pub_res.success and pub_res.media_id:
+            is_confirmed = client.verify_published_media(pub_res.media_id)
+
+        print("\nInstagram:")
+        print(f"  Media ID: {pub_res.media_id or 'NONE'}")
+        print(f"  Publication Verification: {'PASS' if is_confirmed else 'FAIL'}")
+
+        if pub_res.success and pub_res.media_id and is_confirmed:
+            guard.record_published_item(bundle=bundle, media_id=pub_res.media_id)
+            print("\nFINAL:")
+            print("  ACTUAL INSTAGRAM REEL PUBLISHED: YES")
+            print("========================================")
+            return True
+        else:
+            print("\nFINAL:")
+            print("  ACTUAL INSTAGRAM REEL PUBLISHED: NO")
+            print(f"  REASON: {pub_res.message}")
+            print("========================================")
+            return False
+
+    except Exception as e:
+        print("\nFINAL:")
+        print("  ACTUAL INSTAGRAM REEL PUBLISHED: NO")
+        print(f"  REASON: {e}")
+        print("========================================")
+        return False
+
+
 def last_publish() -> bool:
     if hasattr(sys.stdout, "reconfigure"):
         try:
