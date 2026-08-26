@@ -222,7 +222,8 @@ class InstagramRealNewsSource(InstagramContentSource):
                                 "summary": clean_desc[:250] if clean_desc else title,
                                 "source_name": source_domain,
                                 "category": category,
-                            }
+                            },
+                            duration_sec=1.5,
                         )
                         if gen_res.get("success") and gen_res.get("reel_path"):
                             rel_video = os.path.basename(gen_res["reel_path"])
