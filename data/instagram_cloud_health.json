@@ -1,8 +1,8 @@
 {
-  "worker_id": "runnervmgx7h7-2335",
+  "worker_id": "runnervm76f27-2402",
   "worker_status": "RUNNING",
-  "started_at": "2026-08-26T22:22:01.735340+00:00",
-  "last_heartbeat": "2026-08-26T22:22:01.735354+00:00",
+  "started_at": "2026-08-27T03:24:35.330365+00:00",
+  "last_heartbeat": "2026-08-27T03:24:35.330381+00:00",
   "uptime_seconds": 0,
   "last_cycle": "N/A",
   "last_publish_attempt": "N/A",
