@@ -452,8 +452,8 @@
       "scheduled_at": "2026-08-27T02:35:49.541920+00:00",
       "status": "FAILED",
       "created_at": "2026-08-26T17:05:49.541920+00:00",
-      "attempt_count": 24,
-      "last_error": "Reel processing failed on Meta servers: ERROR",
+      "attempt_count": 27,
+      "last_error": "MEDIA_PUBLICATION_BLOCKED: Public media URL HTTP 404 Not Found",
       "published_media_id": null,
       "created_media_container_id": null,
       "source_url": "",
@@ -1359,6 +1359,50 @@
       "summary": "A dashing pirate, a butler, a killer clown, an alien mad scientist in drag\u2014the man had range.",
       "facts": [],
       "hashtags": []
+    },
+    {
+      "queue_id": "q-test-valid-5c682a17",
+      "content_id": "test-valid-5c682a17",
+      "media_type": "REEL",
+      "title": "India Win Test Series with Dominant Performance",
+      "media_url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-5c682a17.mp4",
+      "caption": "",
+      "category": "cricket",
+      "scheduled_at": "2026-08-29T15:06:23.120187+00:00",
+      "status": "PENDING",
+      "created_at": "2026-08-27T06:02:03.967126+00:00",
+      "attempt_count": 0,
+      "last_error": null,
+      "published_media_id": null,
+      "created_media_container_id": null,
+      "source_url": "",
+      "source_domain": "",
+      "summary": "Team India secures victory with sensational bowling performance.",
+      "facts": [],
+      "hashtags": []
+    },
+    {
+      "queue_id": "q-test-reel-q-69376720",
+      "content_id": "test-reel-q-69376720",
+      "media_type": "REEL",
+      "title": "Quantum Computing Breakthrough Benchmark Released",
+      "media_url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-69376720.mp4",
+      "caption": "Quantum Computing Breakthrough Benchmark Released",
+      "category": "technology",
+      "scheduled_at": "2026-08-30T02:36:23.120187+00:00",
+      "status": "PENDING",
+      "created_at": "2026-08-27T06:02:04.394343+00:00",
+      "attempt_count": 0,
+      "last_error": null,
+      "published_media_id": null,
+      "created_media_container_id": null,
+      "source_url": "",
+      "source_domain": "",
+      "summary": "Scientists demonstrate revolutionary qubit coherence stability.",
+      "facts": [],
+      "hashtags": [
+        "#technology"
+      ]
     }
   ]
 }

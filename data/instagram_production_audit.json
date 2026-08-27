@@ -895,5 +895,70 @@
     "duration": 0.0,
     "dry_run": false,
     "production_mode": "PRODUCTION"
+  },
+  {
+    "timestamp": "2026-08-27T06:02:04.040758+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "REEL",
+    "category": "cricket",
+    "status": "SKIPPED",
+    "creation_id": "",
+    "media_id": "",
+    "error_type": "",
+    "duration": 0.0,
+    "dry_run": true,
+    "production_mode": "DRY_RUN"
+  },
+  {
+    "timestamp": "2026-08-27T06:02:04.663704+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "REEL",
+    "category": "cricket",
+    "status": "FAILED",
+    "creation_id": "",
+    "media_id": "",
+    "error_type": "MEDIA_PUBLICATION_BLOCKED: Public media URL HTTP 404 Not Found",
+    "duration": 0.0,
+    "dry_run": false,
+    "production_mode": "PRODUCTION"
+  },
+  {
+    "timestamp": "2026-08-27T06:02:04.704369+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "REEL",
+    "category": "cricket",
+    "status": "PUBLISHED",
+    "creation_id": "17900000000000001",
+    "media_id": "17900000000000002",
+    "error_type": "",
+    "duration": 0.0,
+    "dry_run": false,
+    "production_mode": "PRODUCTION"
+  },
+  {
+    "timestamp": "2026-08-27T06:02:04.747672+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "REEL",
+    "category": "cricket",
+    "status": "FAILED",
+    "creation_id": "",
+    "media_id": "",
+    "error_type": "Container processing failed",
+    "duration": 0.0,
+    "dry_run": false,
+    "production_mode": "PRODUCTION"
+  },
+  {
+    "timestamp": "2026-08-27T06:02:05.269114+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "REEL",
+    "category": "cricket",
+    "status": "FAILED",
+    "creation_id": "",
+    "media_id": "",
+    "error_type": "MEDIA_PUBLICATION_BLOCKED: Public media URL HTTP 404 Not Found",
+    "duration": 0.0,
+    "dry_run": false,
+    "production_mode": "PRODUCTION"
   }
 ]
