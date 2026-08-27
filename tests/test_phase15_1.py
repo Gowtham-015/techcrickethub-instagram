@@ -42,7 +42,8 @@ class TestPhase151CriticalBugFix:
 
         engine = InstagramAutomationEngine(config=config, source=mock_source)
 
-        with patch.object(engine.media_verifier, "verify_and_deduplicate") as mock_mv, \
+        with patch.object(engine.source_verifier, "verify_source", return_value=MagicMock(is_valid=True)), \
+             patch.object(engine.media_verifier, "verify_and_deduplicate") as mock_mv, \
              patch.object(engine.acquirer, "acquire_media") as mock_am, \
              patch.object(engine.deduplicator, "is_duplicate", return_value=False), \
              patch.object(engine.repetition_guard, "check_repetition") as mock_rg, \
@@ -54,6 +55,7 @@ class TestPhase151CriticalBugFix:
             mock_fg.return_value = MagicMock(is_valid=True)
 
             res = engine.run_cycle()
+
 
             assert res["valid"] == 1
             assert res["failed"] == 0

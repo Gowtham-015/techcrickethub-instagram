@@ -217,12 +217,13 @@ class InstagramReelPublisher:
                 except Exception:
                     is_confirmed = False
 
-                status_label = "VERIFIED" if is_confirmed else "PUBLISHED"
+                status_label = "PUBLISHED_CONFIRMED" if is_confirmed else "PUBLISHED"
                 msg = (
                     "Instagram Reel published successfully and verified on Meta API."
                     if is_confirmed
                     else "Instagram Reel published successfully (Pending API propagation)."
                 )
+
 
                 return PublishResult(
                     success=True,

@@ -721,6 +721,7 @@ class InstagramAutomationEngine:
 
         return {
             "discovered": discovered_count,
+            "valid": validated_count,
             "validated": validated_count,
             "rejected": rejected_count,
             "duplicates": duplicate_count,
@@ -732,6 +733,7 @@ class InstagramAutomationEngine:
             "duration_seconds": round(time.time() - cycle_start, 2),
             "dry_run": self.config.dry_run,
         }
+
 
 
     def run(self) -> None:
