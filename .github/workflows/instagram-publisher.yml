@@ -43,8 +43,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A || true
           git reset --hard HEAD || true
-          git fetch origin main || true
-          git rebase origin/main -X ours || git rebase --abort || true
+          git pull origin main --rebase -X ours || git pull origin main --rebase || true
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
@@ -80,8 +79,7 @@ jobs:
           git add -A || true
           if ! git diff --staged --quiet; then
             git commit -m "Chore: commit generated media before Meta publication [skip ci]" || true
-            git fetch origin main || true
-            git rebase origin/main -X ours || git rebase --abort || true
+            git pull origin main --rebase -X ours || git pull origin main --rebase || true
             git push origin main || true
             echo "MEDIA COMMITTED AND PUSHED TO GITHUB RAW"
           fi
@@ -104,12 +102,12 @@ jobs:
           git add -A || true
           if ! git diff --staged --quiet; then
             git commit -m "Chore: update published history and state [skip ci]" || true
-            git fetch origin main || true
-            git rebase origin/main -X ours || git rebase --abort || true
+            git pull origin main --rebase -X ours || git pull origin main --rebase || true
             git push origin main || true
             echo "STATE COMMITTED"
             echo "STATE PUSHED"
           fi
+
 
 
 
