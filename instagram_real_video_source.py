@@ -93,7 +93,24 @@ class InstagramRealVideoSource:
                 fname = ydl.prepare_filename(info)
                 if os.path.exists(fname) and os.path.getsize(fname) > 0:
                     logger.info(f"Successfully downloaded real video asset: {fname} ({os.path.getsize(fname)} bytes)")
+                    # Auto-trim pre-roll intro promos if video duration > 60s
+                    duration = info.get("duration", 0)
+                    if duration > 60:
+                        try:
+                            import imageio_ffmpeg
+                            import subprocess
+                            ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+                            trimmed_fname = fname.replace(".mp4", "_trimmed.mp4")
+                            start_offset = "00:01:00" if duration > 120 else "00:00:30"
+                            cmd = [ffmpeg_exe, "-y", "-ss", start_offset, "-i", fname, "-t", "45", "-c:v", "libx264", "-c:a", "aac", trimmed_fname]
+                            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            if os.path.exists(trimmed_fname) and os.path.getsize(trimmed_fname) > 0:
+                                logger.info(f"Auto-trimmed pre-roll promos -> {trimmed_fname}")
+                                return trimmed_fname
+                        except Exception as trim_err:
+                            logger.warning(f"Pre-roll trimming error: {trim_err}")
                     return fname
+
         except Exception as e:
             logger.warning(f"yt_dlp video download failed for {redact_url(video_url)}: {e}")
 
