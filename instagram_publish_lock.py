@@ -36,19 +36,15 @@ class InstagramPublishLock:
         """Attempts to acquire lock within timeout period, auto-recovering stale locks."""
         start_time = time.time()
 
-        is_ci = os.getenv("GITHUB_ACTIONS", "false").lower() in ("true", "1")
-        if is_ci:
-            self.release_force()
-
         while True:
             # Check for existing lock file
             if os.path.exists(self.lock_file):
                 try:
                     mtime = os.path.getmtime(self.lock_file)
                     age = time.time() - mtime
-                    if age > self.stale_threshold_seconds or is_ci:
+                    if age > self.stale_threshold_seconds:
                         logger.warning(
-                            f"Recovering stale publish lock '{self.lock_file}' (Age: {round(age, 1)}s)."
+                            f"Recovering stale publish lock '{self.lock_file}' (Age: {round(age, 1)}s > {self.stale_threshold_seconds}s)."
                         )
                         self.release_force()
                     else:
@@ -58,6 +54,7 @@ class InstagramPublishLock:
                         continue
                 except OSError:
                     pass
+
 
 
             # Attempt atomic creation
