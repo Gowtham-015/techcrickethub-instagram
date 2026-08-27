@@ -113,107 +113,125 @@ class InstagramReelPublisher:
         """
         creation_id: Optional[str] = None
         try:
-            # 1. Validate video URL
+            # 1. Validate video URL format & scheme
             self.validate_video_url(video_url)
 
-            # 2. Create Reel media container
-            payload = {
-                "media_type": "REELS",
-                "video_url": video_url.strip(),
-            }
-            if caption and isinstance(caption, str) and caption.strip():
-                payload["caption"] = caption.strip()
-
-            self.client.logger.info(f"Creating Reel media container for user {self.client.user_id}...")
-            container_response = self.client.post(
-                f"/{self.client.user_id}/media",
-                data=payload,
-            )
-
-            creation_id = container_response.get("id")
-            if not creation_id:
-                raise InstagramAPIError(
-                    "Reel container creation succeeded but no 'id' (creation_id) was returned by Meta API.",
-                    token=self.client.access_token,
+            # 1b. Validate PUBLIC media accessibility externally via HTTP GET
+            from instagram_media_verifier import InstagramMediaVerifier
+            public_check = InstagramMediaVerifier.validate_meta_media_accessibility(video_url, media_type="REEL")
+            if not public_check.get("is_valid"):
+                err_msg = f"MEDIA_PUBLICATION_BLOCKED: {public_check.get('error', 'Public URL verification failed')}"
+                self.client.logger.error(err_msg)
+                return PublishResult(
+                    success=False,
+                    creation_id=None,
+                    media_id=None,
+                    status="MEDIA_FAILED",
+                    message=err_msg,
                 )
 
-            self.client.logger.info(f"Reel container created successfully. creation_id: {creation_id}")
+            # 2. Acquire Atomic Publish Lock for Meta API calls
+            from instagram_publish_lock import InstagramPublishLock
+            with InstagramPublishLock(timeout_seconds=10.0):
+                # Create Reel media container
+                payload = {
+                    "media_type": "REELS",
+                    "video_url": video_url.strip(),
+                }
+                if caption and isinstance(caption, str) and caption.strip():
+                    payload["caption"] = caption.strip()
 
-            # 3. Poll container processing status
-            is_finished = False
-            last_status = "UNKNOWN"
-
-            for attempt in range(1, self.max_attempts + 1):
-                self.client.logger.info(
-                    f"Checking Reel container status for {creation_id} (Attempt {attempt}/{self.max_attempts})..."
+                self.client.logger.info(f"Creating Reel media container for user {self.client.user_id}...")
+                container_response = self.client.post(
+                    f"/{self.client.user_id}/media",
+                    data=payload,
                 )
-                status_data = self.get_container_status(creation_id)
-                status_code = str(status_data.get("status_code", "")).upper()
-                last_status = status_code or str(status_data.get("status", "UNKNOWN"))
 
-                if status_code == "FINISHED":
-                    is_finished = True
-                    self.client.logger.info("Reel container status is FINISHED.")
-                    break
-                elif status_code == "ERROR":
-                    err_msg = status_data.get("status", "Container processing failed with ERROR status.")
+                creation_id = container_response.get("id")
+                if not creation_id:
                     raise InstagramAPIError(
-                        f"Reel processing failed on Meta servers: {err_msg}",
+                        "Reel container creation succeeded but no 'id' (creation_id) was returned by Meta API.",
                         token=self.client.access_token,
                     )
-                elif status_code == "EXPIRED":
+
+                self.client.logger.info(f"Reel container created successfully. creation_id: {creation_id}")
+
+                # 3. Poll container processing status
+                is_finished = False
+                last_status = "UNKNOWN"
+
+                for attempt in range(1, self.max_attempts + 1):
+                    self.client.logger.info(
+                        f"Checking Reel container status for {creation_id} (Attempt {attempt}/{self.max_attempts})..."
+                    )
+                    status_data = self.get_container_status(creation_id)
+                    status_code = str(status_data.get("status_code", "")).upper()
+                    last_status = status_code or str(status_data.get("status", "UNKNOWN"))
+
+                    if status_code == "FINISHED":
+                        is_finished = True
+                        self.client.logger.info("Reel container status is FINISHED.")
+                        break
+                    elif status_code == "ERROR":
+                        err_msg = status_data.get("status", "Container processing failed with ERROR status.")
+                        raise InstagramAPIError(
+                            f"Reel processing failed on Meta servers: {err_msg}",
+                            token=self.client.access_token,
+                        )
+                    elif status_code == "EXPIRED":
+                        raise InstagramAPIError(
+                            "Reel container expired before publishing. Please recreate container.",
+                            token=self.client.access_token,
+                        )
+                    elif status_code == "IN_PROGRESS" or not status_code:
+                        self.client.logger.info(f"Reel processing in progress. Status: {last_status}")
+                        if attempt < self.max_attempts:
+                            time.sleep(self.poll_interval_seconds)
+
+                if not is_finished:
                     raise InstagramAPIError(
-                        "Reel container expired before publishing. Please recreate container.",
+                        f"Reel container status polling timed out after {self.max_attempts} attempts. Last status: {last_status}",
                         token=self.client.access_token,
                     )
-                elif status_code == "IN_PROGRESS" or not status_code:
-                    self.client.logger.info(f"Reel processing in progress. Status: {last_status}")
-                    if attempt < self.max_attempts:
-                        time.sleep(self.poll_interval_seconds)
 
-            if not is_finished:
-                raise InstagramAPIError(
-                    f"Reel container status polling timed out after {self.max_attempts} attempts. Last status: {last_status}",
-                    token=self.client.access_token,
+                # 4. Publish Reel container
+                self.client.logger.info(f"Publishing Reel container {creation_id}...")
+                publish_response = self.client.post(
+                    f"/{self.client.user_id}/media_publish",
+                    data={"creation_id": creation_id},
                 )
 
-            # 4. Publish Reel container
-            self.client.logger.info(f"Publishing Reel container {creation_id}...")
-            publish_response = self.client.post(
-                f"/{self.client.user_id}/media_publish",
-                data={"creation_id": creation_id},
-            )
+                media_id = publish_response.get("id")
+                if not media_id:
+                    raise InstagramAPIError(
+                        "Reel publish request succeeded but no 'id' (media_id) was returned by Meta API.",
+                        token=self.client.access_token,
+                    )
 
-            media_id = publish_response.get("id")
-            if not media_id:
-                raise InstagramAPIError(
-                    "Reel publish request succeeded but no 'id' (media_id) was returned by Meta API.",
-                    token=self.client.access_token,
-                )
+                self.client.logger.info(f"Instagram Reel published successfully. media_id: {media_id}")
 
-            self.client.logger.info(f"Instagram Reel published successfully. media_id: {media_id}")
-
-            # 5. Post-publish Meta Graph API verification
-            is_confirmed = False
-            try:
-                is_confirmed = self.client.verify_published_media(str(media_id))
-            except Exception:
+                # 5. Post-publish Meta Graph API verification
                 is_confirmed = False
+                try:
+                    is_confirmed = self.client.verify_published_media(str(media_id))
+                except Exception:
+                    is_confirmed = False
 
-            status_label = "PUBLISHED_CONFIRMED" if is_confirmed else "PUBLISHED"
-            msg = (
-                "Instagram Reel published successfully and verified on Meta API."
-                if is_confirmed
-                else "Instagram Reel published successfully (Pending API propagation)."
-            )
+                status_label = "VERIFIED" if is_confirmed else "PUBLISHED"
+                msg = (
+                    "Instagram Reel published successfully and verified on Meta API."
+                    if is_confirmed
+                    else "Instagram Reel published successfully (Pending API propagation)."
+                )
 
-            return PublishResult(
-                success=True,
-                creation_id=str(creation_id),
-                media_id=str(media_id),
-                status=status_label,
-                message=msg,
-            )
+                return PublishResult(
+                    success=True,
+                    creation_id=str(creation_id),
+                    media_id=str(media_id),
+                    status=status_label,
+                    message=msg,
+                )
+
 
         except InstagramError as e:
             msg = redact_token(str(e), token=self.client.access_token)

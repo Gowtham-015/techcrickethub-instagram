@@ -216,6 +216,7 @@ class InstagramMediaVerifier:
         # Local file resolution for generated cards and reels
         base_dir = os.path.dirname(os.path.abspath(__file__))
         local_file_path = None
+        filename = os.path.basename(url.split("?")[0])
         if "raw.githubusercontent.com" in url or "github" in url:
             parts = url.split("main/")
             if len(parts) > 1:
@@ -226,12 +227,12 @@ class InstagramMediaVerifier:
 
         if not local_file_path:
             # Check for reel or card filename matching in local generated directories
-            filename = os.path.basename(url.split("?")[0])
             for sub in (os.path.join("data", "generated_reels"), os.path.join("media", "generated")):
                 cand = os.path.join(base_dir, sub, filename)
                 if os.path.exists(cand):
                     local_file_path = cand
                     break
+
 
         if local_file_path and os.path.exists(local_file_path):
             try:
@@ -271,11 +272,12 @@ class InstagramMediaVerifier:
                     media_type=media_type,
                     mime_type=mime,
                     file_size_bytes=file_size,
-                    error_code="SUCCESS",
+                    error_code="LOCAL_MEDIA_VALID",
                     message="Local generated media verification passed.",
                 )
             except Exception as e:
                 logger.warning(f"Local file verification fallback for {local_file_path}: {e}")
+
 
         try:
             req = urllib.request.Request(
@@ -493,52 +495,101 @@ class InstagramMediaVerifier:
 
     @classmethod
     def validate_meta_media_accessibility(cls, url: str, media_type: str = "REEL") -> Dict[str, Any]:
-        """Performs production media accessibility check before creating Meta container (HTTP status, Content-Type, Magic Bytes, H264, Dimensions)."""
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        filename = os.path.basename((url or "").split("?")[0])
-        local_path = None
-        for sub in (os.path.join("data", "generated_reels"), os.path.join("media", "generated")):
-            cand = os.path.join(base_dir, sub, filename)
-            if os.path.exists(cand):
-                local_path = cand
-                break
-
+        """Performs production media accessibility check before creating Meta container.
+        MUST make a real external HTTPS GET request against the public URL.
+        A local file is NOT sufficient for Meta API publication.
+        """
         print("========================================")
-        print("META MEDIA ACCESSIBILITY")
+        print("META MEDIA ACCESSIBILITY (PUBLIC VERIFICATION)")
         print("========================================")
         print(f"URL: {url}")
 
-        if local_path and os.path.exists(local_path):
-            file_size = os.path.getsize(local_path)
-            probe = cls.validate_video_ffprobe(local_path) if media_type == "REEL" else {"is_valid": True, "codec_name": "h264", "width": 1080, "height": 1920}
-            print("HTTP Status: 200 (Local File Verified)")
-            print(f"Content-Type: {'video/mp4' if media_type == 'REEL' else 'image/jpeg'}")
-            print(f"Content-Length: {file_size} bytes")
-            print(f"Magic Bytes: VALID ({'MP4 ftyp' if media_type == 'REEL' else 'JPEG'})")
-            print(f"H264 Codec: {'VALID' if probe.get('is_valid') else 'WARNING'}")
-            print(f"Dimensions: {probe.get('width', 1080)}x{probe.get('height', 1920)}")
-            print("Meta Media URL Check: PASS")
-            print("========================================")
-            return {"is_valid": True, "http_status": 200, "content_type": "video/mp4", "file_size": file_size}
-
-        try:
-            req = urllib.request.Request(url, headers={"User-Agent": "TechCricketHub-Instagram-MediaVerifier/1.0"})
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                status = resp.getcode()
-                c_type = resp.headers.get("Content-Type", "video/mp4")
-                c_len = resp.headers.get("Content-Length", "1048576")
-                chunk = resp.read(4096)
-                magic_ok = cls.check_magic_bytes(chunk, media_type)
-                print(f"HTTP Status: {status}")
-                print(f"Content-Type: {c_type}")
-                print(f"Content-Length: {c_len} bytes")
-                print(f"Magic Bytes: {'VALID' if magic_ok else 'WARNING'}")
-                print(f"Meta Media URL Check: {'PASS' if status == 200 else 'FAIL'}")
-                print("========================================")
-                return {"is_valid": status == 200, "http_status": status, "content_type": c_type, "file_size": int(c_len) if str(c_len).isdigit() else 0}
-        except Exception as e:
-            print(f"HTTP Status: 404 / Error ({e})")
+        if not url or not isinstance(url, str):
+            print("HTTP Status: 400 (Empty or invalid URL)")
             print("Meta Media URL Check: FAIL")
             print("========================================")
-            return {"is_valid": False, "error": str(e)}
+            return {"is_valid": False, "error_code": "MEDIA_PUBLICATION_BLOCKED", "error": "Media URL is empty or missing"}
+
+        if not url.startswith("https://"):
+            print("HTTP Status: 400 (Invalid scheme - HTTPS required)")
+            print("Meta Media URL Check: FAIL")
+            print("========================================")
+            return {"is_valid": False, "error_code": "MEDIA_PUBLICATION_BLOCKED", "error": f"URL must be HTTPS: {redact_url(url)}"}
+
+        # Reject local file paths disguised as URLs
+        if url.startswith("file://") or (os.name == "nt" and len(url) > 1 and url[1] == ":") or url.startswith(("/", "\\")):
+            print("HTTP Status: 400 (Local file path rejected for public Meta access)")
+            print("Meta Media URL Check: FAIL")
+            print("========================================")
+            return {"is_valid": False, "error_code": "MEDIA_PUBLICATION_BLOCKED", "error": "Local file paths are not publicly accessible by Meta"}
+
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "TechCricketHub-Instagram-MediaVerifier/1.0"},
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                status = resp.getcode()
+                c_type = resp.headers.get("Content-Type", "").lower().split(";")[0].strip()
+                c_len_str = resp.headers.get("Content-Length")
+                file_size = int(c_len_str) if c_len_str and c_len_str.isdigit() else 0
+
+                # Read first 4KB chunk for magic bytes inspection
+                chunk = resp.read(4096)
+                if not chunk or len(chunk) < 8:
+                    print("HTTP Status: 200 (Empty or truncated response body)")
+                    print("Meta Media URL Check: FAIL")
+                    print("========================================")
+                    return {"is_valid": False, "error_code": "MEDIA_PUBLICATION_BLOCKED", "error": "Media response body is empty or truncated (< 8 bytes)"}
+
+                # Check HTML disguised responses
+                if "text/html" in c_type or chunk.startswith(b"<!DOCTYPE") or chunk.startswith(b"<html") or b"<title>" in chunk[:512].lower():
+                    print(f"HTTP Status: {status} (HTML response received: {c_type})")
+                    print("Meta Media URL Check: FAIL (Webpage / 404 / Login page received)")
+                    print("========================================")
+                    return {"is_valid": False, "error_code": "MEDIA_PUBLICATION_BLOCKED", "error": "Public URL returned HTML webpage instead of binary media file"}
+
+                # Validate expected MIME type
+                if media_type == "REEL" and c_type not in cls.SUPPORTED_VIDEO_MIMES and c_type != "application/octet-stream":
+                    logger.warning(f"Unexpected Content-Type for Reel: '{c_type}'")
+                elif media_type == "IMAGE" and c_type not in cls.SUPPORTED_IMAGE_MIMES and c_type != "application/octet-stream":
+                    logger.warning(f"Unexpected Content-Type for Image: '{c_type}'")
+
+                magic_ok = cls.check_magic_bytes(chunk, media_type)
+                if not magic_ok:
+                    print(f"Magic Bytes: INVALID for {media_type}")
+                    print("Meta Media URL Check: FAIL")
+                    print("========================================")
+                    return {"is_valid": False, "error_code": "MEDIA_PUBLICATION_BLOCKED", "error": f"Invalid magic bytes container signature for {media_type}"}
+
+                full_bytes = chunk + resp.read()
+                actual_size = len(full_bytes)
+
+                print(f"HTTP Status: {status}")
+                print(f"Content-Type: {c_type}")
+                print(f"Content-Length: {actual_size} bytes")
+                print(f"Magic Bytes: VALID ({'MP4 ftyp' if media_type == 'REEL' else 'JPEG/PNG'})")
+                print("Meta Media URL Check: PASS")
+                print("========================================")
+
+                return {
+                    "is_valid": True,
+                    "status_code": "PUBLIC_MEDIA_VALID",
+                    "http_status": status,
+                    "content_type": c_type,
+                    "file_size": actual_size,
+                    "error_code": "SUCCESS",
+                }
+
+        except urllib.error.HTTPError as he:
+            print(f"HTTP Status: {he.code} ({he.reason})")
+            print("Meta Media URL Check: FAIL")
+            print("========================================")
+            return {"is_valid": False, "error_code": "MEDIA_PUBLICATION_BLOCKED", "error": f"Public media URL HTTP {he.code} {he.reason}"}
+        except Exception as e:
+            print(f"HTTP Status: ERROR ({e})")
+            print("Meta Media URL Check: FAIL")
+            print("========================================")
+            return {"is_valid": False, "error_code": "MEDIA_PUBLICATION_BLOCKED", "error": f"Public media URL fetch failed: {e}"}
+
 

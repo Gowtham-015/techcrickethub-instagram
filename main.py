@@ -3047,6 +3047,16 @@ def main():
         help="Run real Phase 14 Reel production publish verification",
     )
     parser.add_argument(
+        "--real-image-production-test",
+        action="store_true",
+        help="Run real Image production publish verification",
+    )
+    parser.add_argument(
+        "--cloud-status",
+        action="store_true",
+        help="Display GitHub Actions 24/7 cloud status and heartbeat metrics",
+    )
+    parser.add_argument(
         "--meta-publish-test",
         action="store_true",
         help="Test Meta Graph API Reel container creation, polling, and post-publish verification",
@@ -3072,6 +3082,7 @@ def main():
         help="Run Phase 15 Production Audit & Reel Delivery Verification",
     )
     args = parser.parse_args()
+
 
     if args.test_instagram:
         success = test_instagram_connection()
@@ -3262,9 +3273,16 @@ def main():
     elif getattr(args, "real_reel_production_test", False):
         success = real_reel_production_test()
         sys.exit(0 if success else 1)
+    elif getattr(args, "real_image_production_test", False):
+        success = real_image_production_test()
+        sys.exit(0 if success else 1)
+    elif getattr(args, "cloud_status", False):
+        success = cloud_status()
+        sys.exit(0 if success else 1)
     elif args.production_diagnostics:
         success = production_diagnostics()
         sys.exit(0 if success else 1)
+
     elif args.reel_production_test or getattr(args, "real_reel_test", False):
         success = reel_production_test()
         sys.exit(0 if success else 1)
@@ -3415,135 +3433,244 @@ def content_distribution() -> bool:
     return True
 
 
-def phase_14_diagnostics() -> bool:
-    print("PHASE 14 PRODUCTION AUDIT")
-    print("=========================")
+def production_diagnostics() -> bool:
+    print("Instagram Production Diagnostics")
+    print("================================")
     config = Config.load_from_env(validate=False)
 
     has_token = bool(config.access_token and config.access_token != "YOUR_ACCESS_TOKEN_HERE")
     has_user_id = bool(config.user_id and config.user_id != "YOUR_USER_ID_HERE")
 
+    print("\nGitHub Actions:")
+    print("  Status: CONFIGURED")
+    print("  Last Run: Check GitHub Actions UI")
+    print("  Schedule: '7,27,47 * * * *'")
+    print("  LAPTOP REQUIRED: NO")
+
+    print("\nConfiguration:")
+    print(f"  Production: {'ON' if config.production_enabled else 'OFF'}")
+    print(f"  Dry Run: {'ON' if config.dry_run else 'OFF'}")
+    print(f"  User ID: {'CONFIGURED' if has_user_id else 'MISSING'}")
+    print(f"  Access Token: {'CONFIGURED' if has_token else 'MISSING'}")
+
     source = InstagramRealNewsSource(config=config)
     items = source.get_content_items()
-    cricket_items = [i for i in items if i.get("category") == "cricket"]
-    tech_items = [i for i in items if i.get("category") == "technology"]
-    reel_items = [i for i in items if i.get("media_type") == "REEL"]
-    image_items = [i for i in items if i.get("media_type") == "IMAGE"]
+    cricket_c = [i for i in items if i.get("category") == "cricket"]
+    tech_c = [i for i in items if i.get("category") == "technology"]
+    reel_c = [i for i in items if i.get("media_type") == "REEL"]
+    image_c = [i for i in items if i.get("media_type") == "IMAGE"]
 
-    total = len(items) if items else 1
-    cricket_pct = int((len(cricket_items) / total) * 100)
-    tech_pct = int((len(tech_items) / total) * 100)
-    reel_pct = int((len(reel_items) / total) * 100)
-    image_pct = int((len(image_items) / total) * 100)
+    print("\nContent:")
+    print(f"  Cricket candidates: {len(cricket_c)}")
+    print(f"  Technology candidates: {len(tech_c)}")
+    print(f"  Fresh candidates: {len(items)}")
 
-    print(f"\nReal Cricket Sources: {'PASS' if cricket_items else 'FAIL'}")
-    print(f"Real Technology Sources: {'PASS' if tech_items else 'FAIL'}")
-    print("Freshness: PASS")
-    print("Source Verification: PASS")
+    guard = InstagramFinalPublishGuard(config=config)
+    published = guard.get_published_history()
 
-    print("\nContent Integrity: PASS")
-    print("Caption Integrity: PASS")
-    print("Media Binding: PASS")
-
-    print("\nDuplicate Protection: PASS")
-
-    print(f"\nCricket Distribution: {cricket_pct}%")
-    print(f"Technology Distribution: {tech_pct}%")
-
-    print(f"\nReel Distribution: {reel_pct}%")
-    print(f"Image Distribution: {image_pct}%")
-
-    print("\nReel Generator: PASS")
-    print("Video Validation: PASS")
-    print("Rights Validation: PASS")
+    print("\nMedia:")
+    print(f"  Reel candidates: {len(reel_c)}")
+    print(f"  Image candidates: {len(image_c)}")
 
     api_ok = False
-    try:
-        if has_token and has_user_id:
+    if has_token and has_user_id:
+        try:
             client = InstagramAPIClient(user_id=config.user_id, access_token=config.access_token)
             res = client.get(f"/{config.user_id}", params={"fields": "id,username"})
             if res.get("id"):
                 api_ok = True
-    except Exception as e:
-        print(f"  API Connection Note: {e}")
+        except Exception:
+            api_ok = False
 
-    print(f"\nInstagram API: {'PASS' if api_ok or not config.production_enabled else 'READY'}")
-    print("Reel Container: PASS")
-    print("Reel Publishing: PASS")
+    print("\nPublishing:")
+    print(f"  Meta API Connection: {'CONNECTED' if api_ok else 'FAILED'}")
+    print(f"  Published Records: {len(published)}")
 
-    print("\nGitHub Actions: PASS")
-    print("State Persistence: PASS")
-    print("Concurrency Protection: PASS")
+    is_healthy = has_token and has_user_id and api_ok and len(items) > 0
+    print(f"\nResult: {'PRODUCTION HEALTHY' if is_healthy else 'PRODUCTION BLOCKED'}")
+    return is_healthy
 
-    print("\nLaptop Required: NO")
 
-    ready = (len(items) > 0 and len(cricket_items) > 0)
-    print(f"\nSTATUS: {'READY' if ready else 'NOT READY'}")
-    return ready
+def cloud_status() -> bool:
+    print("Instagram Cloud Runtime Status")
+    print("==============================")
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    heartbeat_path = os.path.join(base_dir, "data", "instagram_cloud_heartbeat.json")
+    heartbeat = {}
+    if os.path.exists(heartbeat_path):
+        try:
+            with open(heartbeat_path, "r", encoding="utf-8") as f:
+                heartbeat = json.load(f)
+        except Exception:
+            pass
+
+    guard = InstagramFinalPublishGuard()
+    history = guard.get_published_history()
+    last_pub = history[-1] if history else {}
+
+    print(f"GitHub Actions Runtime: {'ACTIVE' if heartbeat else 'UNKNOWN'}")
+    print(f"Last Execution: {heartbeat.get('completed_at', 'N/A')}")
+    print(f"Last Successful Publication: {last_pub.get('published_at', 'N/A')}")
+    print(f"Last Media ID: {last_pub.get('instagram_media_id', 'N/A')}")
+    print(f"Last Error: {heartbeat.get('last_error', 'None')}")
+    print("Laptop Required: NO")
+    return True
 
 
 def real_reel_production_test() -> bool:
-    print("Instagram Real Reel Production Test (Phase 14)")
-    print("=============================================")
+    print("Instagram Real Reel Production Test")
+    print("===================================")
+    config = Config.load_from_env(validate=False)
+
+    source = InstagramRealNewsSource(config=config)
+    items = [i for i in source.get_content_items() if i.get("category") == "cricket"]
+    if not items:
+        items = source.get_content_items()
+
+    reel_items = [i for i in items if i.get("media_type") == "REEL" and i.get("video_url")]
+    if not reel_items:
+        print("ERROR: No valid Reel items acquired.")
+        return False
+
+    item = reel_items[0]
+    print(f"Acquired Story: '{item['title']}'")
+    video_url = item["video_url"]
+
+    # Verify public accessibility externally
+    verifier_res = InstagramMediaVerifier.validate_meta_media_accessibility(video_url, media_type="REEL")
+    if not verifier_res.get("is_valid"):
+        print(f"ERROR: Public media URL verification failed: {verifier_res.get('error')}")
+        return False
+
+    # Check duplicate guard
+    guard = InstagramFinalPublishGuard(config=config)
+    bundle = ContentBundle(
+        content_id=item["content_id"],
+        category=item["category"],
+        title=item["title"],
+        summary=item["summary"],
+        source_url=item["source_url"],
+        source_domain=item["source_domain"],
+        published_at=item["published_at"],
+        media_url=video_url,
+        media_type="REEL",
+        media_rights_status=item.get("media_rights_status", "ORIGINAL_GENERATED"),
+        caption=item["title"],
+    )
+    g_res = guard.verify_and_guard(bundle)
+    if not g_res.is_valid:
+        print(f"ERROR: Duplicate guard rejected item: {g_res.message}")
+        return False
+
+    if config.dry_run:
+        print("DRY RUN MODE ACTIVE — Cannot perform real publication test in dry run mode.")
+        print("Set INSTAGRAM_DRY_RUN=false to run real production publication test.")
+        return False
+
+    try:
+        client = InstagramAPIClient(user_id=config.user_id, access_token=config.access_token)
+        publisher = InstagramReelPublisher(client=client)
+        result = publisher.publish_reel(video_url=video_url, caption=bundle.caption)
+
+        if result.success and result.media_id:
+            print("CONTAINER CREATED: YES")
+            print("CONTAINER FINISHED: YES")
+            print("MEDIA_PUBLISH REQUEST: SUCCESS")
+            print(f"MEDIA ID: {result.media_id}")
+            print("META VERIFICATION: SUCCESS")
+            print("INSTAGRAM PUBLICATION: CONFIRMED")
+            print(f"Creation ID: {result.creation_id}")
+            print(f"Media ID: {result.media_id}")
+            guard.record_published_item(bundle, media_id=result.media_id)
+            print("REAL REEL PUBLISHING READY")
+            return True
+        else:
+            print("INSTAGRAM PUBLICATION: FAILED")
+            print(f"Stage: MEDIA_PUBLISH")
+            print(f"Error: {result.message}")
+            return False
+    except Exception as e:
+        print("INSTAGRAM PUBLICATION: FAILED")
+        print(f"Error: {e}")
+        return False
+
+
+def real_image_production_test() -> bool:
+    print("Instagram Real Image Production Test")
+    print("====================================")
     config = Config.load_from_env(validate=False)
 
     source = InstagramRealNewsSource(config=config)
     items = source.get_content_items()
-    reel_candidates = [i for i in items if i.get("media_type") == "REEL" and i.get("video_url")]
+    image_items = [i for i in items if i.get("media_type") == "IMAGE" and i.get("image_url")]
 
-    if not reel_candidates:
-        print("No reel candidates available for test.")
+    if not image_items:
+        print("ERROR: No valid Image items acquired.")
         return False
 
-    candidate = reel_candidates[0]
-    print(f"Selected Candidate: '{candidate.get('title')}'")
+    item = image_items[0]
+    print(f"Acquired Story: '{item['title']}'")
+    image_url = item["image_url"]
 
+    # Verify public accessibility externally
+    verifier_res = InstagramMediaVerifier.validate_meta_media_accessibility(image_url, media_type="IMAGE")
+    if not verifier_res.get("is_valid"):
+        print(f"ERROR: Public media URL verification failed: {verifier_res.get('error')}")
+        return False
+
+    # Check duplicate guard
     guard = InstagramFinalPublishGuard(config=config)
     bundle = ContentBundle(
-        content_id=candidate.get("content_id", "test-reel-001"),
-        category=candidate.get("category", "cricket"),
-        title=candidate.get("title", "Real Reel Test"),
-        summary=candidate.get("summary", "Summary text"),
-        source_url=candidate.get("source_url", "https://example.com/story-reel"),
-        source_domain=candidate.get("source_domain", "espncricinfo.com"),
-        published_at=candidate.get("published_at", "2026-08-26T10:00:00Z"),
-        media_url=candidate.get("video_url", ""),
-        media_type="REEL",
-        media_rights_status=candidate.get("media_rights_status", "ORIGINAL_GENERATED"),
-        caption=candidate.get("title", ""),
+        content_id=item["content_id"],
+        category=item["category"],
+        title=item["title"],
+        summary=item["summary"],
+        source_url=item["source_url"],
+        source_domain=item["source_domain"],
+        published_at=item["published_at"],
+        media_url=image_url,
+        media_type="IMAGE",
+        media_rights_status=item.get("media_rights_status", "AUTHORIZED"),
+        caption=item["title"],
     )
-
     g_res = guard.verify_and_guard(bundle)
-    print(f"Duplicate Guard Check: {'PASS' if g_res.is_valid else 'FAIL'}")
-
     if not g_res.is_valid:
-        print(f"Guard Reason: {g_res.message}")
+        print(f"ERROR: Duplicate guard rejected item: {g_res.message}")
         return False
 
     if config.dry_run:
-        print("DRY_RUN MODE ACTIVE — Simulating Instagram Reel Container Creation & Polling...")
-        print("INSTAGRAM CONTAINER CREATED: 17983471092837401")
-        print("INSTAGRAM CONTAINER STATUS: FINISHED")
-        print("REAL INSTAGRAM MEDIA ID: 17983471092837401_DRY_RUN")
-        guard.record_published_item(bundle=bundle, media_id="17983471092837401_DRY_RUN")
-        print("Status: SUCCESS (DRY_RUN VERIFIED)")
-        return True
-    else:
-        try:
-            client = InstagramAPIClient(user_id=config.user_id, access_token=config.access_token)
-            reel_pub = InstagramReelPublisher(client=client)
-            pub_res = reel_pub.publish_reel(video_url=bundle.media_url, caption=bundle.caption)
-            if pub_res.success:
-                print(f"REAL INSTAGRAM MEDIA ID: {pub_res.media_id}")
-                guard.record_published_item(bundle=bundle, media_id=pub_res.media_id or "")
-                return True
-            else:
-                print(f"Publish Failed: {pub_res.message}")
-                return False
-        except Exception as e:
-            print(f"Reel Publishing Exception: {e}")
+        print("DRY RUN MODE ACTIVE — Cannot perform real publication test in dry run mode.")
+        print("Set INSTAGRAM_DRY_RUN=false to run real production publication test.")
+        return False
+
+    try:
+        client = InstagramAPIClient(user_id=config.user_id, access_token=config.access_token)
+        publisher = InstagramImagePublisher(client=client)
+        result = publisher.publish_image(image_url=image_url, caption=bundle.caption)
+
+        if result.success and result.media_id:
+            print("CONTAINER CREATED: YES")
+            print("CONTAINER FINISHED: YES")
+            print("MEDIA_PUBLISH REQUEST: SUCCESS")
+            print(f"MEDIA ID: {result.media_id}")
+            print("META VERIFICATION: SUCCESS")
+            print("INSTAGRAM PUBLICATION: CONFIRMED")
+            print(f"Creation ID: {result.creation_id}")
+            print(f"Media ID: {result.media_id}")
+            guard.record_published_item(bundle, media_id=result.media_id)
+            print("REAL IMAGE PUBLISHING READY")
+            return True
+        else:
+            print("INSTAGRAM PUBLICATION: FAILED")
+            print(f"Stage: MEDIA_PUBLISH")
+            print(f"Error: {result.message}")
             return False
+    except Exception as e:
+        print("INSTAGRAM PUBLICATION: FAILED")
+        print(f"Error: {e}")
+        return False
 
 
 if __name__ == "__main__":
     main()
+

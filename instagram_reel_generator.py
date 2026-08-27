@@ -353,3 +353,32 @@ class InstagramReelGenerator:
                 "reason": str(e),
                 "reel_path": None,
             }
+
+    def cleanup_stale_reels(self, keep_files: Optional[set] = None, max_age_days: int = 7) -> int:
+        """Safely cleans up old generated MP4 files while retaining queued or audit-required media."""
+        if keep_files is None:
+            keep_files = set()
+
+        cleaned_count = 0
+        now = time.time()
+        max_age_sec = max_age_days * 86400
+
+        if not os.path.exists(self.output_dir):
+            return 0
+
+        for fname in os.listdir(self.output_dir):
+            if fname.endswith(".mp4"):
+                fpath = os.path.join(self.output_dir, fname)
+                filename_base = os.path.basename(fpath)
+                if filename_base in keep_files or fpath in keep_files:
+                    continue
+                try:
+                    mtime = os.path.getmtime(fpath)
+                    if (now - mtime) > max_age_sec:
+                        os.remove(fpath)
+                        cleaned_count += 1
+                        logger.info(f"Cleaned up stale generated Reel: {filename_base}")
+                except Exception as e:
+                    logger.warning(f"Failed to remove stale reel {fname}: {e}")
+        return cleaned_count
+

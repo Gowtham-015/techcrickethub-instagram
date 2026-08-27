@@ -215,8 +215,10 @@ class InstagramAutomationEngine:
         self.logger.info("Starting automation cycle...")
 
         discovered_count = 0
-        valid_count = 0
+        validated_count = 0
+        rejected_count = 0
         duplicate_count = 0
+        media_failed_count = 0
         queued_count = 0
         published_count = 0
         failed_count = 0
@@ -228,7 +230,20 @@ class InstagramAutomationEngine:
             discovered_count = len(raw_items) if isinstance(raw_items, list) else 0
             self.logger.info(f"Discovered {discovered_count} content items from source.")
 
-            items_to_process = raw_items[: self.config.max_items_per_cycle]
+            # Calculate category distribution to prevent Technology starvation (Part 11)
+            cricket_candidates = [i for i in raw_items if i.get("category") == "cricket"]
+            tech_candidates = [i for i in raw_items if i.get("category") == "technology"]
+
+            # Quota selection for this cycle
+            max_limit = self.config.max_items_per_cycle
+            # Ensure Tech is included if available (e.g. 75% Cricket, 25% Tech ratio)
+            if tech_candidates and max_limit >= 4:
+                tech_quota = max(1, int(max_limit * 0.25))
+                cricket_quota = max_limit - tech_quota
+                items_to_process = cricket_candidates[:cricket_quota] + tech_candidates[:tech_quota]
+            else:
+                items_to_process = raw_items[:max_limit]
+
             per_item_audits: List[Dict[str, Any]] = []
 
             for idx, raw_item in enumerate(items_to_process, 1):
@@ -236,6 +251,7 @@ class InstagramAutomationEngine:
                 c_category = "unknown"
                 c_media_type = "UNKNOWN"
                 c_title = "Untitled"
+                c_source = "unknown"
                 try:
                     # 2. Normalization & Source Verification
                     content = self.normalizer.normalize(raw_item)
@@ -243,12 +259,22 @@ class InstagramAutomationEngine:
                     c_category = content.category
                     c_media_type = content.media_type
                     c_title = content.title
+                    c_source = (content.metadata or {}).get("source_domain") or raw_item.get("source_name") or "unknown"
                     media_url = content.image_url if content.media_type == "IMAGE" else content.video_url
 
                     if isinstance(raw_item, dict):
                         ver_res = self.source_verifier.verify_item(raw_item)
                         if not ver_res.is_valid:
-                            self.logger.info(f"Source verification failed for ID '{content_id}': {ver_res.reasons}")
+                            self.logger.warning(
+                                f"FAILED\n"
+                                f"ID: {content_id}\n"
+                                f"Category: {c_category}\n"
+                                f"Media: {c_media_type}\n"
+                                f"Source: {c_source}\n"
+                                f"Stage: SOURCE_VERIFICATION\n"
+                                f"Code: INVALID_SOURCE\n"
+                                f"Reason: Source verification failed: {ver_res.reasons}"
+                            )
                             failed_count += 1
                             per_item_audits.append({
                                 "idx": idx, "content_id": content_id, "category": c_category,
@@ -295,12 +321,20 @@ class InstagramAutomationEngine:
                     source_domain_val = getattr(content, "source_domain", (content.metadata or {}).get("source_domain", ""))
                     rights_val = raw_item.get("media_rights_status") if isinstance(raw_item, dict) else "ORIGINAL_GENERATED"
 
-                    # 4b. Enforce strict REEL No-Fallback policy
+                    # 4b. Enforce strict REEL No-Fallback policy (Part 9)
                     if content.media_type == "REEL" and (not media_url or not media_url.startswith("http")):
                         self.logger.warning(
-                            f"Reel candidate '{content_id}' rejected: REEL_REQUIRED_BUT_MEDIA_UNAVAILABLE"
+                            f"FAILED\n"
+                            f"ID: {content_id}\n"
+                            f"Category: {c_category}\n"
+                            f"Media: {c_media_type}\n"
+                            f"Source: {c_source}\n"
+                            f"Stage: MEDIA_SELECTION\n"
+                            f"Code: REEL_REQUIRED_BUT_MEDIA_UNAVAILABLE\n"
+                            f"Reason: Reel required but valid Reel video URL unavailable"
                         )
-                        failed_count += 1
+                        media_failed_count += 1
+                        rejected_count += 1
                         self._safe_record_event(
                             "REEL_REQUIRED_BUT_MEDIA_UNAVAILABLE",
                             content_id=content_id,
@@ -310,7 +344,7 @@ class InstagramAutomationEngine:
                         )
                         per_item_audits.append({
                             "idx": idx, "content_id": content_id, "category": c_category,
-                            "media_type": c_media_type, "title": c_title, "result": "FAILED",
+                            "media_type": c_media_type, "title": c_title, "result": "REJECTED",
                             "reason": "REEL_REQUIRED_BUT_MEDIA_UNAVAILABLE"
                         })
                         continue
@@ -324,8 +358,17 @@ class InstagramAutomationEngine:
                             source_url=source_url_val,
                         )
                         if not m_res.is_valid:
-                            self.logger.info(f"Media verification failed for '{content_id}': {m_res.message}")
-                            failed_count += 1
+                            self.logger.warning(
+                                f"FAILED\n"
+                                f"ID: {content_id}\n"
+                                f"Category: {c_category}\n"
+                                f"Media: {c_media_type}\n"
+                                f"Source: {c_source}\n"
+                                f"Stage: LOCAL_MEDIA_VERIFICATION\n"
+                                f"Code: {m_res.error_code}\n"
+                                f"Reason: Media verification failed: {m_res.message}"
+                            )
+                            media_failed_count += 1
                             self._safe_record_event(
                                 "MEDIA_FAILED",
                                 content_id=content_id,
@@ -356,7 +399,16 @@ class InstagramAutomationEngine:
                     )
                     b_res = self.bundle_validator.validate_bundle(bundle)
                     if not b_res.is_valid:
-                        self.logger.info(f"ContentBundle integrity check failed for '{content_id}': {b_res.message}")
+                        self.logger.warning(
+                            f"FAILED\n"
+                            f"ID: {content_id}\n"
+                            f"Category: {c_category}\n"
+                            f"Media: {c_media_type}\n"
+                            f"Source: {c_source}\n"
+                            f"Stage: BUNDLE_VALIDATION\n"
+                            f"Code: CONTENT_INTEGRITY_FAILED\n"
+                            f"Reason: ContentBundle invalid: {b_res.message}"
+                        )
                         failed_count += 1
                         self._safe_record_event(
                             "CONTENT_INTEGRITY_FAILED",
@@ -376,17 +428,11 @@ class InstagramAutomationEngine:
                     if media_url:
                         asset = self.acquirer.acquire_media(url=media_url, media_type=content.media_type)
 
-                    # 6. Content Scoring, Match Priority & 75% Cricket Balancer
-                    score_obj = self.scorer.score_content(content, asset=asset)
-
-                    # Apply Match-Day priority multiplier
                     # 6. Content Scoring & Balance Enforcement
                     match_summary = self.match_intel.analyze_matches()
+                    score_obj = self.scorer.score_content(content, asset=asset)
                     if match_summary.is_match_day and content.category == "cricket":
-                        score_obj = self.scorer.score_content(content, asset=asset)
                         score_obj.total_score = min(100, int(score_obj.total_score * match_summary.priority_multiplier))
-                    else:
-                        score_obj = self.scorer.score_content(content, asset=asset)
 
                     balance = self.cricket_balancer.evaluate_balance(self.queue.get_all_items())
                     if balance.priority_boost_active and content.category == "cricket":
@@ -397,11 +443,19 @@ class InstagramAutomationEngine:
                     reel_bal = self.reel_balancer.evaluate_balance(self.queue.get_all_items())
                     if getattr(reel_bal, "should_prefer_reels", False) and content.media_type == "REEL":
                         score_obj.total_score = min(100, int(score_obj.total_score * 1.3))
+
                     if score_obj.decision == "REJECT":
-                        self.logger.info(
-                            f"Content ID '{content_id}' rejected by ContentScorer: Score {score_obj.total_score}/100"
+                        self.logger.warning(
+                            f"REJECTED\n"
+                            f"ID: {content_id}\n"
+                            f"Category: {c_category}\n"
+                            f"Media: {c_media_type}\n"
+                            f"Source: {c_source}\n"
+                            f"Stage: CONTENT_SCORING\n"
+                            f"Code: SCORE_BELOW_THRESHOLD\n"
+                            f"Reason: Rejected by ContentScorer (Score: {score_obj.total_score}/100)"
                         )
-                        failed_count += 1
+                        rejected_count += 1
                         self._safe_record_event(
                             "REJECTED",
                             content_id=content_id,
@@ -412,7 +466,7 @@ class InstagramAutomationEngine:
                         )
                         per_item_audits.append({
                             "idx": idx, "content_id": content_id, "category": c_category,
-                            "media_type": c_media_type, "title": c_title, "result": "FAILED",
+                            "media_type": c_media_type, "title": c_title, "result": "REJECTED",
                             "reason": f"Rejected by ContentScorer (Score: {score_obj.total_score})"
                         })
                         continue
@@ -469,7 +523,7 @@ class InstagramAutomationEngine:
                         })
                         continue
 
-                    valid_count += 1
+                    validated_count += 1
 
                     # 9. Smart Scheduling Timestamp Calculation
                     scheduled_slot = self.smart_scheduler.calculate_next_slot(
@@ -517,7 +571,16 @@ class InstagramAutomationEngine:
                 except InstagramError as e:
                     failed_count += 1
                     err_msg = redact_token(str(e))
-                    self.logger.warning(f"Item processing error: {err_msg}")
+                    self.logger.warning(
+                        f"FAILED\n"
+                        f"ID: {content_id}\n"
+                        f"Category: {c_category}\n"
+                        f"Media: {c_media_type}\n"
+                        f"Source: {c_source}\n"
+                        f"Stage: CYCLE_PROCESSING\n"
+                        f"Code: INSTAGRAM_ERROR\n"
+                        f"Reason: {err_msg}"
+                    )
                     per_item_audits.append({
                         "idx": idx, "content_id": content_id, "category": c_category,
                         "media_type": c_media_type, "title": c_title, "result": "FAILED",
@@ -526,7 +589,16 @@ class InstagramAutomationEngine:
                 except Exception as e:
                     failed_count += 1
                     err_msg = redact_token(str(e))
-                    self.logger.warning(f"Unexpected item processing error: {err_msg}")
+                    self.logger.warning(
+                        f"FAILED\n"
+                        f"ID: {content_id}\n"
+                        f"Category: {c_category}\n"
+                        f"Media: {c_media_type}\n"
+                        f"Source: {c_source}\n"
+                        f"Stage: CYCLE_PROCESSING\n"
+                        f"Code: UNEXPECTED_ERROR\n"
+                        f"Reason: {err_msg}"
+                    )
                     per_item_audits.append({
                         "idx": idx, "content_id": content_id, "category": c_category,
                         "media_type": c_media_type, "title": c_title, "result": "FAILED",
@@ -618,9 +690,15 @@ class InstagramAutomationEngine:
                     )
 
             self.logger.info(
-                f"Cycle summary: Discovered: {discovered_count}, Valid: {valid_count}, "
-                f"Duplicates: {duplicate_count}, Queued: {queued_count}, "
-                f"Due Processed: {due_processed}, Published: {published_count}, Failed: {failed_count}"
+                f"Cycle Summary:\n"
+                f"  Discovered: {discovered_count}\n"
+                f"  Validated: {validated_count}\n"
+                f"  Rejected: {rejected_count}\n"
+                f"  Duplicates: {duplicate_count}\n"
+                f"  Media Failed: {media_failed_count}\n"
+                f"  Queued: {queued_count}\n"
+                f"  Published: {published_count}\n"
+                f"  Failed: {failed_count}"
             )
 
         except Exception as e:
@@ -629,13 +707,13 @@ class InstagramAutomationEngine:
 
         # 11. Record metrics in Health Tracker & Cloud Runtime
         self.health_tracker.record_cycle(
-            processed=valid_count,
+            processed=validated_count,
             published=published_count,
             failed=failed_count,
             error=cycle_error,
         )
         self.cloud_runtime.record_cycle_complete(
-            processed=valid_count,
+            processed=validated_count,
             published=published_count,
             failed=failed_count,
             error=cycle_error,
@@ -643,8 +721,10 @@ class InstagramAutomationEngine:
 
         return {
             "discovered": discovered_count,
-            "valid": valid_count,
+            "validated": validated_count,
+            "rejected": rejected_count,
             "duplicates": duplicate_count,
+            "media_failed": media_failed_count,
             "queued": queued_count,
             "published": published_count,
             "failed": failed_count,
@@ -652,6 +732,7 @@ class InstagramAutomationEngine:
             "duration_seconds": round(time.time() - cycle_start, 2),
             "dry_run": self.config.dry_run,
         }
+
 
     def run(self) -> None:
         """Starts the continuous automation loop until stopped or interrupted."""

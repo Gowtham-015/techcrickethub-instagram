@@ -241,13 +241,14 @@ class InstagramRealNewsSource(InstagramContentSource):
                                 "source_name": source_domain,
                                 "category": category,
                             },
-                            duration_sec=1.5,
+                            duration_sec=6.0,
                         )
                         if gen_res.get("success") and gen_res.get("reel_path"):
                             rel_video = os.path.basename(gen_res["reel_path"])
                             raw_video_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/{rel_video}"
-                            video_url = self.upload_to_public_host(gen_res["reel_path"], raw_video_url)
+                            video_url = raw_video_url
                             media_rights_status = "ORIGINAL_GENERATED"
+
                         else:
                             logger.warning(f"Reel generation returned unsuccessful for {content_id}: REEL_GENERATION_FAILED")
                     except Exception as reel_err:

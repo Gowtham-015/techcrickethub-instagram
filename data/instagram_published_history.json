@@ -305,6 +305,24 @@
       "published_at": "2026-08-26T18:30:17.544496+00:00",
       "instagram_permalink": "",
       "status": "PUBLISHED"
+    },
+    {
+      "instagram_media_id": "189999999999",
+      "content_id": "dup-001",
+      "canonical_source_url": "https://cricinfo.com/match-101",
+      "source_hash": "3eb2bcc2f47e3b1e529806ced59637444377855e6579eee5ec02319d2702b07e",
+      "title": "Australia vs England Test Highlight",
+      "normalized_title": "australia vs england test highlight",
+      "title_hash": "b6526a3cb6cc919b19dc850b06782b270f2f72759bb20398fcb1923fa2387b14",
+      "content_hash": "f9faf639204e7fa672a7a4b13d455f6ca5cb7b6f57a4847817da251f234c4ff1",
+      "media_hash": "",
+      "media_url": "https://raw.githubusercontent.com/test.mp4",
+      "caption_hash": "b6526a3cb6cc919b19dc850b06782b270f2f72759bb20398fcb1923fa2387b14",
+      "category": "cricket",
+      "media_type": "REEL",
+      "published_at": "2026-08-27T05:23:47.180182+00:00",
+      "instagram_permalink": "",
+      "status": "PUBLISHED"
     }
   ]
 }

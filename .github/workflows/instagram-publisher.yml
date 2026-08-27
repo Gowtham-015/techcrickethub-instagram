@@ -50,21 +50,46 @@ jobs:
           python-version: '3.10'
           cache: 'pip'
 
+      - name: Install System Dependencies & FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          echo "FFMPEG INSTALLED"
+
       - name: Install Python Dependencies
         run: |
-          # install ffmpeg pre-installed on ubuntu-latest runners for Reel processing
-          echo "WORKFLOW STARTED"
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          echo "STATE RESTORED"
+          echo "DEPENDENCIES INSTALLED"
 
       - name: Run Test Suite
         run: |
           python -m pytest tests/ -v
 
-      - name: Execute Production Publisher
+      - name: Run Preflight Diagnostics
+        run: |
+          python main.py --production-diagnostics || true
+
+      - name: Commit & Push Generated Media BEFORE Meta Publication
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f data/generated_reels/*.mp4 media/generated/*.jpg || true
+          if ! git diff --staged --quiet; then
+            git commit -m "Chore: commit generated media before Meta publication [skip ci]"
+            git pull origin main --rebase -X ours || git pull origin main --rebase
+            git push origin main
+            echo "MEDIA COMMITTED AND PUSHED TO GITHUB RAW"
+          fi
+
+      - name: Execute Production Publisher Cycle
         run: |
           python main.py --run-once
+
+      - name: Update Heartbeat & Cloud Status
+        if: always()
+        run: |
+          python main.py --cloud-status || true
 
       - name: Commit & Push Persistent History
         if: always()
@@ -73,9 +98,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f data/*.json || true
           if ! git diff --staged --quiet; then
-            git commit -m "Chore: update published history [skip ci]"
+            git commit -m "Chore: update published history and state [skip ci]"
             git pull origin main --rebase -X ours || git pull origin main --rebase
             git push origin main
             echo "STATE COMMITTED"
             echo "STATE PUSHED"
           fi
+

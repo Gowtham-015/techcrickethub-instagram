@@ -83,79 +83,96 @@ class InstagramImagePublisher:
         """
         creation_id: Optional[str] = None
         try:
-            # 1. Validate image URL
+            # 1. Validate image URL format & scheme
             self.validate_image_url(image_url)
 
-            # 2. Prepare container creation payload
-            container_payload = {"image_url": image_url.strip()}
-            if caption and isinstance(caption, str) and caption.strip():
-                container_payload["caption"] = caption.strip()
-
-            # 3. Create media container (Step 1)
-            self.client.logger.info(f"Creating media container for user {self.client.user_id}...")
-            container_response = self.client.post(
-                f"/{self.client.user_id}/media",
-                data=container_payload,
-            )
-
-            creation_id = container_response.get("id")
-            if not creation_id:
-                raise InstagramAPIError(
-                    "Container creation succeeded but no 'id' (creation_id) was returned by Meta API.",
-                    token=self.client.access_token,
+            # 1b. Validate PUBLIC media accessibility externally via HTTP GET
+            from instagram_media_verifier import InstagramMediaVerifier
+            public_check = InstagramMediaVerifier.validate_meta_media_accessibility(image_url, media_type="IMAGE")
+            if not public_check.get("is_valid"):
+                err_msg = f"MEDIA_PUBLICATION_BLOCKED: {public_check.get('error', 'Public URL verification failed')}"
+                self.client.logger.error(err_msg)
+                return PublishResult(
+                    success=False,
+                    creation_id=None,
+                    media_id=None,
+                    message=err_msg,
                 )
 
-            self.client.logger.info(f"Media container created successfully. creation_id: {creation_id}")
+            # 2. Acquire Atomic Publish Lock for Meta API calls
+            from instagram_publish_lock import InstagramPublishLock
+            with InstagramPublishLock(timeout_seconds=10.0):
+                # Prepare container creation payload
+                container_payload = {"image_url": image_url.strip()}
+                if caption and isinstance(caption, str) and caption.strip():
+                    container_payload["caption"] = caption.strip()
 
-            # 4. Check container status / wait for processing
-            import time
-            for attempt in range(1, 6):
-                try:
-                    status_res = self.client.get(f"/{creation_id}", params={"fields": "status_code"})
-                    sc = str(status_res.get("status_code", "")).upper()
-                    if sc in ("FINISHED", "READY", ""):
-                        break
-                    self.client.logger.info(f"Container status is '{sc}'. Waiting 2s for Meta processing...")
-                    time.sleep(2)
-                except Exception:
-                    time.sleep(2)
+                # Create media container (Step 1)
+                self.client.logger.info(f"Creating media container for user {self.client.user_id}...")
+                container_response = self.client.post(
+                    f"/{self.client.user_id}/media",
+                    data=container_payload,
+                )
 
-            # 5. Publish media container (Step 2) with retry if processing
-            media_id = None
-            for pub_attempt in range(1, 4):
-                try:
-                    self.client.logger.info(f"Publishing container {creation_id} (Attempt {pub_attempt}/3)...")
-                    publish_response = self.client.post(
-                        f"/{self.client.user_id}/media_publish",
-                        data={"creation_id": creation_id},
+                creation_id = container_response.get("id")
+                if not creation_id:
+                    raise InstagramAPIError(
+                        "Container creation succeeded but no 'id' (creation_id) was returned by Meta API.",
+                        token=self.client.access_token,
                     )
-                    media_id = publish_response.get("id")
-                    if not media_id:
-                        raise InstagramAPIError(
-                            "Media publish request succeeded but no 'id' (media_id) was returned by Meta API.",
-                            token=self.client.access_token,
+
+                self.client.logger.info(f"Media container created successfully. creation_id: {creation_id}")
+
+                # Check container status / wait for processing
+                import time
+                for attempt in range(1, 6):
+                    try:
+                        status_res = self.client.get(f"/{creation_id}", params={"fields": "status_code"})
+                        sc = str(status_res.get("status_code", "")).upper()
+                        if sc in ("FINISHED", "READY", ""):
+                            break
+                        self.client.logger.info(f"Container status is '{sc}'. Waiting 2s for Meta processing...")
+                        time.sleep(2)
+                    except Exception:
+                        time.sleep(2)
+
+                # Publish media container (Step 2)
+                media_id = None
+                for pub_attempt in range(1, 4):
+                    try:
+                        self.client.logger.info(f"Publishing container {creation_id} (Attempt {pub_attempt}/3)...")
+                        publish_response = self.client.post(
+                            f"/{self.client.user_id}/media_publish",
+                            data={"creation_id": creation_id},
                         )
-                    break
-                except InstagramAPIError as e:
-                    if "Media ID is not available" in str(e) and pub_attempt < 3:
-                        self.client.logger.info("Meta container processing in progress. Retrying publish in 3s...")
-                        time.sleep(3)
-                        continue
-                    raise e
-            if not media_id:
-                raise InstagramAPIError(
-                    "Media publish request succeeded but no 'id' (media_id) was returned by Meta API.",
-                    token=self.client.access_token,
+                        media_id = publish_response.get("id")
+                        if not media_id:
+                            raise InstagramAPIError(
+                                "Media publish request succeeded but no 'id' (media_id) was returned by Meta API.",
+                                token=self.client.access_token,
+                            )
+                        break
+                    except InstagramAPIError as e:
+                        if "Media ID is not available" in str(e) and pub_attempt < 3:
+                            self.client.logger.info("Meta container processing in progress. Retrying publish in 3s...")
+                            time.sleep(3)
+                            continue
+                        raise e
+                if not media_id:
+                    raise InstagramAPIError(
+                        "Media publish request succeeded but no 'id' (media_id) was returned by Meta API.",
+                        token=self.client.access_token,
+                    )
+
+                self.client.logger.info(f"Image published successfully. media_id: {media_id}")
+
+                return PublishResult(
+                    success=True,
+                    creation_id=str(creation_id),
+                    media_id=str(media_id),
+                    message="Image published successfully to Instagram.",
                 )
 
-            self.client.logger.info(f"Image published successfully. media_id: {media_id}")
-
-            return PublishResult(
-                success=True,
-                creation_id=str(creation_id),
-                media_id=str(media_id),
-                message="Image published successfully to Instagram.",
-            )
 
         except InstagramError as e:
             msg = redact_token(str(e), token=self.client.access_token)
