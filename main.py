@@ -3052,10 +3052,31 @@ def main():
         help="Run real Image production publish verification",
     )
     parser.add_argument(
+        "--production-live-diagnostics",
+        action="store_true",
+        help="Run Phase 15 full production live diagnostics across content, media, credentials, and workflow",
+    )
+    parser.add_argument(
+        "--live-real-reel-test",
+        action="store_true",
+        help="Run live Phase 15 real Reel production publish test",
+    )
+    parser.add_argument(
+        "--live-real-image-test",
+        action="store_true",
+        help="Run live Phase 15 real Image production publish test",
+    )
+    parser.add_argument(
+        "--production-run-once",
+        action="store_true",
+        help="Perform a single authoritative Phase 15 production cycle",
+    )
+    parser.add_argument(
         "--cloud-status",
         action="store_true",
         help="Display GitHub Actions 24/7 cloud status and heartbeat metrics",
     )
+
     parser.add_argument(
         "--meta-publish-test",
         action="store_true",
@@ -3270,15 +3291,22 @@ def main():
     elif args.phase_14_diagnostics:
         success = phase_14_diagnostics()
         sys.exit(0 if success else 1)
-    elif getattr(args, "real_reel_production_test", False):
+    elif getattr(args, "real_reel_production_test", False) or getattr(args, "live_real_reel_test", False):
         success = real_reel_production_test()
         sys.exit(0 if success else 1)
-    elif getattr(args, "real_image_production_test", False):
+    elif getattr(args, "real_image_production_test", False) or getattr(args, "live_real_image_test", False):
         success = real_image_production_test()
+        sys.exit(0 if success else 1)
+    elif getattr(args, "production_live_diagnostics", False):
+        success = production_diagnostics()
+        sys.exit(0 if success else 1)
+    elif getattr(args, "production_run_once", False):
+        success = run_once()
         sys.exit(0 if success else 1)
     elif getattr(args, "cloud_status", False):
         success = cloud_status()
         sys.exit(0 if success else 1)
+
     elif args.production_diagnostics:
         success = production_diagnostics()
         sys.exit(0 if success else 1)

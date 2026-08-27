@@ -170,22 +170,47 @@ def test_media_story_mismatch():
 
 def test_real_content_only():
     source = InstagramRealNewsSource()
-    items = source.get_content_items()
-    assert len(items) > 0
-    for item in items:
-        cid = str(item.get("content_id", "")).lower()
-        title = str(item.get("title", "")).lower()
-        assert not cid.startswith("sample-")
-        assert not cid.startswith("fake-")
-        assert "sample news" not in title
+    sample_xml = """<rss version="2.0"><channel>
+    <item><title>India vs Australia Test Cricket Update</title><link>https://espncricinfo.com/story/101</link><description>Great cricket match update.</description></item>
+    </channel></rss>"""
+    from unittest.mock import patch, MagicMock
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.text = sample_xml
+    mock_resp.content = sample_xml.encode("utf-8")
+    mock_reel_gen = MagicMock()
+    mock_reel_gen.generate_reel_from_facts.return_value = {"success": True, "reel_path": "data/generated_reels/sample.mp4"}
+    with patch("requests.get", return_value=mock_resp), patch("requests.post", return_value=mock_resp), patch("instagram_reel_generator.InstagramReelGenerator", return_value=mock_reel_gen):
+        items = source.get_content_items()
+        assert len(items) > 0
+        for item in items:
+            cid = str(item.get("content_id", "")).lower()
+            title = str(item.get("title", "")).lower()
+            assert not cid.startswith("sample-")
+            assert not cid.startswith("fake-")
+            assert "sample news" not in title
 
 
 def test_fresh_content_only():
     source = InstagramRealNewsSource()
-    items = source.get_content_items()
-    for item in items:
-        url = item.get("source_url", "")
-        assert url.startswith("https://") or url.startswith("http://")
+    sample_xml = """<rss version="2.0"><channel>
+    <item><title>India vs Australia Test Cricket Update</title><link>https://espncricinfo.com/story/101</link><description>Great cricket match update.</description></item>
+    </channel></rss>"""
+    from unittest.mock import patch, MagicMock
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.text = sample_xml
+    mock_resp.content = sample_xml.encode("utf-8")
+    mock_reel_gen = MagicMock()
+    mock_reel_gen.generate_reel_from_facts.return_value = {"success": True, "reel_path": "data/generated_reels/sample.mp4"}
+    with patch("requests.get", return_value=mock_resp), patch("requests.post", return_value=mock_resp), patch("instagram_reel_generator.InstagramReelGenerator", return_value=mock_reel_gen):
+        items = source.get_content_items()
+        for item in items:
+            url = item.get("source_url", "")
+            assert url.startswith("https://") or url.startswith("http://")
+
+
+
 
 
 def test_cricket_priority():

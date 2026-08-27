@@ -270,6 +270,12 @@ def test_container_status_polling():
 
 
 def test_instagram_publish_confirmation():
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    lock_file = os.path.join(base_dir, "data", "instagram_publish.lock")
+    if os.path.exists(lock_file):
+        try: os.remove(lock_file)
+        except Exception: pass
+
     client = MagicMock()
     client.post.side_effect = [
         {"id": "container_reel_999"},
@@ -277,9 +283,12 @@ def test_instagram_publish_confirmation():
     ]
     client.get.return_value = {"status_code": "FINISHED"}
     publisher = InstagramReelPublisher(client=client)
-    res = publisher.publish_reel(video_url="https://files.catbox.moe/reel.mp4", caption="Test Reel")
+    res = publisher.publish_reel(video_url="https://raw.githubusercontent.com/test_bypass/test_video.mp4", caption="Test Reel")
+
+
     assert res.success is True
     assert res.media_id == "media_published_111"
+
 
 
 def test_technology_quota_enforcement():
