@@ -196,7 +196,15 @@ class InstagramFinalPublishGuard:
                 bundle=bundle,
             )
 
+        if media_bytes is None and bundle.media_url and os.path.exists(bundle.media_url):
+            try:
+                with open(bundle.media_url, "rb") as mf:
+                    media_bytes = mf.read()
+            except Exception:
+                pass
+
         published_items = self.get_published_history()
+
 
         # 1. Canonical Source URL Check
         canon_url = self.canonicalize_url(bundle.source_url)
