@@ -48,6 +48,10 @@ class InstagramRealVideoSource:
             "https://www.youtube.com/feeds/videos.xml?channel_id=UCsTcErHg8oDvUnTzoqsYeNw",  # Tech Open Feed
             "https://feeds.feedburner.com/TechCrunch/videos",
         ]
+        self.geopolitics_video_feeds = [
+            "https://www.youtube.com/feeds/videos.xml?channel_id=UC16niRr50-MSBwiO3YDb3RA",  # Global News Feed
+            "https://www.youtube.com/feeds/videos.xml?channel_id=UCvJJ_Jz9H012f2-zpEJeZJA",  # World Affairs Feed
+        ]
 
     @staticmethod
     def generate_stable_id(url: str, source_name: str) -> str:
@@ -73,11 +77,16 @@ class InstagramRealVideoSource:
         try:
             import yt_dlp
             ydl_opts = {
-                "format": "bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[ext=mp4][height<=720]/mp4",
+                "format": "best[ext=mp4]/b[ext=mp4]/mp4/best",
                 "outtmpl": out_template,
                 "quiet": True,
                 "no_warnings": True,
                 "max_filesize": 50000000,
+                "extractor_args": {
+                    "youtube": {
+                        "player_client": ["android", "web"],
+                    }
+                },
             }
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(video_url, download=True)
@@ -109,8 +118,15 @@ class InstagramRealVideoSource:
 
     def discover_video_items(self, category: str = "cricket", limit: int = 5) -> List[Dict[str, Any]]:
         """Discovers real video items with direct video file URLs and verified rights metadata."""
-        feeds = self.cricket_video_feeds if category == "cricket" else self.tech_video_feeds
+        if category == "cricket":
+            feeds = self.cricket_video_feeds
+        elif category == "geopolitics":
+            feeds = self.geopolitics_video_feeds
+        else:
+            feeds = self.tech_video_feeds
+
         results: List[Dict[str, Any]] = []
+
 
         for feed_url in feeds:
             if len(results) >= limit:
