@@ -273,6 +273,32 @@ class InstagramReelGenerator:
                 ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
                 frame_pattern = os.path.join(self.output_dir, f"frame_{content_id}_%04d.png").replace("\\", "/")
 
+                # Check for background music track
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+                cat_audio = os.path.join(base_dir, "media", "audio", f"{category.lower()}_theme.mp3")
+                gen_audio = os.path.join(base_dir, "media", "audio", "trending_theme.mp3")
+
+                audio_file = None
+                if os.path.exists(cat_audio):
+                    audio_file = cat_audio
+                elif os.path.exists(gen_audio):
+                    audio_file = gen_audio
+
+                if audio_file:
+                    audio_input_args = [
+                        "-stream_loop", "-1",
+                        "-i", audio_file.replace("\\", "/"),
+                        "-t", str(duration_sec),
+                    ]
+                else:
+                    # Rhythmic broadcast audio synth profile
+                    synth_audio = f"sine=frequency=220:sample_rate=48000:duration={duration_sec}"
+                    audio_input_args = [
+                        "-f", "lavfi",
+                        "-i", synth_audio,
+                    ]
+
+
                 cmd = [
                     ffmpeg_exe,
                     "-y",
@@ -282,10 +308,7 @@ class InstagramReelGenerator:
                     "0",
                     "-i",
                     frame_pattern,
-                    "-f",
-                    "lavfi",
-                    "-i",
-                    "sine=frequency=261.63:duration=6.0",  # Multi-frequency audio synth
+                ] + audio_input_args + [
                     "-c:v",
                     "libx264",
                     "-pix_fmt",
@@ -302,6 +325,7 @@ class InstagramReelGenerator:
                     str(fps),
                     file_path,
                 ]
+
 
                 res = subprocess.run(cmd, cwd=self.output_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
                 if res.returncode != 0:

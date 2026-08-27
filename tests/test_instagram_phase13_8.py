@@ -180,6 +180,9 @@ def test_reel_container_status_required():
 
 
 def test_real_publish_confirmation_required():
+    from instagram_publish_lock import InstagramPublishLock
+    InstagramPublishLock().release_force()
+
     client = MagicMock()
     client.post.side_effect = [
         {"id": "container_123"},
@@ -190,6 +193,7 @@ def test_real_publish_confirmation_required():
     res = publisher.publish_reel(video_url="https://files.catbox.moe/test.mp4", caption="Test Reel")
     assert res.success is True
     assert res.media_id == "published_media_456"
+
 
 
 def test_duplicate_before_publish(tmp_path):

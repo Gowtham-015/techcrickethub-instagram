@@ -60,22 +60,64 @@ class InstagramGraphicCardGenerator:
         category: str = "cricket",
         source_name: str = "ESPNCricinfo",
         content_id: str = "",
+        bg_image_path: Optional[str] = None,
     ) -> str:
         """Renders a 1080x1080 square news graphic card and saves to output_dir."""
         width, height = 1080, 1080
-
-        # Color palette
         is_cricket = category.lower() == "cricket"
-        bg_color = (15, 23, 42)  # Dark navy slate
+
+        # Color palette & branding
         header_bg = (16, 185, 129) if is_cricket else (14, 165, 233)  # Emerald green / Sky blue
         header_text = "CRICKET BREAKING NEWS" if is_cricket else "TECHNOLOGY NEWS UPDATE"
-        badge_symbol = "CRICKET" if is_cricket else "TECH UPDATE"
+        accent_color = (52, 211, 153) if is_cricket else (56, 189, 248)
 
-        img = Image.new("RGB", (width, height), color=bg_color)
+        # Base Image Creation
+        temp_bg_path = None
+        if bg_image_path and str(bg_image_path).startswith("http"):
+            try:
+                import requests
+                r = requests.get(bg_image_path, timeout=10)
+                if r.status_code == 200:
+                    temp_bg_path = os.path.join(self.output_dir, f"temp_card_bg_{int(time.time())}.jpg")
+                    with open(temp_bg_path, "wb") as f:
+                        f.write(r.content)
+                    bg_image_path = temp_bg_path
+            except Exception as e:
+                logger.warning(f"Error downloading bg image for graphic card: {e}")
+                bg_image_path = None
+
+        if bg_image_path and os.path.exists(bg_image_path):
+            try:
+                base_img = Image.open(bg_image_path).convert("RGB")
+                # Crop to 1080x1080 square
+                img_ratio = base_img.width / base_img.height
+                if img_ratio > 1.0:
+                    new_h = height
+                    new_w = int(new_h * img_ratio)
+                else:
+                    new_w = width
+                    new_h = int(new_w / img_ratio)
+                resized = base_img.resize((max(width, new_w), max(height, new_h)), Image.Resampling.LANCZOS)
+                left = (resized.width - width) // 2
+                top = (resized.height - height) // 2
+                img = resized.crop((left, top, left + width, top + height)).convert("RGB")
+            except Exception as e:
+                logger.warning(f"Error processing background image: {e}")
+                img = Image.new("RGB", (width, height), color=(15, 23, 42))
+        else:
+            img = Image.new("RGB", (width, height), color=(15, 23, 42))
+
+        # Add frosted glass overlay card for high legibility
+        overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        overlay_draw = ImageDraw.Draw(overlay)
+
+        # Top Header Bar
+        overlay_draw.rectangle([(0, 0), (width, 130)], fill=(*header_bg, 255))
+
+        # Main Text Container Overlay Box (y=160 to 950)
+        overlay_draw.rectangle([(40, 160), (width - 40, 950)], fill=(15, 23, 42, 220), outline=(51, 65, 85, 255), width=3)
+        img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
         draw = ImageDraw.Draw(img)
-
-        # Header bar
-        draw.rectangle([(0, 0), (width, 130)], fill=header_bg)
 
         # Fonts
         font_header = self.get_font(38)
@@ -86,36 +128,46 @@ class InstagramGraphicCardGenerator:
         # Header Text
         draw.text((60, 42), f"★  {header_text}", fill=(255, 255, 255), font=font_header)
 
-        # Title Card Box
-        draw.rectangle([(50, 170), (1030, 680)], fill=(30, 41, 59), outline=(51, 65, 85), width=4)
+        # Title Card Box (Inside container box)
+        draw.rectangle([(70, 190), (width - 70, 600)], fill=(30, 41, 59), outline=accent_color, width=3)
 
-        # Draw wrapped title lines in bold white font
+        # Draw wrapped title lines
         title_lines = self.wrap_text(title, max_chars_per_line=24)
-        y_pos = 210
-        for line in title_lines[:6]:
-            draw.text((90, y_pos), line, fill=(255, 255, 255), font=font_title)
-            y_pos += 75
+        y_pos = 220
+        for line in title_lines[:5]:
+            draw.text((100, y_pos), line, fill=(255, 255, 255), font=font_title)
+            y_pos += 72
 
         # Summary / Facts Box
         if summary and summary.strip() != title.strip():
-            draw.rectangle([(50, 710), (1030, 950)], fill=(24, 32, 47), outline=(71, 85, 105), width=3)
+            draw.rectangle([(70, 630), (width - 70, 920)], fill=(24, 32, 47), outline=(71, 85, 105), width=2)
+            draw.text((100, 650), "★ MATCH HIGHLIGHTS & INSIGHTS", fill=accent_color, font=font_footer)
             summary_clean = re.sub(r"\s+", " ", summary).strip()
-            summary_lines = self.wrap_text(summary_clean, max_chars_per_line=42)
-            y_sum = 740
+            summary_lines = self.wrap_text(summary_clean, max_chars_per_line=40)
+            y_sum = 695
             for s_line in summary_lines[:4]:
-                draw.text((80, y_sum), s_line, fill=(203, 213, 225), font=font_summary)
-                y_sum += 48
+                draw.text((100, y_sum), s_line, fill=(226, 232, 240), font=font_summary)
+                y_sum += 46
 
         # Footer Bar with Source & Brand
         draw.rectangle([(0, 970), (width, height)], fill=(15, 23, 42))
         draw.line([(0, 970), (width, 970)], fill=(51, 65, 85), width=3)
-        draw.text((60, 1000), f"Source: {source_name}", fill=(148, 163, 184), font=font_footer)
-        draw.text((700, 1000), "@techcrickethub", fill=(52, 211, 153) if is_cricket else (56, 189, 248), font=font_footer)
+        draw.text((60, 1005), f"Source: {source_name}", fill=(148, 163, 184), font=font_footer)
+        draw.text((720, 1005), "@techcrickethub", fill=accent_color, font=font_footer)
+
+        # Cleanup temp file
+        if temp_bg_path and os.path.exists(temp_bg_path):
+            try:
+                os.remove(temp_bg_path)
+            except Exception:
+                pass
 
         # Save Image
-        filename = f"card_{content_id or int(time.time())}.jpg"
+        cid = content_id or f"real_{int(time.time())}"
+        filename = f"card_{cid}.jpg"
         file_path = os.path.join(self.output_dir, filename)
         img.save(file_path, quality=95)
-        logger.info(f"Generated news graphic card: {file_path}")
+        logger.info(f"Generated broadcast news graphic card: {file_path}")
 
         return file_path
+

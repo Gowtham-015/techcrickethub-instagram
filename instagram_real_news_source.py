@@ -171,27 +171,29 @@ class InstagramRealNewsSource(InstagramContentSource):
 
                 content_id = self.generate_stable_id(link, source_domain)
 
-                if image_url:
-                    if image_url.startswith("http://"):
-                        image_url = "https://" + image_url[7:]
-                else:
-                    # Generate branded news card image matching exact title & summary
-                    try:
-                        from instagram_graphic_card_generator import InstagramGraphicCardGenerator
+                # Always render broadcast news graphic card for high-resolution, story-matched posts
+                try:
+                    from instagram_graphic_card_generator import InstagramGraphicCardGenerator
 
-                        card_gen = InstagramGraphicCardGenerator()
-                        card_path = card_gen.create_news_card(
-                            title=title,
-                            summary=clean_desc,
-                            category=category,
-                            source_name=source_domain,
-                            content_id=content_id,
-                        )
-                        rel_filename = os.path.basename(card_path)
-                        raw_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/{rel_filename}"
-                        image_url = self.upload_to_public_host(card_path, raw_url)
-                    except Exception as gen_err:
-                        logger.warning(f"Graphic card generation failed for {content_id}: {gen_err}")
+                    card_gen = InstagramGraphicCardGenerator()
+                    card_path = card_gen.create_news_card(
+                        title=title,
+                        summary=clean_desc,
+                        category=category,
+                        source_name=source_domain,
+                        content_id=content_id,
+                        bg_image_path=image_url,
+                    )
+                    rel_filename = os.path.basename(card_path)
+                    raw_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/{rel_filename}"
+                    image_url = self.upload_to_public_host(card_path, raw_url)
+                except Exception as gen_err:
+                    logger.warning(f"Graphic card generation failed for {content_id}: {gen_err}")
+                    if image_url and image_url.startswith("http://"):
+                        image_url = "https://" + image_url[7:]
+                    elif not image_url:
+                        image_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/card_{content_id}.jpg"
+
                         # Standalone inline card fallback to guarantee zero generic sample photos
                         try:
                             from PIL import Image, ImageDraw, ImageFont
