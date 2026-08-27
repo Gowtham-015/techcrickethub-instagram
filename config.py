@@ -76,7 +76,8 @@ class Config:
     heartbeat_timeout_seconds: int = 300
     publish_retry_limit: int = 3
     missed_post_max_age_hours: int = 6
-    final_title_similarity_threshold: float = 0.65
+    final_title_similarity_threshold: float = 0.50
+
 
     @classmethod
     def load_from_env(cls, env_path: Optional[str] = None, validate: bool = True) -> "Config":
