@@ -41,8 +41,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -- . || true
-          git pull origin main --rebase
+          git add -A || true
+          git reset --hard HEAD || true
+          git fetch origin main || true
+          git rebase origin/main -X ours || git rebase --abort || true
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
@@ -75,10 +77,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           mkdir -p data/generated_reels data/acquired_videos media/generated
-          git add -f data/generated_reels/ data/acquired_videos/ media/generated/ data/*.json || true
+          git add -A || true
           if ! git diff --staged --quiet; then
             git commit -m "Chore: commit generated media before Meta publication [skip ci]" || true
-            git pull origin main --rebase || true
+            git fetch origin main || true
+            git rebase origin/main -X ours || git rebase --abort || true
             git push origin main || true
             echo "MEDIA COMMITTED AND PUSHED TO GITHUB RAW"
           fi
@@ -97,13 +100,16 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f data/*.json || true
+          mkdir -p data
+          git add -A || true
           if ! git diff --staged --quiet; then
             git commit -m "Chore: update published history and state [skip ci]" || true
-            git pull origin main --rebase || true
+            git fetch origin main || true
+            git rebase origin/main -X ours || git rebase --abort || true
             git push origin main || true
             echo "STATE COMMITTED"
             echo "STATE PUSHED"
           fi
+
 
 
