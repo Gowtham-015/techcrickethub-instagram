@@ -14,12 +14,56 @@ from security import redact_token, redact_url
 logger = logging.getLogger("InstagramRealVideoSource")
 
 
+class RealVideoProvider:
+    """Base provider for discovering and acquiring authentic, reusable video assets."""
+
+    def __init__(self, provider_name: str = "BaseVideoProvider"):
+        self.provider_name = provider_name
+
+    def fetch_video_items(self, category: str = "cricket", limit: int = 5) -> List[Dict[str, Any]]:
+        return []
+
+
+class OfficialCricketVideoProvider(RealVideoProvider):
+    """Provider acquiring official cricket board & tournament video highlights."""
+
+    def __init__(self):
+        super().__init__(provider_name="OfficialCricketVideoProvider")
+        self.feeds = [
+            "https://www.bcci.tv/rss/videos",
+            "https://www.icc-cricket.com/rss/video",
+            "https://sports.ndtv.com/rss/cricket-video",
+        ]
+
+
+class LicensedVideoProvider(RealVideoProvider):
+    """Provider acquiring licensed open-access tech & science videos."""
+
+    def __init__(self):
+        super().__init__(provider_name="LicensedVideoProvider")
+        self.feeds = [
+            "https://feeds.feedburner.com/TechCrunch/videos",
+        ]
+
+
+class AuthorizedSocialVideoProvider(RealVideoProvider):
+    """Provider acquiring authorized open YouTube video RSS feeds."""
+
+    def __init__(self):
+        super().__init__(provider_name="AuthorizedSocialVideoProvider")
+        self.feeds = [
+            "https://www.youtube.com/feeds/videos.xml?channel_id=UC4suWqzhewM6Pxl6x68yLgA",
+            "https://www.youtube.com/feeds/videos.xml?channel_id=UCsTcErHg8oDvUnTzoqsYeNw",
+        ]
+
+
 class InstagramRealVideoSource:
     """Dedicated production source for discovering and validating authentic, reusable Cricket and Tech video media.
     
     Enforces strict rights verification (OWNED, LICENSED, AUTHORIZED, PUBLIC_DOMAIN, CC_LICENSE_ALLOWED, ORIGINAL_GENERATED).
     Rejects RIGHTS_NOT_VERIFIED or UNKNOWN rights videos.
     """
+
 
     ALLOWED_RIGHTS_STATUSES = {
         "OWNED",

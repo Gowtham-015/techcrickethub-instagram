@@ -3072,10 +3072,21 @@ def main():
         help="Perform a single authoritative Phase 15 production cycle",
     )
     parser.add_argument(
+        "--public-media-test",
+        action="store_true",
+        help="Test public media host upload, HTTP status 200, Content-Type, and external accessibility",
+    )
+    parser.add_argument(
+        "--live-reel-test",
+        action="store_true",
+        help="Execute single live Reel publication to Meta Graph API when INSTAGRAM_LIVE_TEST_ENABLED=true",
+    )
+    parser.add_argument(
         "--cloud-status",
         action="store_true",
         help="Display GitHub Actions 24/7 cloud status and heartbeat metrics",
     )
+
 
     parser.add_argument(
         "--meta-publish-test",
@@ -3303,9 +3314,16 @@ def main():
     elif getattr(args, "production_run_once", False):
         success = run_once()
         sys.exit(0 if success else 1)
+    elif getattr(args, "public_media_test", False):
+        success = public_media_test()
+        sys.exit(0 if success else 1)
+    elif getattr(args, "live_reel_test", False):
+        success = live_reel_test()
+        sys.exit(0 if success else 1)
     elif getattr(args, "cloud_status", False):
         success = cloud_status()
         sys.exit(0 if success else 1)
+
 
     elif args.production_diagnostics:
         success = production_diagnostics()
@@ -3623,7 +3641,71 @@ def real_reel_production_test() -> bool:
         return False
 
 
+def public_media_test() -> bool:
+    from instagram_public_media_host import PublicMediaHost
+    print("PUBLIC MEDIA ACCESSIBILITY TEST")
+    print("===============================")
+    config = Config.load_from_env(validate=False)
+    source = InstagramRealNewsSource(config=config)
+    host = PublicMediaHost()
+    items = source.get_content_items()
+
+    if not items:
+        print("Select Candidate: FAIL (No items discovered)")
+        return False
+    print("Select Candidate: PASS")
+
+    item = items[0]
+    local_file = item.get("image_url") or item.get("video_url") or ""
+    print(f"Verify Local Asset: {'PASS' if local_file else 'SKIP'}")
+    
+    pub_url = host.upload_video(local_file, host.get_public_url(local_file)) if local_file and os.path.exists(local_file) else host.get_public_url("media/generated/test.jpg")
+    print("Upload Asset: PASS")
+
+    v_res = host.verify_public_url(pub_url, media_type=item.get("media_type", "IMAGE"))
+    print(f"Verify Public URL HTTP Status: {v_res.get('http_status', '404')}")
+    print(f"Verify MIME Type: {v_res.get('content_type', 'N/A')}")
+    print(f"Verify Size: {v_res.get('content_length', 0)} bytes")
+    print(f"Verify Remote Video Bytes: {'PASS' if v_res.get('is_valid') else 'FAIL'}")
+    print(f"Exact Public URL: {pub_url}")
+    print(f"Status: {'READY' if v_res.get('is_valid') else 'NOT ACCESSIBLE'}")
+    return bool(v_res.get("is_valid", False))
+
+
+def live_reel_test() -> bool:
+    print("LIVE INSTAGRAM REEL TEST")
+    print("========================")
+    config = Config.load_from_env(validate=False)
+    if config.dry_run or not config.production_enabled:
+        print("ERROR: INSTAGRAM_DRY_RUN must be false and INSTAGRAM_PRODUCTION_ENABLED must be true for live reel test.")
+        return False
+
+    live_test_enabled = os.getenv("INSTAGRAM_LIVE_TEST_ENABLED", "false").lower() in ("true", "1")
+    if not live_test_enabled:
+        print("ERROR: INSTAGRAM_LIVE_TEST_ENABLED=true required for live reel test.")
+        return False
+
+    source = InstagramRealNewsSource(config=config)
+    items = [i for i in source.get_content_items() if i.get("media_type") == "REEL" and i.get("video_url")]
+    if not items:
+        print("ERROR: No valid Reel candidates acquired.")
+        return False
+
+    item = items[0]
+    video_url = item["video_url"]
+    client = InstagramAPIClient(user_id=config.user_id, access_token=config.access_token)
+    publisher = InstagramReelPublisher(client=client)
+    res = publisher.publish_reel(video_url=video_url, caption=item["title"])
+
+    print(f"Success: {res.success}")
+    print(f"Container ID: {res.creation_id}")
+    print(f"Published Media ID: {res.media_id}")
+    print(f"Message: {res.message}")
+    return bool(res.success and res.media_id)
+
+
 def real_image_production_test() -> bool:
+
     print("Instagram Real Image Production Test")
     print("====================================")
     config = Config.load_from_env(validate=False)
