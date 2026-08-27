@@ -1,16 +1,16 @@
 {
   "items": [
     {
-      "queue_id": "q-test-reel-q-00fd6843",
-      "content_id": "test-reel-q-00fd6843",
+      "queue_id": "q-test-reel-q-46e37e61",
+      "content_id": "test-reel-q-46e37e61",
       "media_type": "REEL",
       "title": "Quantum Computing Breakthrough Benchmark Released",
-      "media_url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-00fd6843.mp4",
+      "media_url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-46e37e61.mp4",
       "caption": "Quantum Computing Breakthrough Benchmark Released",
       "category": "technology",
-      "scheduled_at": "2026-08-27T12:30:00.274703+00:00",
+      "scheduled_at": "2026-08-27T12:35:23.795620+00:00",
       "status": "DUPLICATE",
-      "created_at": "2026-08-27T10:10:00.274703+00:00",
+      "created_at": "2026-08-27T11:55:23.795682+00:00",
       "attempt_count": 0,
       "last_error": "Near-duplicate title detected (similarity 0.918): 'Quantum Computing Breakthrough Benchmark Released' vs published 'Quantum Computing Breakthrough Benchmark Unveiled'.",
       "published_media_id": null,
