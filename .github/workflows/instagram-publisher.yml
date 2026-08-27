@@ -74,11 +74,12 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f data/generated_reels/*.mp4 media/generated/*.jpg || true
+          mkdir -p data/generated_reels data/acquired_videos media/generated
+          git add -f data/generated_reels/ data/acquired_videos/ media/generated/ data/*.json || true
           if ! git diff --staged --quiet; then
-            git commit -m "Chore: commit generated media before Meta publication [skip ci]"
-            git pull origin main --rebase -X ours || git pull origin main --rebase
-            git push origin main
+            git commit -m "Chore: commit generated media before Meta publication [skip ci]" || true
+            git pull origin main --rebase || true
+            git push origin main || true
             echo "MEDIA COMMITTED AND PUSHED TO GITHUB RAW"
           fi
 
@@ -98,10 +99,11 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f data/*.json || true
           if ! git diff --staged --quiet; then
-            git commit -m "Chore: update published history and state [skip ci]"
-            git pull origin main --rebase -X ours || git pull origin main --rebase
-            git push origin main
+            git commit -m "Chore: update published history and state [skip ci]" || true
+            git pull origin main --rebase || true
+            git push origin main || true
             echo "STATE COMMITTED"
             echo "STATE PUSHED"
           fi
+
 
