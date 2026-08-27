@@ -73,7 +73,43 @@ class InstagramRealNewsSource(InstagramContentSource):
             except Exception as e:
                 logger.warning(f"Catbox upload attempt {attempt + 1} failed for {local_path}: {e}")
 
+        # Attempt Litterbox upload fallback if Catbox fails
+        try:
+            with open(local_path, "rb") as f:
+                resp = requests.post(
+                    "https://litterbox.catbox.moe/resources/internals/api.php",
+                    data={"reqtype": "fileupload", "time": "24h"},
+                    files={"fileToUpload": f},
+                    headers=headers,
+                    timeout=timeout,
+                )
+                if resp.status_code == 200 and resp.text.strip().startswith("https://litterbox.catbox.moe/"):
+                    logger.info(f"Public host upload (Litterbox) success for {local_path}: {resp.text.strip()}")
+                    return resp.text.strip()
+        except Exception as l_err:
+            logger.warning(f"Litterbox upload fallback failed for {local_path}: {l_err}")
+
+        # If falling back to raw.githubusercontent.com, ensure file is pushed to GitHub Raw immediately
+        if "raw.githubusercontent.com" in fallback_url and os.path.exists(local_path):
+            try:
+                import subprocess
+                rel_n = os.path.basename(local_path)
+                logger.info(f"Ensuring local file '{rel_n}' is pushed to GitHub Raw...")
+                subprocess.run(["git", "add", "-A"], check=False)
+                subprocess.run(["git", "commit", "-m", f"Chore: publish asset {rel_n} [skip ci]"], check=False)
+                token = os.getenv("GITHUB_TOKEN")
+                if token:
+                    repo = os.getenv("GITHUB_REPOSITORY", "Gowtham-015/techcrickethub-instagram")
+                    remote_auth_url = f"https://x-access-token:{token}@github.com/{repo}.git"
+                    subprocess.run(["git", "push", remote_auth_url, "HEAD:main"], check=False)
+                else:
+                    subprocess.run(["git", "push", "origin", "main"], check=False)
+            except Exception as git_err:
+                logger.warning(f"Git push for raw URL failed: {git_err}")
+
         return fallback_url
+
+
 
     @staticmethod
     def parse_rss_date(date_str: Optional[str]) -> Optional[datetime]:
@@ -248,7 +284,8 @@ class InstagramRealNewsSource(InstagramContentSource):
                         if gen_res.get("success") and gen_res.get("reel_path"):
                             rel_video = os.path.basename(gen_res["reel_path"])
                             raw_video_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/{rel_video}"
-                            video_url = raw_video_url
+                            video_url = self.upload_to_public_host(gen_res["reel_path"], raw_video_url)
+
                             media_rights_status = "ORIGINAL_GENERATED"
 
                         else:

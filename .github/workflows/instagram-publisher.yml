@@ -86,8 +86,11 @@ jobs:
           fi
 
       - name: Execute Production Publisher Cycle
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python main.py --run-once
+
 
       - name: Update Heartbeat & Cloud Status
         if: always()
