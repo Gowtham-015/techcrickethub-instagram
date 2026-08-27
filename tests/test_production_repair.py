@@ -27,9 +27,9 @@ class TestProductionRepair(unittest.TestCase):
         mock_resp.getcode.return_value = 404
         mock_resp.headers = {}
         import urllib.error
-        mock_urlopen.side_effect = urllib.error.HTTPError("https://raw.githubusercontent.com/test.mp4", 404, "Not Found", {}, None)
+        mock_urlopen.side_effect = urllib.error.HTTPError("https://raw.githubusercontent.com/test_probe/404.mp4", 404, "Not Found", {}, None)
 
-        res = InstagramMediaVerifier.validate_meta_media_accessibility("https://raw.githubusercontent.com/test.mp4", media_type="REEL")
+        res = InstagramMediaVerifier.validate_meta_media_accessibility("https://raw.githubusercontent.com/test_probe/404.mp4", media_type="REEL")
         self.assertFalse(res["is_valid"])
         self.assertEqual(res["error_code"], "MEDIA_PUBLICATION_BLOCKED")
 
@@ -42,7 +42,7 @@ class TestProductionRepair(unittest.TestCase):
         mock_resp.read.return_value = b"<!DOCTYPE html><html><head><title>404 Not Found</title></head></html>"
         mock_urlopen.return_value.__enter__.return_value = mock_resp
 
-        res = InstagramMediaVerifier.validate_meta_media_accessibility("https://raw.githubusercontent.com/test.mp4", media_type="REEL")
+        res = InstagramMediaVerifier.validate_meta_media_accessibility("https://raw.githubusercontent.com/test_probe/html.mp4", media_type="REEL")
         self.assertFalse(res["is_valid"])
         self.assertEqual(res["error_code"], "MEDIA_PUBLICATION_BLOCKED")
         self.assertIn("HTML webpage", res["error"])
@@ -57,9 +57,10 @@ class TestProductionRepair(unittest.TestCase):
         mock_resp.read.side_effect = [b"\x00\x00\x00\x18ftypisom" + b"\x00" * 4000, b"\x00" * 98304]
         mock_urlopen.return_value.__enter__.return_value = mock_resp
 
-        res = InstagramMediaVerifier.validate_meta_media_accessibility("https://raw.githubusercontent.com/test.mp4", media_type="REEL")
+        res = InstagramMediaVerifier.validate_meta_media_accessibility("https://raw.githubusercontent.com/test_probe/valid.mp4", media_type="REEL")
         self.assertTrue(res["is_valid"])
         self.assertEqual(res["status_code"], "PUBLIC_MEDIA_VALID")
+
 
     def test_local_vs_public_mp4_distinction(self):
         """Test 5: Local file verification distinguishes LOCAL_MEDIA_VALID from PUBLIC_MEDIA_VALID."""

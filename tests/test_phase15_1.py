@@ -41,6 +41,8 @@ class TestPhase151CriticalBugFix:
         ]
 
         engine = InstagramAutomationEngine(config=config, source=mock_source)
+        engine.queue.clear()
+
 
         with patch.object(engine.source_verifier, "verify_source", return_value=MagicMock(is_valid=True)), \
              patch.object(engine.media_verifier, "verify_and_deduplicate") as mock_mv, \
@@ -65,9 +67,11 @@ class TestPhase151CriticalBugFix:
         """A valid generated Reel candidate must enter the queue as PENDING."""
         config = Config.load_from_env(validate=False)
         engine = InstagramAutomationEngine(config=config)
+        engine.queue.clear()
 
         uid = str(uuid.uuid4())[:8]
         test_id = f"test-reel-q-{uid}"
+
 
         test_item = {
             "content_id": test_id,
