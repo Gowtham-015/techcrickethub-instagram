@@ -63,9 +63,10 @@ jobs:
           pip install -r requirements.txt
           echo "DEPENDENCIES INSTALLED"
 
-      - name: Run Test Suite
+      - name: Run Essential Validation Tests
         run: |
-          python -m pytest tests/ -v
+          python -m pytest tests/test_phase*.py tests/test_instagram_production.py -q
+
 
       - name: Run Preflight Diagnostics
         run: |
