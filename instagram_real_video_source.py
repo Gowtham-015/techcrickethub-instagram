@@ -61,6 +61,52 @@ class InstagramRealVideoSource:
         """Calculates SHA256 hex string for video content bytes."""
         return hashlib.sha256(video_bytes).hexdigest()
 
+    def download_video_asset(self, video_url: str) -> Optional[str]:
+        """Dynamically downloads real official video clip (YouTube/enclosure MP4) to data/acquired_videos/."""
+        if not video_url:
+            return None
+
+        out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "acquired_videos")
+        os.makedirs(out_dir, exist_ok=True)
+        out_template = os.path.join(out_dir, "%(id)s.%(ext)s")
+
+        try:
+            import yt_dlp
+            ydl_opts = {
+                "format": "bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[ext=mp4][height<=720]/mp4",
+                "outtmpl": out_template,
+                "quiet": True,
+                "no_warnings": True,
+                "max_filesize": 50000000,
+            }
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(video_url, download=True)
+                fname = ydl.prepare_filename(info)
+                if os.path.exists(fname) and os.path.getsize(fname) > 0:
+                    logger.info(f"Successfully downloaded real video asset: {fname} ({os.path.getsize(fname)} bytes)")
+                    return fname
+        except Exception as e:
+            logger.warning(f"yt_dlp video download failed for {redact_url(video_url)}: {e}")
+
+        # Fallback to direct requests GET if video_url is a direct MP4 file
+        if video_url.lower().endswith(".mp4"):
+            try:
+                resp = requests.get(video_url, headers=self.headers, stream=True, timeout=self.timeout)
+                if resp.status_code == 200:
+                    hasher = hashlib.sha256(video_url.encode("utf-8")).hexdigest()[:12]
+                    target_path = os.path.join(out_dir, f"direct_{hasher}.mp4")
+                    with open(target_path, "wb") as f:
+                        for chunk in resp.iter_content(chunk_size=65536):
+                            if chunk:
+                                f.write(chunk)
+                    if os.path.exists(target_path) and os.path.getsize(target_path) > 0:
+                        return target_path
+            except Exception as ex:
+                logger.warning(f"Direct MP4 download failed for {redact_url(video_url)}: {ex}")
+
+        return None
+
+
     def discover_video_items(self, category: str = "cricket", limit: int = 5) -> List[Dict[str, Any]]:
         """Discovers real video items with direct video file URLs and verified rights metadata."""
         feeds = self.cricket_video_feeds if category == "cricket" else self.tech_video_feeds
