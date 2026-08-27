@@ -1,8 +1,8 @@
 {
-  "worker_id": "Gowtham-4752",
+  "worker_id": "runnervm76f27-3929",
   "worker_status": "RUNNING",
-  "started_at": "2026-08-27T12:02:32.519543+00:00",
-  "last_heartbeat": "2026-08-27T12:02:32.519543+00:00",
+  "started_at": "2026-08-27T12:16:00.767804+00:00",
+  "last_heartbeat": "2026-08-27T12:16:00.767824+00:00",
   "uptime_seconds": 0,
   "last_cycle": "N/A",
   "last_publish_attempt": "N/A",
