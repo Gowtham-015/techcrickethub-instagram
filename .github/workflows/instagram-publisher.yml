@@ -65,7 +65,8 @@ jobs:
 
       - name: Run Essential Validation Tests
         run: |
-          python -m pytest tests/test_phase*.py tests/test_instagram_production.py -q
+          python -m pytest tests/test_phase14_1_comprehensive.py tests/test_phase15.py tests/test_phase15_1.py tests/test_instagram_production.py -q
+
 
 
       - name: Run Preflight Diagnostics
