@@ -11,6 +11,8 @@ import requests
 from config import Config
 from security import redact_token, redact_url
 
+from instagram_content_source import InstagramContentSource
+
 logger = logging.getLogger("InstagramRealVideoSource")
 
 
@@ -57,12 +59,13 @@ class AuthorizedSocialVideoProvider(RealVideoProvider):
         ]
 
 
-class InstagramRealVideoSource:
+class InstagramRealVideoSource(InstagramContentSource):
     """Dedicated production source for discovering and validating authentic, reusable Cricket and Tech video media.
     
     Enforces strict rights verification (OWNED, LICENSED, AUTHORIZED, PUBLIC_DOMAIN, CC_LICENSE_ALLOWED, ORIGINAL_GENERATED).
     Rejects RIGHTS_NOT_VERIFIED or UNKNOWN rights videos.
     """
+
 
 
     ALLOWED_RIGHTS_STATUSES = {
@@ -175,6 +178,104 @@ class InstagramRealVideoSource:
                 logger.warning(f"Direct MP4 download failed for {redact_url(video_url)}: {ex}")
 
         return None
+
+    def format_vertical_reel(self, input_mp4_path: str) -> Optional[str]:
+        """Converts/formats any acquired YouTube or Google video into 9:16 vertical (1080x1920) H.264/AAC Reel MP4."""
+        if not input_mp4_path or not os.path.exists(input_mp4_path):
+            return None
+
+        out_path = input_mp4_path.replace(".mp4", "_reel_916.mp4")
+        if os.path.exists(out_path) and os.path.getsize(out_path) > 0:
+            return out_path
+
+        try:
+            import imageio_ffmpeg
+            import subprocess
+
+            ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+            cmd = [
+                ffmpeg_exe,
+                "-y",
+                "-i", input_mp4_path,
+                "-vf", "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black",
+                "-c:v", "libx264",
+                "-preset", "fast",
+                "-crf", "23",
+                "-c:a", "aac",
+                "-b:a", "128k",
+                out_path,
+            ]
+            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if os.path.exists(out_path) and os.path.getsize(out_path) > 0:
+                logger.info(f"Successfully formatted 9:16 vertical Reel: {out_path} ({os.path.getsize(out_path)} bytes)")
+                return out_path
+        except Exception as e:
+            logger.warning(f"FFmpeg 9:16 vertical formatting failed for {input_mp4_path}: {e}")
+
+        return input_mp4_path
+
+    def upload_to_public_host(self, local_path: str, fallback_url: str) -> str:
+        """Uploads local acquired MP4 file to Catbox CDN with browser User-Agent headers."""
+        if not local_path or not os.path.exists(local_path):
+            return fallback_url
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        }
+
+        for attempt in range(3):
+            try:
+                with open(local_path, "rb") as f:
+                    resp = requests.post(
+                        "https://catbox.moe/user/api.php",
+                        data={"reqtype": "fileupload"},
+                        files={"fileToUpload": f},
+                        headers=headers,
+                        timeout=35,
+                    )
+                    if resp.status_code == 200 and resp.text.strip().startswith("https://files.catbox.moe/"):
+                        logger.info(f"Public host upload (Catbox) success for {local_path}: {resp.text.strip()}")
+                        return resp.text.strip()
+            except Exception as e:
+                logger.warning(f"Catbox upload attempt {attempt + 1} failed for {local_path}: {e}")
+
+        return fallback_url
+
+    def get_content_items(self, category: Optional[str] = None, download_video: bool = True) -> List[Dict[str, Any]]:
+        """Main content discovery interface for InstagramAutomationEngine.
+        
+        Discovers real Cricket and Tech video candidates from YouTube and Google Video feeds.
+        Downloads authentic YouTube/Google video clips via yt-dlp, formats them into 9:16 vertical (1080x1920) Reels,
+        uploads them to public CDN, and attaches the public video URL.
+        """
+        items: List[Dict[str, Any]] = []
+        categories = [category] if category else ["cricket", "technology"]
+
+        for cat in categories:
+            raw_candidates = self.discover_video_items(category=cat, limit=3)
+            for item in raw_candidates:
+                v_url = item.get("video_url")
+                if download_video and v_url and (v_url.startswith("http://") or v_url.startswith("https://")):
+                    # Download YouTube / Google video clip
+                    local_v = self.download_video_asset(v_url)
+                    if local_v and os.path.exists(local_v):
+                        # Format to 9:16 vertical Reel MP4 (1080x1920)
+                        formatted_v = self.format_vertical_reel(local_v)
+                        # Upload to Catbox / GitHub CDN
+                        public_v = self.upload_to_public_host(formatted_v or local_v, v_url)
+                        item["video_url"] = public_v
+                        item["media_type"] = "REEL"
+                        items.append(item)
+                    elif item.get("video_url"):
+                        item["media_type"] = "REEL"
+                        items.append(item)
+                elif item.get("video_url"):
+                    item["media_type"] = "REEL"
+                    items.append(item)
+
+        return items
+
+
 
 
     def discover_video_items(self, category: str = "cricket", limit: int = 5) -> List[Dict[str, Any]]:

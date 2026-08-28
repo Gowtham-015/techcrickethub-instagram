@@ -31,7 +31,9 @@ from instagram_production_audit import InstagramProductionAuditStore
 from instagram_production_gate import InstagramProductionGate
 from local_content_source import LocalContentSource
 from instagram_real_news_source import InstagramRealNewsSource
+from instagram_real_video_source import InstagramRealVideoSource
 from instagram_cricket_data_provider import FallbackCricketProvider
+
 from instagram_cricket_match_intelligence import InstagramCricketMatchIntelligence
 from instagram_cricket_balancer import InstagramCricketBalancer
 from instagram_reel_balancer import InstagramReelBalancer
@@ -67,8 +69,9 @@ class InstagramAutomationEngine:
 
 
         self.config = config or Config.load_from_env(validate=False)
-        self.source = source or InstagramRealNewsSource(config=self.config)
+        self.source = source or InstagramRealVideoSource(config=self.config)
         self.queue = queue or InstagramQueue(max_queue_size=self.config.max_queue_size)
+
         self.pipeline = InstagramContentPipeline(dry_run=self.config.dry_run)
         self.scheduler = scheduler or InstagramScheduler(
             queue=self.queue,
