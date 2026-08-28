@@ -2884,5 +2884,18 @@
     "duration": 0.0,
     "dry_run": false,
     "production_mode": "PRODUCTION"
+  },
+  {
+    "timestamp": "2026-08-28T08:42:21.173735+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "REEL",
+    "category": "cricket",
+    "status": "FAILED",
+    "creation_id": "",
+    "media_id": "",
+    "error_type": "Unexpected error: Could not acquire Instagram publish lock (timed out).",
+    "duration": 0.0,
+    "dry_run": false,
+    "production_mode": "PRODUCTION"
   }
 ]
