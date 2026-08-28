@@ -1,13 +1,13 @@
 {
-  "run_id": "run-1787907647",
-  "started_at": "2026-08-28T09:00:47.899572+00:00",
-  "completed_at": "2026-08-28T09:08:05.493803+00:00",
-  "discovered": 10,
-  "validated": 5,
+  "run_id": "run-1787908582",
+  "started_at": "2026-08-28T09:16:22.926572+00:00",
+  "completed_at": "2026-08-28T09:16:23.427564+00:00",
+  "discovered": 2,
+  "validated": 1,
   "rejected": 0,
   "reels_published": 0,
   "images_published": 0,
   "failures": 1,
   "instagram_media_ids": [],
-  "status": "SUCCESS"
+  "status": "SKIPPED_DRY_RUN"
 }
