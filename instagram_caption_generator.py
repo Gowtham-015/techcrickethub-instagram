@@ -9,6 +9,8 @@ CATEGORY_EMOJIS = {
     "sports": "🏆",
     "technology": "🚀",
     "entertainment": "🎬",
+    "geopolitics": "🌐",
+    "democracy": "🏛️",
     "general news": "📰",
 }
 
@@ -17,8 +19,11 @@ DEFAULT_CATEGORY_HASHTAGS = {
     "sports": ["#Sports", "#SportsNews", "#GameDay", "#Athletes", "#SportsUpdate"],
     "technology": ["#Technology", "#TechNews", "#AI", "#Innovation", "#TechUpdate"],
     "entertainment": ["#Entertainment", "#MovieNews", "#Trending", "#PopCulture"],
+    "geopolitics": ["#Geopolitics", "#WorldNews", "#GlobalAffairs", "#Diplomacy", "#InternationalNews"],
+    "democracy": ["#Democracy", "#Governance", "#PublicPolicy", "#Elections", "#CivicUpdate"],
     "general news": ["#News", "#BreakingNews", "#LatestNews", "#DailyNews", "#NewsUpdate"],
 }
+
 
 
 class HashtagGenerator:

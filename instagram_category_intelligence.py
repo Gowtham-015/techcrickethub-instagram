@@ -79,7 +79,34 @@ class InstagramCategoryIntelligence:
             "box office",
             "show",
         ],
+        "geopolitics": [
+            "geopolitics",
+            "diplomacy",
+            "international relations",
+            "summit",
+            "foreign affairs",
+            "treaty",
+            "g20",
+            "united nations",
+            "sanctions",
+            "bilateral",
+            "global affairs",
+        ],
+        "democracy": [
+            "democracy",
+            "election",
+            "parliament",
+            "vote",
+            "constitution",
+            "governance",
+            "public policy",
+            "supreme court",
+            "bill",
+            "law",
+            "civil rights",
+        ],
     }
+
 
     def __init__(self, min_confidence: float = 0.3):
         self.min_confidence = min_confidence

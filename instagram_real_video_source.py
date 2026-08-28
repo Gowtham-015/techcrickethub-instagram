@@ -99,6 +99,13 @@ class InstagramRealVideoSource(InstagramContentSource):
             "https://www.youtube.com/feeds/videos.xml?channel_id=UC16niRr50-MSBwiO3YDb3RA",  # Global News Feed
             "https://www.youtube.com/feeds/videos.xml?channel_id=UCvJJ_Jz9H012f2-zpEJeZJA",  # World Affairs Feed
         ]
+        self.democracy_video_feeds = [
+            "https://www.youtube.com/feeds/videos.xml?channel_id=UC16niRr50-MSBwiO3YDb3RA",  # Policy & Governance
+        ]
+        self.entertainment_video_feeds = [
+            "https://www.youtube.com/feeds/videos.xml?channel_id=UCsTcErHg8oDvUnTzoqsYeNw",  # Cinema & Entertainment
+        ]
+
 
     @staticmethod
     def generate_stable_id(url: str, source_name: str) -> str:
@@ -249,7 +256,8 @@ class InstagramRealVideoSource(InstagramContentSource):
         uploads them to public CDN, and attaches the public video URL.
         """
         items: List[Dict[str, Any]] = []
-        categories = [category] if category else ["cricket", "technology"]
+        categories = [category] if category else ["cricket", "technology", "geopolitics", "democracy", "entertainment"]
+
 
         for cat in categories:
             raw_candidates = self.discover_video_items(category=cat, limit=3)
@@ -280,14 +288,20 @@ class InstagramRealVideoSource(InstagramContentSource):
 
     def discover_video_items(self, category: str = "cricket", limit: int = 5) -> List[Dict[str, Any]]:
         """Discovers real video items with direct video file URLs and verified rights metadata."""
-        if category == "cricket":
+        cat_clean = (category or "cricket").strip().lower()
+        if cat_clean == "cricket":
             feeds = self.cricket_video_feeds
-        elif category == "geopolitics":
+        elif cat_clean == "geopolitics":
             feeds = self.geopolitics_video_feeds
+        elif cat_clean == "democracy":
+            feeds = self.democracy_video_feeds
+        elif cat_clean == "entertainment":
+            feeds = self.entertainment_video_feeds
         else:
             feeds = self.tech_video_feeds
 
         results: List[Dict[str, Any]] = []
+
 
 
         for feed_url in feeds:
