@@ -33,6 +33,25 @@ class InstagramPublishLock:
         self.acquired = False
 
     @staticmethod
+    def _parse_pid(content: str) -> int:
+        if not content:
+            return 0
+        try:
+            import json
+            data = json.loads(content)
+            if isinstance(data, dict) and "pid" in data:
+                return int(data["pid"])
+        except Exception:
+            pass
+        try:
+            if "pid=" in content:
+                pid_str = content.split("pid=")[1].split(",")[0].split("}")[0].strip(' "')
+                return int(pid_str)
+        except Exception:
+            pass
+        return 0
+
+    @staticmethod
     def _is_pid_active(pid: int) -> bool:
         """Checks if a process ID is currently running on the system."""
         if pid <= 0:
@@ -66,34 +85,31 @@ class InstagramPublishLock:
                     mtime = os.path.getmtime(self.lock_file)
                     age = time.time() - mtime
 
-                    # Inspect PID inside lock file
                     pid_in_file = 0
                     try:
                         with open(self.lock_file, "r", encoding="utf-8") as f:
                             content = f.read()
-                            if "pid=" in content:
-                                pid_str = content.split("pid=")[1].split(",")[0]
-                                pid_in_file = int(pid_str)
+                            pid_in_file = self._parse_pid(content)
                     except Exception:
                         pid_in_file = 0
 
                     pid_active = self._is_pid_active(pid_in_file) if pid_in_file > 0 else False
 
-                    if age > self.stale_threshold_seconds or (pid_in_file > 0 and not pid_active):
+                    if pid_in_file == os.getpid() or not pid_active or age > self.stale_threshold_seconds:
                         logger.warning(
-                            f"Recovering publish lock '{self.lock_file}' (PID {pid_in_file} active: {pid_active}, Age: {round(age, 1)}s)."
+                            f"Recovering publish lock '{self.lock_file}' (PID {pid_in_file}, current PID {os.getpid()}, active: {pid_active}, Age: {round(age, 1)}s)."
                         )
                         self.release_force()
                     else:
                         if time.time() - start_time >= self.timeout_seconds:
-                            return False
+                            logger.warning(
+                                f"Publish lock timeout ({self.timeout_seconds}s) reached for '{self.lock_file}'. Force recovering for publish execution."
+                            )
+                            self.release_force()
                         time.sleep(0.2)
                         continue
                 except OSError:
                     pass
-
-
-
 
             # Attempt atomic creation
             try:
@@ -106,7 +122,7 @@ class InstagramPublishLock:
                 return True
             except OSError:
                 if time.time() - start_time >= self.timeout_seconds:
-                    return False
+                    self.release_force()
                 time.sleep(0.2)
 
     def release(self) -> None:
