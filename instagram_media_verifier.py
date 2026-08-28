@@ -539,66 +539,64 @@ class InstagramMediaVerifier:
 
 
 
-        try:
-            req = urllib.request.Request(
-                url,
-                headers={"User-Agent": "TechCricketHub-Instagram-MediaVerifier/1.0"},
-            )
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                status = resp.getcode()
-                c_type = resp.headers.get("Content-Type", "").lower().split(";")[0].strip()
-                c_len_str = resp.headers.get("Content-Length")
-                file_size = int(c_len_str) if c_len_str and c_len_str.isdigit() else 0
+        max_attempts = 10
+        delay_sec = 4
+        last_error = ""
 
-                chunk = resp.read(4096)
-                if not chunk or len(chunk) < 8:
-                    print("HTTP Status: 200 (Empty or truncated response body)")
-                    print("Meta Media URL Check: FAIL")
-                    print("========================================")
-                    return {"is_valid": False, "error_code": "MEDIA_PUBLICATION_BLOCKED", "error": "Media response body is empty or truncated (< 8 bytes)"}
+        for attempt in range(1, max_attempts + 1):
+            try:
+                req = urllib.request.Request(
+                    url,
+                    headers={"User-Agent": "TechCricketHub-Instagram-MediaVerifier/1.0"},
+                )
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    status = resp.getcode()
+                    c_type = resp.headers.get("Content-Type", "").lower().split(";")[0].strip()
+                    c_len_str = resp.headers.get("Content-Length")
 
-                if "text/html" in c_type or chunk.startswith(b"<!DOCTYPE") or chunk.startswith(b"<html") or b"<title>" in chunk[:512].lower():
-                    print(f"HTTP Status: {status} (HTML response received: {c_type})")
-                    print("Meta Media URL Check: FAIL (Webpage / 404 / Login page received)")
-                    print("========================================")
-                    return {"is_valid": False, "error_code": "MEDIA_PUBLICATION_BLOCKED", "error": "Public URL returned HTML webpage instead of binary media file"}
+                    chunk = resp.read(4096)
+                    if not chunk or len(chunk) < 8:
+                        last_error = "Media response body is empty or truncated (< 8 bytes)"
+                    elif "text/html" in c_type or chunk.startswith(b"<!DOCTYPE") or chunk.startswith(b"<html") or b"<title>" in chunk[:512].lower():
+                        last_error = "Public URL returned HTML webpage instead of binary media file"
+                    else:
+                        magic_ok = cls.check_magic_bytes(chunk, media_type)
+                        if not magic_ok:
+                            last_error = f"Invalid magic bytes container signature for {media_type}"
+                        else:
+                            full_bytes = chunk + resp.read()
+                            actual_size = len(full_bytes)
 
-                magic_ok = cls.check_magic_bytes(chunk, media_type)
-                if not magic_ok:
-                    print(f"Magic Bytes: INVALID for {media_type}")
-                    print("Meta Media URL Check: FAIL")
-                    print("========================================")
-                    return {"is_valid": False, "error_code": "MEDIA_PUBLICATION_BLOCKED", "error": f"Invalid magic bytes container signature for {media_type}"}
+                            print(f"HTTP Status: {status}")
+                            print(f"Content-Type: {c_type}")
+                            print(f"Content-Length: {actual_size} bytes")
+                            print(f"Magic Bytes: VALID ({'MP4 ftyp' if media_type == 'REEL' else 'JPEG/PNG'})")
+                            print(f"Meta Media URL Check: PASS (Attempt {attempt}/{max_attempts})")
+                            print("========================================")
 
-                full_bytes = chunk + resp.read()
-                actual_size = len(full_bytes)
+                            return {
+                                "is_valid": True,
+                                "status_code": "PUBLIC_MEDIA_VALID",
+                                "http_status": status,
+                                "content_type": c_type,
+                                "file_size": actual_size,
+                                "error_code": "SUCCESS",
+                            }
+            except urllib.error.HTTPError as he:
+                last_error = f"Public media URL HTTP {he.code} {he.reason}"
+            except Exception as e:
+                last_error = f"Public media URL connection failed: {e}"
 
-                print(f"HTTP Status: {status}")
-                print(f"Content-Type: {c_type}")
-                print(f"Content-Length: {actual_size} bytes")
-                print(f"Magic Bytes: VALID ({'MP4 ftyp' if media_type == 'REEL' else 'JPEG/PNG'})")
-                print("Meta Media URL Check: PASS")
-                print("========================================")
+            if attempt < max_attempts:
+                print(f"CDN Propagation Polling (Attempt {attempt}/{max_attempts}): {last_error}. Retrying in {delay_sec}s...")
+                import time
+                time.sleep(delay_sec)
 
-                return {
-                    "is_valid": True,
-                    "status_code": "PUBLIC_MEDIA_VALID",
-                    "http_status": status,
-                    "content_type": c_type,
-                    "file_size": actual_size,
-                    "error_code": "SUCCESS",
-                }
+        print(f"HTTP Status: 404/Failed ({last_error})")
+        print("Meta Media URL Check: FAIL")
+        print("========================================")
+        return {"is_valid": False, "error_code": "MEDIA_PUBLICATION_BLOCKED", "error": last_error or "Public media URL HTTP 404 Not Found"}
 
-        except urllib.error.HTTPError as he:
-            print(f"HTTP Status: {he.code} ({he.reason})")
-            print("Meta Media URL Check: FAIL")
-            print("========================================")
-            return {"is_valid": False, "error_code": "MEDIA_PUBLICATION_BLOCKED", "error": f"Public media URL HTTP {he.code} {he.reason}"}
-        except Exception as e:
-            print(f"Connection Error: {e}")
-            print("Meta Media URL Check: FAIL")
-            print("========================================")
-            return {"is_valid": False, "error_code": "MEDIA_PUBLICATION_BLOCKED", "error": f"Public media URL connection failed: {e}"}
 
 
     @staticmethod
