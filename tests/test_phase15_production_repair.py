@@ -28,8 +28,14 @@ class TestPhase15ProductionRepair(unittest.TestCase):
         self.assertNotIn("RIGHTS_NOT_VERIFIED", source.ALLOWED_RIGHTS_STATUSES)
         self.assertNotIn("UNKNOWN", source.ALLOWED_RIGHTS_STATUSES)
 
-    def test_source_url_and_video_url_separation(self):
+    @patch("requests.get")
+    def test_source_url_and_video_url_separation(self, mock_get):
         """Test 3: source_url (article) and video_url (MP4 asset) are strictly separated."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = '<rss><channel><item><title>Test</title><link>https://bcci.tv/test</link><enclosure url="https://files.catbox.moe/test.mp4" type="video/mp4"/></item></channel></rss>'
+        mock_get.return_value = mock_resp
+
         source = InstagramRealVideoSource(config=self.config)
         items = source.discover_video_items(category="cricket", limit=2)
         self.assertTrue(len(items) > 0)
@@ -37,6 +43,7 @@ class TestPhase15ProductionRepair(unittest.TestCase):
         self.assertIn("source_url", item)
         self.assertIn("video_url", item)
         self.assertNotEqual(item["source_url"], item["video_url"])
+
 
     @patch("urllib.request.urlopen")
     def test_wait_for_public_media_retries(self, mock_urlopen):
