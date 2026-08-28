@@ -68,12 +68,15 @@ class InstagramMediaAcquirer:
                 status_code = resp.status_code
                 content_type = resp.headers.get("Content-Type", "").strip().lower()
                 length_header = resp.headers.get("Content-Length", "").strip()
+            except requests.Timeout:
+                raise
             except Exception:
                 # Fallback to streaming GET request if HEAD is blocked or disconnected by WAF/CDN
                 resp = requests.get(url, allow_redirects=True, headers=headers, stream=True, timeout=self.timeout)
                 status_code = resp.status_code
                 content_type = resp.headers.get("Content-Type", "").strip().lower()
                 length_header = resp.headers.get("Content-Length", "").strip()
+
 
             if status_code >= 400:
                 raise InstagramConnectionError(
