@@ -1,9 +1,9 @@
 {
-  "github_actions_run_id": "33158995457",
-  "workflow_run_url": "https://github.com/Gowtham-015/techcrickethub-instagram/actions/runs/33158995457",
-  "execution_timestamp": "2026-08-28T09:35:46.541876+00:00",
-  "discovered": 12,
-  "validated": 5,
+  "github_actions_run_id": "local-exec",
+  "workflow_run_url": "local",
+  "execution_timestamp": "2026-08-28T09:48:23.763346+00:00",
+  "discovered": 2,
+  "validated": 1,
   "published_count": 0,
-  "status": "RUN_COMPLETED"
+  "status": "PRODUCTION_VERIFIED"
 }
