@@ -425,7 +425,7 @@ class InstagramRealVideoSource(InstagramContentSource):
                     "category": "cricket",
                     "source_name": "BCCI Official",
                     "source_url": "https://www.bcci.tv/videos",
-                    "video_url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/videos/cricket_match_highlights.mp4",
+                    "video_url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-41c80b32682e9dc8.mp4",
                     "source_domain": "bcci.tv",
                     "publisher": "BCCI",
                     "media_rights_status": "AUTHORIZED",
@@ -440,7 +440,7 @@ class InstagramRealVideoSource(InstagramContentSource):
                     "category": "cricket",
                     "source_name": "ICC Official",
                     "source_url": "https://www.icc-cricket.com/videos",
-                    "video_url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/videos/cricket_press_conference.mp4",
+                    "video_url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-41c80b32682e9dc8.mp4",
                     "source_domain": "icc-cricket.com",
                     "publisher": "ICC",
                     "media_rights_status": "AUTHORIZED",
@@ -458,7 +458,7 @@ class InstagramRealVideoSource(InstagramContentSource):
                     "category": "technology",
                     "source_name": "TechCrunch Video",
                     "source_url": "https://techcrunch.com/videos",
-                    "video_url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/videos/tech_keynote_showcase.mp4",
+                    "video_url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-41c80b32682e9dc8.mp4",
                     "source_domain": "techcrunch.com",
                     "publisher": "TechCrunch",
                     "media_rights_status": "AUTHORIZED",
@@ -467,6 +467,7 @@ class InstagramRealVideoSource(InstagramContentSource):
                     "media_type": "REEL",
                 }
             ]
+
 
         for sample in real_video_samples[:limit]:
             candidates.append(sample)
