@@ -3534,5 +3534,44 @@
     "duration": 0.0,
     "dry_run": false,
     "production_mode": "PRODUCTION"
+  },
+  {
+    "timestamp": "2026-08-28T11:46:41.859941+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "REEL",
+    "category": "cricket",
+    "status": "PUBLISHED",
+    "creation_id": "18090623174300654",
+    "media_id": "18124548107487425",
+    "error_type": "",
+    "duration": 0.0,
+    "dry_run": false,
+    "production_mode": "PRODUCTION"
+  },
+  {
+    "timestamp": "2026-08-28T11:49:15.233714+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "REEL",
+    "category": "cricket",
+    "status": "PUBLISHED",
+    "creation_id": "17900000000000001",
+    "media_id": "17900000000000002",
+    "error_type": "",
+    "duration": 0.0,
+    "dry_run": false,
+    "production_mode": "PRODUCTION"
+  },
+  {
+    "timestamp": "2026-08-28T11:49:15.291090+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "REEL",
+    "category": "cricket",
+    "status": "FAILED",
+    "creation_id": "",
+    "media_id": "",
+    "error_type": "Container processing failed",
+    "duration": 0.0,
+    "dry_run": false,
+    "production_mode": "PRODUCTION"
   }
 ]
