@@ -58,28 +58,40 @@ class InstagramMediaAcquirer:
                     status_code=200,
                 )
 
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        }
+
         try:
-            resp = requests.head(url, allow_redirects=True, timeout=self.timeout)
-            status_code = resp.status_code
+            try:
+                resp = requests.head(url, allow_redirects=True, headers=headers, timeout=self.timeout)
+                status_code = resp.status_code
+                content_type = resp.headers.get("Content-Type", "").strip().lower()
+                length_header = resp.headers.get("Content-Length", "").strip()
+            except Exception:
+                # Fallback to streaming GET request if HEAD is blocked or disconnected by WAF/CDN
+                resp = requests.get(url, allow_redirects=True, headers=headers, stream=True, timeout=self.timeout)
+                status_code = resp.status_code
+                content_type = resp.headers.get("Content-Type", "").strip().lower()
+                length_header = resp.headers.get("Content-Length", "").strip()
 
             if status_code >= 400:
                 raise InstagramConnectionError(
                     f"Remote media server returned HTTP status error {status_code} for URL: '{url}'"
                 )
 
-            content_type = resp.headers.get("Content-Type", "").strip().lower()
-            length_header = resp.headers.get("Content-Length", "").strip()
             if length_header.isdigit():
                 size_bytes = int(length_header)
 
         except requests.Timeout as e:
-            raise InstagramTimeoutError(f"HTTP HEAD request timed out after {self.timeout}s for URL: '{url}'")
+            raise InstagramTimeoutError(f"HTTP request timed out after {self.timeout}s for URL: '{url}'")
         except requests.RequestException as e:
             raise InstagramConnectionError(f"Failed to connect to remote media server: {e}")
         except InstagramError:
             raise
         except Exception as e:
             raise InstagramConnectionError(f"Unexpected error inspecting remote media: {e}")
+
 
         # Step 3: Validate Content-Type if present
         if content_type:
