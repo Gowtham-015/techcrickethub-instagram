@@ -135,78 +135,77 @@ class InstagramScheduler:
             for item in due_items:
                 self.logger.info(f"Processing queue_id '{item.queue_id}' (content_id: {item.content_id})")
 
-                # Acquire atomic publish lock
-                with InstagramPublishLock(timeout_seconds=5.0):
-                    # 1. Reconstruct full ContentBundle & run Final Publish Guard
-                    bundle = ContentBundle(
-                        content_id=item.content_id or "",
-                        category=item.category,
-                        title=item.title,
-                        summary=getattr(item, "summary", "") or "",
-                        source_url=getattr(item, "source_url", "") or f"https://www.techcrickethub.com/stories/{item.content_id}",
-                        source_domain=getattr(item, "source_domain", "") or "techcrickethub.com",
-                        published_at=item.scheduled_at,
-                        media_url=item.media_url,
-                        media_type=item.media_type,
-                        caption=item.caption,
-                        hashtags=getattr(item, "hashtags", []) or [],
+                # 1. Reconstruct full ContentBundle & run Final Publish Guard
+                bundle = ContentBundle(
+                    content_id=item.content_id or "",
+                    category=item.category,
+                    title=item.title,
+                    summary=getattr(item, "summary", "") or "",
+                    source_url=getattr(item, "source_url", "") or f"https://www.techcrickethub.com/stories/{item.content_id}",
+                    source_domain=getattr(item, "source_domain", "") or "techcrickethub.com",
+                    published_at=item.scheduled_at,
+                    media_url=item.media_url,
+                    media_type=item.media_type,
+                    caption=item.caption,
+                    hashtags=getattr(item, "hashtags", []) or [],
+                )
+
+                guard_res = self.final_publish_guard.verify_and_guard(bundle)
+                if not guard_res.is_valid:
+                    self.logger.warning(
+                        f"Item '{item.queue_id}' blocked by Final Publish Guard: {guard_res.message}"
                     )
-
-                    guard_res = self.final_publish_guard.verify_and_guard(bundle)
-                    if not guard_res.is_valid:
-                        self.logger.warning(
-                            f"Item '{item.queue_id}' blocked by Final Publish Guard: {guard_res.message}"
-                        )
-                        self.queue.update_status(item.queue_id, "DUPLICATE", last_error=guard_res.message)
-                        res = PipelineResult(
-                            success=False,
-                            dry_run=self.config.dry_run,
-                            media_type=item.media_type,
-                            status="DUPLICATE",
-                            message=guard_res.message,
-                            error=guard_res.message,
-                        )
-                        results.append(res)
-                        continue
-
-                    # Mark PROCESSING
-                    self.queue.mark_processing(item.queue_id)
-
-                    # Convert to InstagramContent model
-                    content = InstagramContent(
-                        title=item.title,
-                        summary=getattr(item, "summary", "") or "",
-                        category=item.category,
-                        image_url=item.media_url if item.media_type == "IMAGE" else None,
-                        video_url=item.media_url if item.media_type == "REEL" else None,
-                        caption=item.caption,
+                    self.queue.update_status(item.queue_id, "DUPLICATE", last_error=guard_res.message)
+                    res = PipelineResult(
+                        success=False,
+                        dry_run=self.config.dry_run,
                         media_type=item.media_type,
-                        metadata={"content_id": item.content_id, "queue_id": item.queue_id},
+                        status="DUPLICATE",
+                        message=guard_res.message,
+                        error=guard_res.message,
                     )
-
-                    # Execute through Phase 5 pipeline (respects INSTAGRAM_DRY_RUN)
-                    res = self.pipeline.process_content(content)
                     results.append(res)
+                    continue
 
-                    if res.success:
-                        if res.dry_run:
-                            self.logger.info(f"Item '{item.queue_id}' processed in DRY_RUN mode. Marking SKIPPED.")
-                            self.queue.update_status(item.queue_id, "SKIPPED", last_error=res.message)
-                        else:
-                            self.logger.info(f"Item '{item.queue_id}' published successfully. Media ID: {res.media_id}")
-                            self.final_publish_guard.record_published_item(
-                                bundle=bundle,
-                                media_id=res.media_id or "",
-                            )
-                            self.queue.mark_published(
-                                item.queue_id,
-                                media_id=res.media_id,
-                                container_id=res.creation_id,
-                            )
+                # Mark PROCESSING
+                self.queue.mark_processing(item.queue_id)
+
+                # Convert to InstagramContent model
+                content = InstagramContent(
+                    title=item.title,
+                    summary=getattr(item, "summary", "") or "",
+                    category=item.category,
+                    image_url=item.media_url if item.media_type == "IMAGE" else None,
+                    video_url=item.media_url if item.media_type == "REEL" else None,
+                    caption=item.caption,
+                    media_type=item.media_type,
+                    metadata={"content_id": item.content_id, "queue_id": item.queue_id},
+                )
+
+                # Execute through Phase 5 pipeline (respects INSTAGRAM_DRY_RUN)
+                res = self.pipeline.process_content(content)
+                results.append(res)
+
+                if res.success:
+                    if res.dry_run:
+                        self.logger.info(f"Item '{item.queue_id}' processed in DRY_RUN mode. Marking SKIPPED.")
+                        self.queue.update_status(item.queue_id, "SKIPPED", last_error=res.message)
                     else:
-                        err_msg = redact_token(res.message or "Pipeline execution failed.")
-                        self.logger.error(f"Item '{item.queue_id}' failed: {err_msg}")
-                        self.queue.mark_failed(item.queue_id, error=err_msg)
+                        self.logger.info(f"Item '{item.queue_id}' published successfully. Media ID: {res.media_id}")
+                        self.final_publish_guard.record_published_item(
+                            bundle=bundle,
+                            media_id=res.media_id or "",
+                        )
+                        self.queue.mark_published(
+                            item.queue_id,
+                            media_id=res.media_id,
+                            container_id=res.creation_id,
+                        )
+                else:
+                    err_msg = redact_token(res.message or "Pipeline execution failed.")
+                    self.logger.error(f"Item '{item.queue_id}' failed: {err_msg}")
+                    self.queue.mark_failed(item.queue_id, error=err_msg)
+
 
             return results
 

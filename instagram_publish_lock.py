@@ -96,6 +96,8 @@ class InstagramPublishLock:
                         self.acquired = True
                         return True
 
+
+
                     pid_active = self._is_pid_active(pid_in_file) if pid_in_file > 0 else False
 
                     # 2. Dead process, corrupt file, or stale age check
