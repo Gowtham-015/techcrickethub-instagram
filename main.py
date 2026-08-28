@@ -2919,8 +2919,9 @@ def main():
     parser.add_argument(
         "--content-balance",
         action="store_true",
-        help="Display rolling 30-item category balance breakdown (75% Cricket target)",
+        help="Display rolling 30-item category balance breakdown (75%% Cricket target)",
     )
+
     parser.add_argument(
         "--real-content-preview",
         action="store_true",
