@@ -19,7 +19,10 @@ htmlcov/
 
 # Logs & Data
 *.log
+*.lock
 logs/
+data/*.lock
+
 data/*
 !data/*.json
 !data/generated_reels/

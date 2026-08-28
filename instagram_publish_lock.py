@@ -106,7 +106,6 @@ class InstagramPublishLock:
                         time.sleep(0.2)
                         continue
 
-
                 except OSError:
                     pass
 
@@ -123,6 +122,8 @@ class InstagramPublishLock:
                 if time.time() - start_time >= self.timeout_seconds:
                     return False
                 time.sleep(0.2)
+
+
 
 
     def release(self) -> None:
