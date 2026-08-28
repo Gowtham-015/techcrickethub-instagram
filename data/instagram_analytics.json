@@ -419,6 +419,21 @@
       "media_id": null,
       "creation_id": null,
       "error": "Unexpected error: Could not acquire Instagram publish lock (timed out)."
+    },
+    {
+      "event_id": "3c046862-f0b0-4cc2-8776-2fa7b6d09074",
+      "event_type": "FAILED",
+      "content_id": null,
+      "timestamp": "2026-08-28T08:48:16.002669+00:00",
+      "category": "cricket",
+      "media_type": "REEL",
+      "content_score": 0,
+      "priority": "NORMAL",
+      "scheduled_at": "",
+      "status": "FAILED",
+      "media_id": null,
+      "creation_id": null,
+      "error": "Unexpected error: Could not acquire Instagram publish lock (timed out)."
     }
   ]
 }

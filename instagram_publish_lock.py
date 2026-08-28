@@ -95,7 +95,7 @@ class InstagramPublishLock:
 
                     pid_active = self._is_pid_active(pid_in_file) if pid_in_file > 0 else False
 
-                    if (pid_in_file > 0 and pid_in_file != os.getpid() and not pid_active) or age > self.stale_threshold_seconds:
+                    if pid_in_file == 0 or not pid_active or age > self.stale_threshold_seconds:
                         logger.warning(
                             f"Recovering publish lock '{self.lock_file}' (PID {pid_in_file}, active: {pid_active}, Age: {round(age, 1)}s)."
                         )
@@ -105,6 +105,8 @@ class InstagramPublishLock:
                             return False
                         time.sleep(0.2)
                         continue
+
+
                 except OSError:
                     pass
 
