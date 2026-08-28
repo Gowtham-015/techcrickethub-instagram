@@ -97,19 +97,23 @@ class InstagramRealNewsSource(InstagramContentSource):
                 logger.info(f"Ensuring local file '{rel_n}' is pushed to GitHub Raw...")
                 subprocess.run(["git", "add", "-f", local_path], check=False)
                 subprocess.run(["git", "add", "-A"], check=False)
-
                 subprocess.run(["git", "commit", "-m", f"Chore: publish asset {rel_n} [skip ci]"], check=False)
                 token = os.getenv("GITHUB_TOKEN")
-                if token:
-                    repo = os.getenv("GITHUB_REPOSITORY", "Gowtham-015/techcrickethub-instagram")
-                    remote_auth_url = f"https://x-access-token:{token}@github.com/{repo}.git"
-                    subprocess.run(["git", "push", remote_auth_url, "HEAD:main"], check=False)
-                else:
-                    subprocess.run(["git", "push", "origin", "main"], check=False)
+                repo = os.getenv("GITHUB_REPOSITORY", "Gowtham-015/techcrickethub-instagram")
+                remote_target = f"https://x-access-token:{token}@github.com/{repo}.git" if token else "origin"
+                
+                # Rebase first to avoid git push rejection
+                subprocess.run(["git", "pull", remote_target, "main", "--rebase", "-X", "ours"], check=False)
+                push_res = subprocess.run(["git", "push", remote_target, "HEAD:main" if token else "main"], capture_output=True, text=True, check=False)
+                if push_res.returncode != 0:
+                    logger.warning(f"Git push rejected, pulling and retrying push: {push_res.stderr.strip()[:200]}")
+                    subprocess.run(["git", "pull", remote_target, "main", "--rebase", "-X", "ours"], check=False)
+                    subprocess.run(["git", "push", remote_target, "HEAD:main" if token else "main"], check=False)
             except Exception as git_err:
                 logger.warning(f"Git push for raw URL failed: {git_err}")
 
         return fallback_url
+
 
 
 

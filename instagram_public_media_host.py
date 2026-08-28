@@ -85,18 +85,23 @@ class PublicMediaHost:
                 logger.info(f"Pushed local file '{rel_name}' to GitHub Raw...")
                 subprocess.run(["git", "add", "-f", local_path], check=False)
                 subprocess.run(["git", "add", "-A"], check=False)
-
                 subprocess.run(["git", "commit", "-m", f"Chore: add asset {rel_name} for Meta publication [skip ci]"], check=False)
                 token = os.getenv("GITHUB_TOKEN")
-                if token:
-                    remote_auth_url = f"https://x-access-token:{token}@github.com/{self.repo}.git"
-                    subprocess.run(["git", "push", remote_auth_url, f"HEAD:{self.branch}"], check=False)
-                else:
-                    subprocess.run(["git", "push", "origin", self.branch], check=False)
+                repo = os.getenv("GITHUB_REPOSITORY", self.repo)
+                remote_target = f"https://x-access-token:{token}@github.com/{repo}.git" if token else "origin"
+
+                # Rebase first to avoid git push rejection
+                subprocess.run(["git", "pull", remote_target, self.branch, "--rebase", "-X", "ours"], check=False)
+                push_res = subprocess.run(["git", "push", remote_target, f"HEAD:{self.branch}" if token else self.branch], capture_output=True, text=True, check=False)
+                if push_res.returncode != 0:
+                    logger.warning(f"Git push rejected, pulling and retrying push: {push_res.stderr.strip()[:200]}")
+                    subprocess.run(["git", "pull", remote_target, self.branch, "--rebase", "-X", "ours"], check=False)
+                    subprocess.run(["git", "push", remote_target, f"HEAD:{self.branch}" if token else self.branch], check=False)
             except Exception as git_err:
                 logger.warning(f"Git push for GitHub Raw fallback failed: {git_err}")
 
         return fallback_raw_url
+
 
     def verify_public_url(
         self,
