@@ -38,6 +38,7 @@ def test_real_news_source_sample_content_excluded(monkeypatch):
     mock_reel_gen.generate_reel_from_facts.return_value = {"success": True, "reel_path": "data/generated_reels/sample.mp4"}
 
     monkeypatch.setattr(InstagramRealNewsSource, "upload_to_public_host", lambda path, fallback: fallback)
+    monkeypatch.setattr("instagram_real_video_source.InstagramRealVideoSource.discover_video_items", lambda self, category, limit: [])
     cfg = Config.load_from_env(validate=False)
     source = InstagramRealNewsSource(config=cfg)
 
@@ -48,4 +49,5 @@ def test_real_news_source_sample_content_excluded(monkeypatch):
         assert not str(item.get("content_id", "")).startswith("sample-")
         assert item.get("source_name") is not None
         assert item.get("source_url") is not None
+
 
