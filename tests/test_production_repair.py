@@ -124,12 +124,14 @@ class TestProductionRepair(unittest.TestCase):
             "video_url": None,  # Missing video
             "image_url": "https://example.com/photo.jpg",
         }
-        engine = InstagramAutomationEngine(config=self.config)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            engine = InstagramAutomationEngine(config=self.config, data_dir=tmp_dir)
 
-        with patch.object(engine.source, "get_content_items", return_value=[raw_item]):
-            cycle_res = engine.run_cycle()
-            self.assertEqual(cycle_res["published"], 0)
-            self.assertEqual(cycle_res["queued"], 0)
+            with patch.object(engine.source, "get_content_items", return_value=[raw_item]):
+                cycle_res = engine.run_cycle()
+                self.assertEqual(cycle_res["published"], 0)
+                self.assertEqual(cycle_res["queued"], 0)
+
 
     def test_duplicate_prevention_on_story(self):
         """Test 11-15: Duplicate guard rejects identical story/url/title."""
