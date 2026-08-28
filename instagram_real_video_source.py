@@ -222,31 +222,18 @@ class InstagramRealVideoSource(InstagramContentSource):
         return input_mp4_path
 
     def upload_to_public_host(self, local_path: str, fallback_url: str) -> str:
-        """Uploads local acquired MP4 file to Catbox CDN with browser User-Agent headers."""
+        """Uploads local acquired MP4 file to public CDN via PublicMediaHost with multi-host fallback."""
         if not local_path or not os.path.exists(local_path):
             return fallback_url
 
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-        }
+        try:
+            from instagram_public_media_host import PublicMediaHost
+            host = PublicMediaHost()
+            return host.upload_video(local_path, fallback_raw_url=fallback_url)
+        except Exception as e:
+            logger.warning(f"PublicMediaHost upload failed for {local_path}: {e}")
+            return fallback_url
 
-        for attempt in range(3):
-            try:
-                with open(local_path, "rb") as f:
-                    resp = requests.post(
-                        "https://catbox.moe/user/api.php",
-                        data={"reqtype": "fileupload"},
-                        files={"fileToUpload": f},
-                        headers=headers,
-                        timeout=35,
-                    )
-                    if resp.status_code == 200 and resp.text.strip().startswith("https://files.catbox.moe/"):
-                        logger.info(f"Public host upload (Catbox) success for {local_path}: {resp.text.strip()}")
-                        return resp.text.strip()
-            except Exception as e:
-                logger.warning(f"Catbox upload attempt {attempt + 1} failed for {local_path}: {e}")
-
-        return fallback_url
 
     def get_content_items(self, category: Optional[str] = None, download_video: bool = True) -> List[Dict[str, Any]]:
         """Main content discovery interface for InstagramAutomationEngine.
