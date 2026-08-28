@@ -95,17 +95,14 @@ class InstagramPublishLock:
 
                     pid_active = self._is_pid_active(pid_in_file) if pid_in_file > 0 else False
 
-                    if pid_in_file == os.getpid() or not pid_active or age > self.stale_threshold_seconds:
+                    if (pid_in_file > 0 and pid_in_file != os.getpid() and not pid_active) or age > self.stale_threshold_seconds:
                         logger.warning(
-                            f"Recovering publish lock '{self.lock_file}' (PID {pid_in_file}, current PID {os.getpid()}, active: {pid_active}, Age: {round(age, 1)}s)."
+                            f"Recovering publish lock '{self.lock_file}' (PID {pid_in_file}, active: {pid_active}, Age: {round(age, 1)}s)."
                         )
                         self.release_force()
                     else:
                         if time.time() - start_time >= self.timeout_seconds:
-                            logger.warning(
-                                f"Publish lock timeout ({self.timeout_seconds}s) reached for '{self.lock_file}'. Force recovering for publish execution."
-                            )
-                            self.release_force()
+                            return False
                         time.sleep(0.2)
                         continue
                 except OSError:
@@ -122,8 +119,9 @@ class InstagramPublishLock:
                 return True
             except OSError:
                 if time.time() - start_time >= self.timeout_seconds:
-                    self.release_force()
+                    return False
                 time.sleep(0.2)
+
 
     def release(self) -> None:
         """Releases the lock if held by this instance."""
