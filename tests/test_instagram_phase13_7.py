@@ -168,7 +168,7 @@ def test_media_story_mismatch():
     assert not res.is_valid
 
 
-def test_real_content_only():
+def test_real_content_only(monkeypatch):
     source = InstagramRealNewsSource()
     sample_xml = """<rss version="2.0"><channel>
     <item><title>India vs Australia Test Cricket Update</title><link>https://espncricinfo.com/story/101</link><description>Great cricket match update.</description></item>
@@ -180,6 +180,7 @@ def test_real_content_only():
     mock_resp.content = sample_xml.encode("utf-8")
     mock_reel_gen = MagicMock()
     mock_reel_gen.generate_reel_from_facts.return_value = {"success": True, "reel_path": "data/generated_reels/sample.mp4"}
+    monkeypatch.setattr("instagram_real_video_source.InstagramRealVideoSource.discover_video_items", lambda self, category, limit: [])
     with patch("requests.get", return_value=mock_resp), patch("requests.post", return_value=mock_resp), patch("instagram_reel_generator.InstagramReelGenerator", return_value=mock_reel_gen):
         items = source.get_content_items()
         assert len(items) > 0
@@ -191,7 +192,7 @@ def test_real_content_only():
             assert "sample news" not in title
 
 
-def test_fresh_content_only():
+def test_fresh_content_only(monkeypatch):
     source = InstagramRealNewsSource()
     sample_xml = """<rss version="2.0"><channel>
     <item><title>India vs Australia Test Cricket Update</title><link>https://espncricinfo.com/story/101</link><description>Great cricket match update.</description></item>
@@ -203,11 +204,13 @@ def test_fresh_content_only():
     mock_resp.content = sample_xml.encode("utf-8")
     mock_reel_gen = MagicMock()
     mock_reel_gen.generate_reel_from_facts.return_value = {"success": True, "reel_path": "data/generated_reels/sample.mp4"}
+    monkeypatch.setattr("instagram_real_video_source.InstagramRealVideoSource.discover_video_items", lambda self, category, limit: [])
     with patch("requests.get", return_value=mock_resp), patch("requests.post", return_value=mock_resp), patch("instagram_reel_generator.InstagramReelGenerator", return_value=mock_reel_gen):
         items = source.get_content_items()
         for item in items:
             url = item.get("source_url", "")
             assert url.startswith("https://") or url.startswith("http://")
+
 
 
 
