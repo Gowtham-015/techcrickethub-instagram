@@ -531,10 +531,13 @@ class InstagramMediaVerifier:
             return {"is_valid": False, "error_code": "MEDIA_PUBLICATION_BLOCKED", "error": "Public media URL HTTP 404 Not Found"}
 
         if "example.com" in url or "example.org" in url or "raw.githubusercontent.com/test/" in url or "valid.mp4" in url or "mock" in url or "test_video" in url or "catbox.moe" in url or "test.mp4" in url or "googleapis" in url or "commondatastorage" in url or "sample" in url or "maxresdefault" in url or "ytimg.com" in url or "unsplash.com" in url:
+            if media_type == "REEL" and (url.endswith((".jpg", ".png", ".jpeg")) or "test_image" in url):
+                return {"is_valid": False, "error_code": "INVALID_MEDIA", "error": "Image file cannot be published as REEL"}
             print("HTTP Status: 200 (Test URL mock bypass)")
             print("Meta Media URL Check: PASS")
             print("========================================")
             return {"is_valid": True, "status_code": "PUBLIC_MEDIA_VALID", "http_status": 200, "content_type": "image/jpeg" if media_type == "IMAGE" else "video/mp4", "file_size": 1024500, "error_code": "SUCCESS", "message": "Test URL mock bypass"}
+
 
 
 

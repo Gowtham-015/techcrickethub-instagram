@@ -156,13 +156,14 @@ def test_image_cannot_be_published_as_reel():
         source_url="https://www.espncricinfo.com/story-003",
         source_domain="espncricinfo.com",
         published_at="2026-08-26T10:00:00Z",
-        media_url="https://example.com/test_video_sample.mp4",
+        media_url="https://example.com/test_image_sample.jpg",
         media_type="REEL",
         caption="Test Summary",
         hashtags=["#Cricket"],
     )
     res = guard.verify_and_guard(bundle)
     assert res.is_valid is False
+
 
 
 def test_reel_pipeline_validation():
