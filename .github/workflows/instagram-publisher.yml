@@ -80,13 +80,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           mkdir -p data/generated_reels data/acquired_videos media/generated
+          git add -f data/generated_reels/* media/generated/* 2>/dev/null || true
           git add -A || true
           if ! git diff --staged --quiet; then
             git commit -m "Chore: commit generated media before Meta publication [skip ci]" || true
             git pull origin main --rebase -X ours || git pull origin main --rebase || true
             git push origin main || true
+            sleep 2
             echo "MEDIA COMMITTED AND PUSHED TO GITHUB RAW"
+          else
+            echo "No pre-run media changes to commit."
           fi
+
 
       - name: Execute Production Publisher Cycle
         env:
