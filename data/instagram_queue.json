@@ -1,16 +1,16 @@
 {
   "items": [
     {
-      "queue_id": "q-test-reel-q-a69b32e6",
-      "content_id": "test-reel-q-a69b32e6",
+      "queue_id": "q-test-reel-q-936388f5",
+      "content_id": "test-reel-q-936388f5",
       "media_type": "REEL",
       "title": "Quantum Computing Breakthrough Benchmark Released",
-      "media_url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-a69b32e6.mp4",
+      "media_url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-936388f5.mp4",
       "caption": "Quantum Computing Breakthrough Benchmark Released",
       "category": "technology",
-      "scheduled_at": "2026-08-28T12:55:05.509948+00:00",
+      "scheduled_at": "2026-08-28T13:02:53.914557+00:00",
       "status": "DUPLICATE",
-      "created_at": "2026-08-28T12:25:05.509948+00:00",
+      "created_at": "2026-08-28T12:32:53.914557+00:00",
       "attempt_count": 0,
       "last_error": "Near-duplicate title detected (similarity 0.918): 'Quantum Computing Breakthrough Benchmark Released' vs published 'Quantum Computing Breakthrough Benchmark Unveiled'.",
       "published_media_id": null,
@@ -22,27 +22,6 @@
       "hashtags": [
         "#technology"
       ]
-    },
-    {
-      "queue_id": "q-realvideo-cricket-match-highlights-01",
-      "content_id": "realvideo-cricket-match-highlights-01",
-      "media_type": "REEL",
-      "title": "India vs Australia Test Match Official Action Highlights & Bowling Spells",
-      "media_url": "https://files.catbox.moe/h6uv5c.mp4",
-      "caption": "",
-      "category": "cricket",
-      "scheduled_at": "2026-08-28T13:07:53.512790+00:00",
-      "status": "PUBLISHED",
-      "created_at": "2026-08-28T12:27:53.512790+00:00",
-      "attempt_count": 1,
-      "last_error": null,
-      "published_media_id": "18621566824014730",
-      "created_media_container_id": "18090632171300654",
-      "source_url": "",
-      "source_domain": "",
-      "summary": "Watch key match moments, wicket-taking bowling spells, and team celebration highlights from the Test series.",
-      "facts": [],
-      "hashtags": []
     }
   ]
 }

@@ -6,6 +6,8 @@ opencv-python-headless>=4.8.0
 numpy>=1.24.0
 imageio>=2.30.0
 imageio-ffmpeg>=0.4.8
+yt-dlp>=2024.3.10
+
 
 
 
