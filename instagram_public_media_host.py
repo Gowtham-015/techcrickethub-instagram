@@ -83,7 +83,9 @@ class PublicMediaHost:
             try:
                 import subprocess
                 logger.info(f"Pushed local file '{rel_name}' to GitHub Raw...")
+                subprocess.run(["git", "add", "-f", local_path], check=False)
                 subprocess.run(["git", "add", "-A"], check=False)
+
                 subprocess.run(["git", "commit", "-m", f"Chore: add asset {rel_name} for Meta publication [skip ci]"], check=False)
                 token = os.getenv("GITHUB_TOKEN")
                 if token:

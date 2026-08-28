@@ -95,7 +95,9 @@ class InstagramRealNewsSource(InstagramContentSource):
                 import subprocess
                 rel_n = os.path.basename(local_path)
                 logger.info(f"Ensuring local file '{rel_n}' is pushed to GitHub Raw...")
+                subprocess.run(["git", "add", "-f", local_path], check=False)
                 subprocess.run(["git", "add", "-A"], check=False)
+
                 subprocess.run(["git", "commit", "-m", f"Chore: publish asset {rel_n} [skip ci]"], check=False)
                 token = os.getenv("GITHUB_TOKEN")
                 if token:

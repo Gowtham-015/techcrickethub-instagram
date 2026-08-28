@@ -22,7 +22,12 @@ htmlcov/
 logs/
 data/*
 !data/*.json
+!data/generated_reels/
+!data/generated_reels/*.mp4
 !data/.gitkeep
+!media/generated/
+!media/generated/*
+
 scratch/
 *.tmp
 *.bak
