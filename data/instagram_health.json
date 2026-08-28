@@ -10,7 +10,7 @@
   "items_published": 117,
   "items_failed": 480,
   "uptime_seconds": 0,
-  "consecutive_publish_failures": 2,
+  "consecutive_publish_failures": 1,
   "production_paused": true,
   "pause_reason": "CONSECUTIVE_PUBLISH_FAILURES",
   "live_test_count": 1,
