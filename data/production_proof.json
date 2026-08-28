@@ -1,9 +1,9 @@
 {
   "github_actions_run_id": "local-exec",
   "workflow_run_url": "local",
-  "execution_timestamp": "2026-08-28T12:52:21.164974+00:00",
+  "execution_timestamp": "2026-08-28T13:12:08.286372+00:00",
   "discovered": 14,
-  "validated": 2,
+  "validated": 0,
   "published_count": 1,
   "status": "PRODUCTION_VERIFIED"
 }

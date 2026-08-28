@@ -256,11 +256,16 @@ class InstagramRealVideoSource(InstagramContentSource):
                     if local_v and os.path.exists(local_v):
                         # Format to 9:16 vertical Reel MP4 (1080x1920)
                         formatted_v = self.format_vertical_reel(local_v)
+                        target_asset = formatted_v or local_v
                         # Upload to Catbox / GitHub CDN
-                        public_v = self.upload_to_public_host(formatted_v or local_v, v_url)
+                        public_v = self.upload_to_public_host(target_asset, v_url)
+                        if not (public_v.lower().endswith(".mp4") or "files.catbox.moe" in public_v or "raw.githubusercontent.com" in public_v):
+                            from instagram_public_media_host import PublicMediaHost
+                            public_v = PublicMediaHost().upload_video(target_asset)
                         item["video_url"] = public_v
                         item["media_type"] = "REEL"
                         items.append(item)
+
                     elif item.get("video_url"):
                         item["media_type"] = "REEL"
                         items.append(item)
@@ -411,9 +416,9 @@ class InstagramRealVideoSource(InstagramContentSource):
                     "summary": "Watch key match moments, wicket-taking bowling spells, and team celebration highlights from the Test series.",
                     "category": "cricket",
                     "source_name": "BCCI Official",
-                    "source_url": "https://www.bcci.tv/videos",
-                    "video_url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-41c80b32682e9dc8.mp4",
-                    "source_domain": "bcci.tv",
+                    "source_url": "https://www.youtube.com/watch?v=ihxHk6wYj8c",
+                    "video_url": "https://www.youtube.com/watch?v=ihxHk6wYj8c",
+                    "source_domain": "youtube.com",
                     "publisher": "BCCI",
                     "media_rights_status": "AUTHORIZED",
                     "discovered_at": datetime.now(timezone.utc).isoformat(),
@@ -426,9 +431,9 @@ class InstagramRealVideoSource(InstagramContentSource):
                     "summary": "Official press briefing highlighting match tactics, key player fitness, and upcoming tournament selection.",
                     "category": "cricket",
                     "source_name": "ICC Official",
-                    "source_url": "https://www.icc-cricket.com/videos",
-                    "video_url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-41c80b32682e9dc8.mp4",
-                    "source_domain": "icc-cricket.com",
+                    "source_url": "https://www.youtube.com/watch?v=mB0r2bWS-jY",
+                    "video_url": "https://www.youtube.com/watch?v=mB0r2bWS-jY",
+                    "source_domain": "youtube.com",
                     "publisher": "ICC",
                     "media_rights_status": "AUTHORIZED",
                     "discovered_at": datetime.now(timezone.utc).isoformat(),
@@ -444,9 +449,9 @@ class InstagramRealVideoSource(InstagramContentSource):
                     "summary": "Official keynote video revealing breakthrough silicon architecture, neural engine benchmarks, and live demo.",
                     "category": "technology",
                     "source_name": "TechCrunch Video",
-                    "source_url": "https://techcrunch.com/videos",
-                    "video_url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-41c80b32682e9dc8.mp4",
-                    "source_domain": "techcrunch.com",
+                    "source_url": "https://www.youtube.com/watch?v=A02r1oFeMmo",
+                    "video_url": "https://www.youtube.com/watch?v=A02r1oFeMmo",
+                    "source_domain": "youtube.com",
                     "publisher": "TechCrunch",
                     "media_rights_status": "AUTHORIZED",
                     "discovered_at": datetime.now(timezone.utc).isoformat(),
@@ -454,6 +459,7 @@ class InstagramRealVideoSource(InstagramContentSource):
                     "media_type": "REEL",
                 }
             ]
+
 
 
         for sample in real_video_samples[:limit]:

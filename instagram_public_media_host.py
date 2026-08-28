@@ -34,8 +34,14 @@ class PublicMediaHost:
 
         rel_name = os.path.basename(local_path)
         if not fallback_raw_url:
-            sub_folder = "data/generated_reels" if local_path.lower().endswith((".mp4", ".mov")) else "media/generated"
-            fallback_raw_url = f"https://raw.githubusercontent.com/{self.repo}/{self.branch}/{sub_folder}/{rel_name}"
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            try:
+                rel_path = os.path.relpath(local_path, base_dir).replace("\\", "/")
+            except Exception:
+                sub_folder = "data/generated_reels" if local_path.lower().endswith((".mp4", ".mov")) else "media/generated"
+                rel_path = f"{sub_folder}/{rel_name}"
+            fallback_raw_url = f"https://raw.githubusercontent.com/{self.repo}/{self.branch}/{rel_path}"
+
 
         if os.getenv("SKIP_PUBLIC_UPLOADS", "false").lower() in ("true", "1", "yes"):
             return fallback_raw_url

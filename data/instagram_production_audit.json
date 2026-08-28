@@ -3755,5 +3755,31 @@
     "duration": 0.0,
     "dry_run": false,
     "production_mode": "PRODUCTION"
+  },
+  {
+    "timestamp": "2026-08-28T13:04:49.768433+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "REEL",
+    "category": "cricket",
+    "status": "PUBLISHED",
+    "creation_id": "18090641273300654",
+    "media_id": "18094498784648907",
+    "error_type": "",
+    "duration": 0.0,
+    "dry_run": false,
+    "production_mode": "PRODUCTION"
+  },
+  {
+    "timestamp": "2026-08-28T13:12:08.278584+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "REEL",
+    "category": "cricket",
+    "status": "PUBLISHED",
+    "creation_id": "18090643220300654",
+    "media_id": "18081377729333362",
+    "error_type": "",
+    "duration": 0.0,
+    "dry_run": false,
+    "production_mode": "PRODUCTION"
   }
 ]
