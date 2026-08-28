@@ -22,8 +22,8 @@ class InstagramPublishLock:
     def __init__(
         self,
         lock_file: Optional[str] = None,
-        timeout_seconds: float = 5.0,
-        stale_threshold_seconds: float = 120.0,
+        timeout_seconds: float = 15.0,
+        stale_threshold_seconds: float = 30.0,
     ):
         base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
         os.makedirs(base_dir, exist_ok=True)
@@ -31,6 +31,29 @@ class InstagramPublishLock:
         self.timeout_seconds = timeout_seconds
         self.stale_threshold_seconds = stale_threshold_seconds
         self.acquired = False
+
+    @staticmethod
+    def _is_pid_active(pid: int) -> bool:
+        """Checks if a process ID is currently running on the system."""
+        if pid <= 0:
+            return False
+        if pid == os.getpid():
+            return True
+        try:
+            if os.name == "nt":
+                import ctypes
+                kernel32 = ctypes.windll.kernel32
+                SYNCHRONIZE = 0x00100000
+                h_proc = kernel32.OpenProcess(SYNCHRONIZE, False, pid)
+                if h_proc:
+                    kernel32.CloseHandle(h_proc)
+                    return True
+                return False
+            else:
+                os.kill(pid, 0)
+                return True
+        except (OSError, OverflowError, AttributeError):
+            return False
 
     def acquire(self) -> bool:
         """Attempts to acquire lock within timeout period, auto-recovering stale locks."""
@@ -42,9 +65,23 @@ class InstagramPublishLock:
                 try:
                     mtime = os.path.getmtime(self.lock_file)
                     age = time.time() - mtime
-                    if age > self.stale_threshold_seconds:
+
+                    # Inspect PID inside lock file
+                    pid_in_file = 0
+                    try:
+                        with open(self.lock_file, "r", encoding="utf-8") as f:
+                            content = f.read()
+                            if "pid=" in content:
+                                pid_str = content.split("pid=")[1].split(",")[0]
+                                pid_in_file = int(pid_str)
+                    except Exception:
+                        pid_in_file = 0
+
+                    pid_active = self._is_pid_active(pid_in_file) if pid_in_file > 0 else False
+
+                    if age > self.stale_threshold_seconds or (pid_in_file > 0 and not pid_active):
                         logger.warning(
-                            f"Recovering stale publish lock '{self.lock_file}' (Age: {round(age, 1)}s > {self.stale_threshold_seconds}s)."
+                            f"Recovering publish lock '{self.lock_file}' (PID {pid_in_file} active: {pid_active}, Age: {round(age, 1)}s)."
                         )
                         self.release_force()
                     else:
@@ -54,6 +91,7 @@ class InstagramPublishLock:
                         continue
                 except OSError:
                     pass
+
 
 
 

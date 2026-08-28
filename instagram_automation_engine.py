@@ -217,6 +217,17 @@ class InstagramAutomationEngine:
         self.cloud_runtime.record_cycle_start()
         self.logger.info("Starting automation cycle...")
 
+        # Clean stale publish lock if orphaned by previous process
+        try:
+            from instagram_publish_lock import InstagramPublishLock
+            p_lock = InstagramPublishLock()
+            if os.path.exists(p_lock.lock_file):
+                p_lock.acquire()
+                p_lock.release_force()
+        except Exception:
+            pass
+
+
         discovered_count = 0
         validated_count = 0
         rejected_count = 0
