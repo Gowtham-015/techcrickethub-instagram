@@ -2,13 +2,13 @@
   "status": "STOPPED",
   "started_at": null,
   "last_heartbeat": null,
-  "last_cycle_at": "2026-08-31T15:02:44.294319+00:00",
-  "last_success_at": "2026-08-31T15:02:44.294319+00:00",
+  "last_cycle_at": "2026-08-31T15:14:58.944516+00:00",
+  "last_success_at": "2026-08-31T15:14:58.944516+00:00",
   "last_error": "Container processing failed",
-  "cycles_completed": 440,
+  "cycles_completed": 441,
   "items_processed": 286,
   "items_published": 185,
-  "items_failed": 679,
+  "items_failed": 683,
   "uptime_seconds": 0,
   "consecutive_publish_failures": 1,
   "production_paused": true,
@@ -17,5 +17,5 @@
   "last_publish_error": "Container processing failed",
   "last_published_at": "2026-08-31T15:02:44.259016+00:00",
   "last_live_test_at": "2026-08-24T18:43:30.224089+00:00",
-  "analytics_events_recorded": 2347
+  "analytics_events_recorded": 2351
 }
