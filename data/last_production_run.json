@@ -1,13 +1,13 @@
 {
-  "run_id": "run-1788287707",
-  "started_at": "2026-09-01T18:35:07.451212+00:00",
-  "completed_at": "2026-09-01T18:35:37.354480+00:00",
-  "discovered": 14,
+  "run_id": "run-1788297144",
+  "started_at": "2026-09-01T21:12:24.895473+00:00",
+  "completed_at": "2026-09-01T21:12:24.913231+00:00",
+  "discovered": 0,
   "validated": 0,
   "rejected": 0,
   "reels_published": 0,
   "images_published": 0,
-  "failures": 4,
+  "failures": 1,
   "instagram_media_ids": [],
   "status": "SUCCESS"
 }
