@@ -10859,6 +10859,66 @@
       "media_id": null,
       "creation_id": null,
       "error": "Container processing failed"
+    },
+    {
+      "event_id": "6af11296-e455-4953-80e4-62ab9b1c7fec",
+      "event_type": "DISCOVERED",
+      "content_id": "realvideo-cricket-match-highlights-01",
+      "timestamp": "2026-09-02T06:12:51.713919+00:00",
+      "category": "cricket",
+      "media_type": "REEL",
+      "content_score": 0,
+      "priority": "NORMAL",
+      "scheduled_at": "",
+      "status": "",
+      "media_id": null,
+      "creation_id": null,
+      "error": null
+    },
+    {
+      "event_id": "ee97bf2d-10dc-41ca-9dd7-bb713c93233e",
+      "event_type": "DISCOVERED",
+      "content_id": "realvideo-cricket-press-conference-02",
+      "timestamp": "2026-09-02T06:12:53.980829+00:00",
+      "category": "cricket",
+      "media_type": "REEL",
+      "content_score": 0,
+      "priority": "NORMAL",
+      "scheduled_at": "",
+      "status": "",
+      "media_id": null,
+      "creation_id": null,
+      "error": null
+    },
+    {
+      "event_id": "bd7777ed-2ce3-4b45-b9b3-1f105c6aece2",
+      "event_type": "DISCOVERED",
+      "content_id": "realvideo-tech-product-unveil-01",
+      "timestamp": "2026-09-02T06:12:56.097582+00:00",
+      "category": "technology",
+      "media_type": "REEL",
+      "content_score": 0,
+      "priority": "NORMAL",
+      "scheduled_at": "",
+      "status": "",
+      "media_id": null,
+      "creation_id": null,
+      "error": null
+    },
+    {
+      "event_id": "fc344971-f37d-41f8-b37d-110e6f79717e",
+      "event_type": "DISCOVERED",
+      "content_id": "realvideo-tech-product-unveil-01",
+      "timestamp": "2026-09-02T06:12:58.342362+00:00",
+      "category": "technology",
+      "media_type": "REEL",
+      "content_score": 0,
+      "priority": "NORMAL",
+      "scheduled_at": "",
+      "status": "",
+      "media_id": null,
+      "creation_id": null,
+      "error": null
     }
   ]
 }
