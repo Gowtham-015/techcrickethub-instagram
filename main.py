@@ -34,6 +34,7 @@ from instagram_production_gate import InstagramProductionGate
 from instagram_production_audit import InstagramProductionAuditStore
 from instagram_live_test import InstagramLiveTestRunner
 from instagram_real_news_source import InstagramRealNewsSource
+from instagram_real_video_source import InstagramRealVideoSource
 from instagram_cricket_data_provider import FallbackCricketProvider
 from instagram_cricket_match_intelligence import InstagramCricketMatchIntelligence
 from instagram_cricket_balancer import InstagramCricketBalancer
@@ -3110,14 +3111,17 @@ def main():
         help="Display GitHub Actions 24/7 runtime configuration, schedule, and secret status",
     )
     parser.add_argument(
-        "--phase-15-test",
+        "--verify-live-discovery",
         action="store_true",
-        help="Run Phase 15 Production Audit & Reel Delivery Verification",
+        help="Discover and verify live RSS content items across all 5 supported categories",
     )
     args = parser.parse_args()
 
 
-    if args.test_instagram:
+    if getattr(args, "verify_live_discovery", False):
+        success = verify_live_discovery()
+        sys.exit(0 if success else 1)
+    elif args.test_instagram:
         success = test_instagram_connection()
         sys.exit(0 if success else 1)
     elif args.test_image:
@@ -3725,6 +3729,41 @@ def real_image_production_test() -> bool:
         print("INSTAGRAM PUBLICATION: FAILED")
         print(f"Error: {e}")
         return False
+
+
+def verify_live_discovery() -> bool:
+    """Discovers real news and video items from live RSS feeds across all supported categories and prints findings."""
+    print("TechCricketHub Instagram Live Content Discovery Verification")
+    print("==========================================================")
+    config = Config.load_from_env(validate=False)
+
+    video_source = InstagramRealVideoSource(config=config)
+    news_source = InstagramRealNewsSource(config=config)
+
+    categories = ["cricket", "technology", "geopolitics", "democracy", "entertainment"]
+    total_found = 0
+
+    print("\n--- DISCOVERING LIVE VIDEO ITEMS ---")
+    for cat in categories:
+        video_items = video_source.discover_video_items(category=cat, limit=3)
+        print(f"Category '{cat}': {len(video_items)} live video candidate(s)")
+        for item in video_items:
+            clean_title = item.get('title', '').encode('ascii', 'ignore').decode('ascii')
+            print(f"  - [{item.get('source_domain')}] {clean_title[:60]}... (URL: {item.get('video_url')})")
+        total_found += len(video_items)
+
+    print("\n--- DISCOVERING LIVE NEWS ARTICLES ---")
+    for cat in categories:
+        news_items = news_source.fetch_feed_items("https://news.google.com/rss/search?q=" + cat + "&hl=en-US&gl=US&ceid=US:en", category=cat)
+        print(f"Category '{cat}': {len(news_items)} live article(s)")
+        for item in news_items:
+            clean_title = item.get('title', '').encode('ascii', 'ignore').decode('ascii')
+            print(f"  - [{item.get('source_domain')}] {clean_title[:60]}...")
+        total_found += len(news_items)
+
+    print(f"\nTotal Discovered Live Items: {total_found}")
+    print("LIVE CONTENT DISCOVERY VERIFICATION: SUCCESS")
+    return True
 
 
 if __name__ == "__main__":

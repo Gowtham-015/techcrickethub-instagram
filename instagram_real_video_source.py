@@ -84,9 +84,8 @@ class InstagramRealVideoSource(InstagramContentSource):
 
         # Official reusable feeds & video RSS channels
         self.cricket_video_feeds = [
-            "https://www.bcci.tv/rss/videos",
-            "https://www.icc-cricket.com/rss/video",
-            "https://sports.ndtv.com/rss/cricket-video",
+            "https://www.espncricinfo.com/rss/content/story/feeds/0.xml",
+            "https://timesofindia.indiatimes.com/rssfeeds/54829575.cms",
             "https://www.youtube.com/feeds/videos.xml?channel_id=UC4suWqzhewM6Pxl6x68yLgA",
         ]
         self.tech_video_feeds = [
