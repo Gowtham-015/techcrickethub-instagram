@@ -9,5 +9,5 @@
   "images_published": 0,
   "failures": 4,
   "instagram_media_ids": [],
-  "status": "SUCCESS"
+  "status": "SKIPPED_DRY_RUN"
 }
