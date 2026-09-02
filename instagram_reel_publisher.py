@@ -76,6 +76,20 @@ class InstagramReelPublisher:
                 token=self.client.access_token,
             )
 
+        if (
+            "youtube.com/watch" in lowered_url
+            or "youtu.be/" in lowered_url
+            or "youtube.com/embed" in lowered_url
+            or "vimeo.com/" in lowered_url
+            or "tiktok.com/" in lowered_url
+            or "instagram.com/p/" in lowered_url
+            or "instagram.com/reel/" in lowered_url
+        ):
+            raise InstagramError(
+                "Invalid video URL: Video-hosting webpage URLs (e.g. YouTube watch links) are not direct video links.",
+                token=self.client.access_token,
+            )
+
         path = parsed.path.lower()
         if path.endswith((".html", ".htm", ".php", ".asp", ".aspx")):
             raise InstagramError(

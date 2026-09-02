@@ -3356,61 +3356,6 @@ def main():
         sys.exit(0)
 
 
-def production_diagnostics() -> bool:
-    print("Instagram Production Diagnostics (Phase 13.8)")
-    print("=============================================")
-    config = Config.load_from_env(validate=False)
-
-    has_token = bool(config.access_token and config.access_token != "YOUR_ACCESS_TOKEN_HERE")
-    has_user_id = bool(config.user_id and config.user_id != "YOUR_USER_ID_HERE")
-
-    print("\nGitHub Actions:")
-    print("  SCHEDULED AUTOMATION: CONFIGURED ('7,22,37,52 * * * *')")
-    print("  Laptop Required: NO")
-
-    print("\nEnvironment & Credentials:")
-    print(f"  Instagram Access Token: {'CONFIGURED' if has_token else 'MISSING'}")
-    print(f"  Instagram User ID: {'CONFIGURED' if has_user_id else 'MISSING'}")
-    print(f"  Instagram Production Mode: {'ENABLED' if config.production_enabled else 'DISABLED'}")
-    print(f"  Instagram Dry Run: {'FALSE' if not config.dry_run else 'TRUE'}")
-
-    if not has_token or not has_user_id:
-        print("\nPRODUCTION BLOCKED — REQUIRED GITHUB SECRET MISSING")
-        return False
-
-    api_ok = False
-    try:
-        client = InstagramAPIClient(user_id=config.user_id, access_token=config.access_token)
-        res = client.get(f"/{config.user_id}", params={"fields": "id,username"})
-        if res.get("id"):
-            api_ok = True
-    except Exception as e:
-        print(f"  API Connection Error: {e}")
-
-    print(f"  Instagram API Connection: {'CONNECTED' if api_ok else 'FAILED'}")
-
-    source = InstagramRealNewsSource(config=config)
-    items = source.get_content_items()
-    cricket_items = [i for i in items if i.get("category") == "cricket"]
-    tech_items = [i for i in items if i.get("category") == "technology"]
-    reel_items = [i for i in items if i.get("media_type") == "REEL"]
-    image_items = [i for i in items if i.get("media_type") == "IMAGE"]
-
-    print(f"\nFresh Content Acquisition:")
-    print(f"  Total Items Discovered: {len(items)}")
-    print(f"  Cricket Items: {len(cricket_items)}")
-    print(f"  Technology Items: {len(tech_items)}")
-    print(f"  Reel Candidates: {len(reel_items)}")
-    print(f"  Image Candidates: {len(image_items)}")
-
-    guard = InstagramFinalPublishGuard(config=config)
-    hist = guard.get_published_history()
-    print(f"\nPersistent Publishing History:")
-    print(f"  Total Published Records: {len(hist)}")
-    print(f"  Final Publish Guard: READY")
-    print(f"  Status: {'READY' if api_ok and items else 'NOT READY'}")
-    return api_ok
-
 
 def reel_production_test() -> bool:
     import time

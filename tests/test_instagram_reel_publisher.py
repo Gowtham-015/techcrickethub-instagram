@@ -96,6 +96,10 @@ def test_missing_video_url(mock_client):
         "https://bing.com/images/search?q=test",
         "https://example.com/page.html",
         "https://example.com/index.php",
+        "https://www.youtube.com/watch?v=ihxHk6wYj8c",
+        "https://youtu.be/ihxHk6wYj8c",
+        "https://vimeo.com/123456",
+        "https://www.tiktok.com/@user/video/1234",
     ],
 )
 def test_invalid_video_urls(mock_client, invalid_url):
@@ -104,6 +108,14 @@ def test_invalid_video_urls(mock_client, invalid_url):
     assert res.success is False
     assert "Invalid video URL" in res.message
     mock_client.post.assert_not_called()
+
+
+def test_validate_video_url_rejects_youtube_watch_urls(mock_client):
+    publisher = InstagramReelPublisher(client=mock_client)
+    with pytest.raises(InstagramError) as exc_info:
+        publisher.validate_video_url("https://www.youtube.com/watch?v=ihxHk6wYj8c")
+    assert "Invalid video URL" in str(exc_info.value)
+    assert "YouTube watch links" in str(exc_info.value)
 
 
 @patch("time.sleep", return_value=None)

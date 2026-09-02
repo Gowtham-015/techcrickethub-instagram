@@ -72,7 +72,6 @@ class Config:
     publish_lock_enabled: bool = True
     published_history_enabled: bool = True
     cloud_runtime_enabled: bool = True
-    heartbeat_interval_seconds: int = 60
     heartbeat_timeout_seconds: int = 300
     publish_retry_limit: int = 3
     missed_post_max_age_hours: int = 6

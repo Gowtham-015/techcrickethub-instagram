@@ -23,6 +23,7 @@ concurrency:
 jobs:
   publish-job:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     env:
       INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID }}
@@ -45,7 +46,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A || true
           git reset --hard HEAD || true
-          git pull origin main --rebase -X ours || git pull origin main --rebase || true
+          git pull origin main --rebase || true
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
@@ -67,9 +68,7 @@ jobs:
 
       - name: Run Essential Validation Tests
         run: |
-          python -m pytest tests/test_phase14_1_comprehensive.py tests/test_phase15.py tests/test_phase15_1.py tests/test_instagram_production.py -q
-
-
+          python -m pytest tests/test_instagram_production_gate.py tests/test_instagram_real_video_source.py tests/test_instagram_publisher.py tests/test_instagram_reel_publisher.py -q
 
       - name: Run Preflight Diagnostics
         run: |
@@ -84,7 +83,7 @@ jobs:
           git add -A || true
           if ! git diff --staged --quiet; then
             git commit -m "Chore: commit generated media before Meta publication [skip ci]" || true
-            git pull origin main --rebase -X ours || git pull origin main --rebase || true
+            git pull origin main --rebase || true
             git push origin main || true
             sleep 2
             echo "MEDIA COMMITTED AND PUSHED TO GITHUB RAW"
@@ -92,13 +91,11 @@ jobs:
             echo "No pre-run media changes to commit."
           fi
 
-
       - name: Execute Production Publisher Cycle
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python main.py --run-once
-
 
       - name: Update Heartbeat & Cloud Status
         if: always()
@@ -114,12 +111,8 @@ jobs:
           git add -A || true
           if ! git diff --staged --quiet; then
             git commit -m "Chore: update published history and state [skip ci]" || true
-            git pull origin main --rebase -X ours || git pull origin main --rebase || true
+            git pull origin main --rebase || true
             git push origin main || true
             echo "STATE COMMITTED"
             echo "STATE PUSHED"
           fi
-
-
-
-

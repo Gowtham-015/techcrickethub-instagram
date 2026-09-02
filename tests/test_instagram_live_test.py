@@ -7,7 +7,20 @@ from instagram_health import InstagramHealthTracker
 from instagram_production_audit import InstagramProductionAuditStore
 
 
-def test_live_test_single_post_execution(tmp_path):
+from unittest.mock import MagicMock, patch
+
+
+@patch("requests.head")
+@patch("requests.get")
+def test_live_test_single_post_execution(mock_get, mock_head, tmp_path):
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.headers = {"Content-Type": "image/jpeg"}
+    mock_resp.content = b"fake_image_bytes"
+    mock_resp.text = "<rss><channel><item><title>Test</title><link>https://example.com/test</link></item></channel></rss>"
+    mock_get.return_value = mock_resp
+    mock_head.return_value = mock_resp
+
     health_file = str(tmp_path / "health.json")
     audit_file = str(tmp_path / "audit.json")
 
@@ -39,7 +52,17 @@ def test_live_test_single_post_execution(tmp_path):
     assert audit_summary["total_audit_events"] == 1
 
 
-def test_live_test_limit_enforced(tmp_path):
+@patch("requests.head")
+@patch("requests.get")
+def test_live_test_limit_enforced(mock_get, mock_head, tmp_path):
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.headers = {"Content-Type": "image/jpeg"}
+    mock_resp.content = b"fake_image_bytes"
+    mock_resp.text = "<rss><channel><item><title>Test</title><link>https://example.com/test</link></item></channel></rss>"
+    mock_get.return_value = mock_resp
+    mock_head.return_value = mock_resp
+
     health_file = str(tmp_path / "health.json")
     audit_file = str(tmp_path / "audit.json")
 

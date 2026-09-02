@@ -11,6 +11,19 @@ from instagram_client import InstagramAPIClient
 from instagram_publisher import InstagramImagePublisher, PublishResult
 
 
+@pytest.fixture(autouse=True)
+def mock_media_verifier():
+    with patch("instagram_media_verifier.InstagramMediaVerifier.validate_meta_media_accessibility", return_value={"is_valid": True}), \
+         patch("requests.head") as mock_h, \
+         patch("requests.get") as mock_g:
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.headers = {"Content-Type": "image/jpeg"}
+        mock_h.return_value = resp
+        mock_g.return_value = resp
+        yield
+
+
 @pytest.fixture
 def mock_client():
     client = MagicMock(spec=InstagramAPIClient)

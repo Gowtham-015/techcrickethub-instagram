@@ -1,8 +1,8 @@
 {
-  "worker_id": "Gowtham-19164",
+  "worker_id": "Gowtham-19008",
   "worker_status": "RUNNING",
-  "started_at": "2026-09-02T17:06:25.264797+00:00",
-  "last_heartbeat": "2026-09-02T17:06:25.264797+00:00",
+  "started_at": "2026-09-02T17:51:42.693555+00:00",
+  "last_heartbeat": "2026-09-02T17:51:42.693555+00:00",
   "uptime_seconds": 0,
   "last_cycle": "N/A",
   "last_publish_attempt": "N/A",

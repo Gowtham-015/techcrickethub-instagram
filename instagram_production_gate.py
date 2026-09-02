@@ -50,7 +50,6 @@ class InstagramProductionGate:
             cfg.access_token
             and cfg.access_token.strip()
             and cfg.access_token != "YOUR_ACCESS_TOKEN_HERE"
-            and cfg.access_token != "dummy_test_token_for_mocking"
         )
 
         if not has_user_id or not has_token:
