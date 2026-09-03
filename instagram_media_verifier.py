@@ -548,7 +548,6 @@ class InstagramMediaVerifier:
                 with urllib.request.urlopen(req, timeout=15) as resp:
                     status = resp.getcode()
                     c_type = resp.headers.get("Content-Type", "").lower().split(";")[0].strip()
-                    c_len_str = resp.headers.get("Content-Length")
 
                     # Read first 4KB chunk for magic bytes inspection
                     chunk = resp.read(4096)
@@ -556,6 +555,11 @@ class InstagramMediaVerifier:
                         last_error = "Media response body is empty or truncated (< 8 bytes)"
                     elif "text/html" in c_type or chunk.startswith(b"<!DOCTYPE") or chunk.startswith(b"<html") or b"<title>" in chunk[:512].lower():
                         last_error = "Public URL returned HTML webpage instead of binary media file"
+                        logger.warning("Permanent failure detected (HTML webpage returned) — failing fast.")
+                        print(f"HTTP Status: {status} (HTML webpage returned — permanent failure)")
+                        print("Meta Media URL Check: FAIL")
+                        print("========================================")
+                        return {"is_valid": False, "error_code": "MEDIA_PUBLICATION_BLOCKED", "error": last_error}
                     else:
                         magic_ok = cls.check_magic_bytes(chunk, media_type)
                         if not magic_ok:
@@ -581,6 +585,12 @@ class InstagramMediaVerifier:
                             }
             except urllib.error.HTTPError as he:
                 last_error = f"Public media URL HTTP {he.code} {he.reason}"
+                if he.code in (401, 403, 404):
+                    logger.warning(f"Permanent failure detected (HTTP {he.code}) — failing fast.")
+                    print(f"HTTP Status: {he.code} (Permanent failure — not retrying)")
+                    print("Meta Media URL Check: FAIL")
+                    print("========================================")
+                    return {"is_valid": False, "error_code": "MEDIA_PUBLICATION_BLOCKED", "error": last_error}
             except Exception as e:
                 last_error = f"Public media URL connection failed: {e}"
 
@@ -589,7 +599,7 @@ class InstagramMediaVerifier:
                 import time
                 time.sleep(delay_sec)
 
-        print(f"HTTP Status: 404/Failed ({last_error})")
+        print(f"HTTP Status: Failed ({last_error})")
         print("Meta Media URL Check: FAIL")
         print("========================================")
         return {"is_valid": False, "error_code": "MEDIA_PUBLICATION_BLOCKED", "error": last_error or "Public media URL HTTP 404 Not Found"}

@@ -115,7 +115,7 @@ def test_validate_meta_media_accessibility_cdn_retry_success(monkeypatch):
         attempts += 1
         if attempts < 3:
             raise urllib.error.HTTPError(
-                req.full_url, 404, "Not Found", {}, None
+                req.full_url, 503, "Service Unavailable", {}, None
             )
 
         resp = MagicMock()
