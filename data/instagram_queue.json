@@ -1,16 +1,16 @@
 {
   "items": [
     {
-      "queue_id": "q-test-reel-q-4ed9d5de",
-      "content_id": "test-reel-q-4ed9d5de",
+      "queue_id": "q-test-reel-q-2bafe7cd",
+      "content_id": "test-reel-q-2bafe7cd",
       "media_type": "REEL",
       "title": "Quantum Computing Breakthrough Benchmark Released",
-      "media_url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-4ed9d5de.mp4",
+      "media_url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-2bafe7cd.mp4",
       "caption": "Quantum Computing Breakthrough Benchmark Released",
       "category": "technology",
-      "scheduled_at": "2026-09-04T02:30:44.939344+00:00",
+      "scheduled_at": "2026-09-04T02:39:14.683931+00:00",
       "status": "DUPLICATE",
-      "created_at": "2026-09-03T19:20:44.939344+00:00",
+      "created_at": "2026-09-03T19:49:14.684932+00:00",
       "attempt_count": 0,
       "last_error": "Near-duplicate title detected (similarity 0.918): 'Quantum Computing Breakthrough Benchmark Released' vs published 'Quantum Computing Breakthrough Benchmark Unveiled'.",
       "published_media_id": null,
@@ -22,6 +22,27 @@
       "hashtags": [
         "#technology"
       ]
+    },
+    {
+      "queue_id": "q-realvideo-53dd0a75e538ca1d",
+      "content_id": "realvideo-53dd0a75e538ca1d",
+      "media_type": "REEL",
+      "title": "Wobble's right for Wong despite wobble",
+      "media_url": "https://vjs.zencdn.net/v/oceans.mp4",
+      "caption": "",
+      "category": "cricket",
+      "scheduled_at": "2026-09-04T02:35:02.790282+00:00",
+      "status": "PUBLISHED",
+      "created_at": "2026-09-03T20:15:02.790282+00:00",
+      "attempt_count": 1,
+      "last_error": null,
+      "published_media_id": "17904869955328228",
+      "created_media_container_id": "18092113382300654",
+      "source_url": "",
+      "source_domain": "",
+      "summary": "England quick credits chat with media manager for decision to focus on wobble seam above swing",
+      "facts": [],
+      "hashtags": []
     }
   ]
 }

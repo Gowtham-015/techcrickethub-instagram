@@ -46,14 +46,20 @@ class InstagramRealNewsSource(InstagramContentSource):
         if os.getenv("SKIP_CATBOX_UPLOAD", "false").lower() in ("true", "1", "yes"):
             return fallback_url
 
-        is_video = local_path.lower().endswith((".mp4", ".mov", ".avi"))
-        timeout = 35 if is_video else 15
+        if fallback_url and fallback_url.startswith("https://") and "raw.githubusercontent.com" not in fallback_url and "missing" not in fallback_url and "fail" not in fallback_url:
+            from instagram_media_verifier import InstagramMediaVerifier
+            m_type = "REEL" if local_path.lower().endswith((".mp4", ".mov", ".avi")) else "IMAGE"
+            v_check = InstagramMediaVerifier.validate_meta_media_accessibility(fallback_url, media_type=m_type)
+            if v_check.get("is_valid"):
+                logger.info(f"Fallback URL is already publicly valid ({fallback_url}). Skipping local upload.")
+                return fallback_url
+        timeout = 12 if is_video else 8
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
         }
 
         # Attempt Catbox.moe upload with retries
-        for attempt in range(3):
+        for attempt in range(1):
             try:
                 with open(local_path, "rb") as f:
                     resp = requests.post(
