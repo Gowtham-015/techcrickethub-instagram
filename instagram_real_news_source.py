@@ -68,8 +68,14 @@ class InstagramRealNewsSource(InstagramContentSource):
                         timeout=timeout,
                     )
                     if resp.status_code == 200 and resp.text.strip().startswith("https://files.catbox.moe/"):
-                        logger.info(f"Public host upload (Catbox) success for {local_path}: {resp.text.strip()}")
-                        return resp.text.strip()
+                        res_url = resp.text.strip()
+                        try:
+                            chk = requests.get(res_url, headers=headers, timeout=5, stream=True)
+                            if chk.status_code == 200 and int(chk.headers.get("Content-Length", 1000)) > 100:
+                                logger.info(f"Public host upload (Catbox) success for {local_path}: {res_url}")
+                                return res_url
+                        except Exception:
+                            pass
             except Exception as e:
                 logger.warning(f"Catbox upload attempt {attempt + 1} failed for {local_path}: {e}")
 
@@ -113,6 +119,46 @@ class InstagramRealNewsSource(InstagramContentSource):
                 logger.warning(f"Git push for raw URL failed: {git_err}")
 
         return fallback_url
+
+    def prepare_instagram_compliant_photo(self, image_url: str, content_id: str) -> Optional[str]:
+        """Ensures photo complies with Meta Graph API aspect ratio requirements (4:5 to 1.91:1) without adding any text or graphics."""
+        if not image_url or not isinstance(image_url, str):
+            return None
+        try:
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+            }
+            resp = requests.get(image_url, headers=headers, timeout=8)
+            if resp.status_code != 200:
+                return image_url
+            import io
+            from PIL import Image
+            img = Image.open(io.BytesIO(resp.content)).convert("RGB")
+            w, h = img.size
+            if h == 0 or w == 0:
+                return image_url
+            ratio = w / float(h)
+            if 0.8 <= ratio <= 1.91:
+                return image_url  # Already 100% Meta API aspect-ratio compliant
+
+            # Aspect ratio outside 4:5 to 1.91:1 (e.g. 2:1 banner).
+            # Center raw photo inside a clean 1080x1080 canvas with ZERO text or AI graphics.
+            canvas = Image.new("RGB", (1080, 1080), (15, 23, 42))
+            img.thumbnail((1080, 1080), Image.Resampling.LANCZOS)
+            nw, nh = img.size
+            canvas.paste(img, ((1080 - nw) // 2, (1080 - nh) // 2))
+
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            gen_dir = os.path.join(base_dir, "media", "generated")
+            os.makedirs(gen_dir, exist_ok=True)
+            photo_path = os.path.join(gen_dir, f"photo_{content_id}.jpg")
+            canvas.save(photo_path, "JPEG", quality=95)
+            rel_n = os.path.basename(photo_path)
+            raw_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/{rel_n}"
+            return self.upload_to_public_host(photo_path, raw_url)
+        except Exception as e:
+            logger.warning(f"Photo aspect-ratio compliance check failed for {content_id}: {e}")
+            return image_url
 
 
 
@@ -223,107 +269,24 @@ class InstagramRealNewsSource(InstagramContentSource):
 
                 content_id = self.generate_stable_id(link, source_domain)
 
-                # Prefer clean, un-edited raw news photos from article enclosures/media tags
+                # Enforce strict 100% real published photos or real videos (zero AI text cards/graphic banners)
                 raw_article_photo = image_url
                 if raw_article_photo and raw_article_photo.startswith("http://"):
                     raw_article_photo = "https://" + raw_article_photo[7:]
 
                 use_raw_photo = os.getenv("USE_RAW_NEWS_PHOTOS", "true").lower() in ("true", "1", "yes")
+                disable_gen_reels = os.getenv("DISABLE_GENERATED_REELS", "true").lower() in ("true", "1", "yes")
 
-                if use_raw_photo and raw_article_photo:
-                    image_url = raw_article_photo
-                else:
-                    # Fallback to broadcast news graphic card ONLY if raw photo is missing and requested
-                    try:
-                        from instagram_graphic_card_generator import InstagramGraphicCardGenerator
+                # If no real published photo and no real video, skip article completely (no AI generated cards/reels)
+                if use_raw_photo and disable_gen_reels and not raw_article_photo:
+                    logger.info(f"Skipping article without authentic published photo/video: '{title}'")
+                    continue
 
-                        card_gen = InstagramGraphicCardGenerator()
-                        card_path = card_gen.create_news_card(
-                            title=title,
-                            summary=clean_desc,
-                            category=category,
-                            source_name=source_domain,
-                            content_id=content_id,
-                            bg_image_path=raw_article_photo,
-                        )
-                        rel_filename = os.path.basename(card_path)
-                        raw_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/{rel_filename}"
-                        image_url = self.upload_to_public_host(card_path, raw_url)
-                    except Exception as gen_err:
-                        logger.warning(f"Graphic card generation failed for {content_id}: {gen_err}")
-                        image_url = raw_article_photo or f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/card_{content_id}.jpg"
-
-                disable_gen_reels = os.getenv("DISABLE_GENERATED_REELS", "false").lower() in ("true", "1", "yes")
-                reels_only = not disable_gen_reels and (
-                    os.getenv("REELS_ONLY", "false").lower() in ("true", "1", "yes")
-                    or os.getenv("FORCE_REELS", "false").lower() in ("true", "1", "yes")
-                    or os.getenv("INSTAGRAM_REELS_ONLY", "false").lower() in ("true", "1", "yes")
-                )
-                is_reel_candidate = False if disable_gen_reels else (True if reels_only else ((len(results) % 5) in (0, 1, 2, 3)))
-
-                # 100% Real Video Footage Enforcement for Reels
+                # Ensure photo satisfies Meta Graph API aspect ratio (4:5 to 1.91:1) with zero text/graphics added
+                image_url = self.prepare_instagram_compliant_photo(raw_article_photo, content_id) if raw_article_photo else None
                 video_url = None
-                media_rights_status = "UNKNOWN"
-
-
-                # Check if real action video is available
-                extracted_video_url = item.get("video_url") or link if ("youtube.com" in link or "youtu.be" in link or link.endswith(".mp4")) else None
-                
-                if is_reel_candidate and extracted_video_url:
-                    try:
-                        acquired_path = self.download_video_asset(extracted_video_url)
-                        if acquired_path and os.path.exists(acquired_path):
-                            rel_v = os.path.basename(acquired_path)
-                            raw_v_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/acquired_videos/{rel_v}"
-                            video_url = self.upload_to_public_host(acquired_path, raw_v_url)
-                            item_media_type = "REEL"
-                            image_url = None
-                            media_rights_status = "ORIGINAL_GENERATED"
-                        else:
-                            # Fall back to high-resolution graphic card image post if no video asset
-                            item_media_type = "IMAGE"
-                            video_url = None
-                            media_rights_status = "ORIGINAL_GENERATED"
-                    except Exception as v_err:
-                        logger.warning(f"Video acquisition error for {content_id}: {v_err}")
-                        item_media_type = "IMAGE"
-                        video_url = None
-                        media_rights_status = "ORIGINAL_GENERATED"
-                elif is_reel_candidate:
-                    # Try generating dynamic animated reel from facts ONLY if real background footage is provided
-                    try:
-                        from instagram_reel_generator import InstagramReelGenerator
-
-                        reel_gen = InstagramReelGenerator()
-                        gen_res = reel_gen.generate_reel_from_facts(
-                            {
-                                "content_id": content_id,
-                                "title": title,
-                                "summary": clean_desc[:250] if clean_desc else title,
-                                "source_name": source_domain,
-                                "category": category,
-                            },
-                            duration_sec=6.0,
-                        )
-                        if gen_res.get("success") and gen_res.get("reel_path"):
-                            rel_video = os.path.basename(gen_res["reel_path"])
-                            raw_video_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/{rel_video}"
-                            video_url = self.upload_to_public_host(gen_res["reel_path"], raw_video_url)
-                            item_media_type = "REEL"
-                            media_rights_status = "ORIGINAL_GENERATED"
-                        else:
-                            item_media_type = "IMAGE"
-                            video_url = None
-                            media_rights_status = "ORIGINAL_GENERATED"
-                    except Exception as reel_err:
-                        logger.warning(f"Reel generation failed for {content_id}: {reel_err}")
-                        item_media_type = "IMAGE"
-                        video_url = None
-                        media_rights_status = "ORIGINAL_GENERATED"
-                else:
-                    item_media_type = "IMAGE"
-                    video_url = None
-                    media_rights_status = "ORIGINAL_GENERATED" if image_url else "AUTHORIZED"
+                item_media_type = "IMAGE"
+                media_rights_status = "AUTHORIZED"
 
 
                 results.append(
