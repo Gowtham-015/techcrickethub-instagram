@@ -43,11 +43,19 @@ class PublicMediaHost:
             fallback_raw_url = f"https://raw.githubusercontent.com/{self.repo}/{self.branch}/{rel_path}"
 
 
-        if os.getenv("SKIP_PUBLIC_UPLOADS", "false").lower() in ("true", "1", "yes"):
+        if fallback_raw_url and fallback_raw_url.startswith("https://") and "raw.githubusercontent.com" not in fallback_raw_url and "missing" not in fallback_raw_url and "fail" not in fallback_raw_url:
+            from instagram_media_verifier import InstagramMediaVerifier
+            m_type = "REEL" if local_path.lower().endswith((".mp4", ".mov", ".avi")) else "IMAGE"
+            v_check = InstagramMediaVerifier.validate_meta_media_accessibility(fallback_raw_url, media_type=m_type)
+            if v_check.get("is_valid"):
+                logger.info(f"Fallback URL is already publicly valid ({fallback_raw_url}). Skipping local upload.")
+                return fallback_raw_url
+
+        if os.getenv("SKIP_PUBLIC_UPLOADS", "false").lower() in ("true", "1", "yes") or os.getenv("SKIP_CATBOX_UPLOAD", "false").lower() in ("true", "1", "yes"):
             return fallback_raw_url
 
         is_video = local_path.lower().endswith((".mp4", ".mov", ".avi"))
-        timeout = 35 if is_video else 15
+        timeout = 12 if is_video else 8
 
         # Host 1: Catbox.moe
         for attempt in range(2):
