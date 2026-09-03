@@ -24,16 +24,12 @@ class InstagramRealNewsSource(InstagramContentSource):
     ):
         self.config = config or Config.load_from_env(validate=False)
         self.timeout = timeout
-        self.cricket_feeds = [
-            f.strip()
-            for f in self.config.cricket_rss_feeds.split(",")
-            if f.strip()
-        ]
-        self.tech_feeds = [
-            f.strip()
-            for f in self.config.tech_rss_feeds.split(",")
-            if f.strip()
-        ]
+        self.cricket_feeds = [f.strip() for f in getattr(self.config, "cricket_rss_feeds", "").split(",") if f.strip()]
+        self.tech_feeds = [f.strip() for f in getattr(self.config, "tech_rss_feeds", "").split(",") if f.strip()]
+        self.launches_feeds = [f.strip() for f in getattr(self.config, "launches_rss_feeds", "https://www.gsmarena.com/rss-news-reviews.php3,https://techcrunch.com/category/gadgets/feed/").split(",") if f.strip()]
+        self.geopolitics_feeds = [f.strip() for f in getattr(self.config, "geopolitics_rss_feeds", "https://timesofindia.indiatimes.com/rssfeeds/296589292.cms").split(",") if f.strip()]
+        self.democracy_feeds = [f.strip() for f in getattr(self.config, "democracy_rss_feeds", "https://www.idea.int/rss.xml").split(",") if f.strip()]
+        self.entertainment_feeds = [f.strip() for f in getattr(self.config, "entertainment_rss_feeds", "https://variety.com/feed/").split(",") if f.strip()]
 
     @staticmethod
     def generate_stable_id(url: str, source_name: str) -> str:
@@ -215,14 +211,16 @@ class InstagramRealNewsSource(InstagramContentSource):
 
             source_domain = feed_url.split("/")[2] if "//" in feed_url else feed_url
 
-            for item in items[:3]:
-                title = (item.findtext("title") or "").strip()
+            for item in items[:5]:
+                import html
+                title = html.unescape((item.findtext("title") or "").strip())
                 link = (item.findtext("link") or "").strip()
-                description = (item.findtext("description") or "").strip()
+                description = html.unescape((item.findtext("description") or "").strip())
                 pub_date_str = item.findtext("pubDate") or item.findtext("dc:date")
 
-                # Remove HTML tags from description
-                clean_desc = re.sub(r"<[^>]+>", "", description).strip()
+                # Remove HTML tags and sanitize HTML entities from description
+                clean_desc = html.unescape(re.sub(r"<[^>]+>", "", description)).replace("&nbsp;", " ").strip()
+                clean_desc = re.sub(r"\s+", " ", clean_desc).strip()
 
                 if not title or not link:
                     continue
@@ -235,37 +233,57 @@ class InstagramRealNewsSource(InstagramContentSource):
                     logger.info(f"Skipping stale {category} article ({int(age_hours)}h old): '{title}'")
                     continue
 
+                # Helper to reject generic app icons and site logos
+                def is_valid_subject_photo(url: Optional[str]) -> bool:
+                    if not url or not isinstance(url, str):
+                        return False
+                    u = url.lower()
+                    invalid_tokens = ["googleusercontent.com", "news.google.com", "favicon", "logo", "app_icon", "default_avatar", "ycombinator.com", "feedburner.com"]
+                    return not any(tok in u for tok in invalid_tokens)
+
                 # Extract image url from enclosure, media tags, or img src in description
                 image_url = None
                 enclosure = item.find("enclosure")
                 if enclosure is not None:
                     enc_url = enclosure.get("url", "")
                     enc_type = enclosure.get("type", "")
-                    if "image" in enc_type or enc_url.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+                    if ("image" in enc_type or enc_url.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))) and is_valid_subject_photo(enc_url):
                         image_url = enc_url
 
                 if not image_url:
                     namespaces = {"media": "http://search.yahoo.com/mrss/"}
                     for media_tag in ("media:content", "media:thumbnail"):
                         media_elem = item.find(media_tag, namespaces)
-                        if media_elem is not None and media_elem.get("url"):
+                        if media_elem is not None and media_elem.get("url") and is_valid_subject_photo(media_elem.get("url")):
                             image_url = media_elem.get("url")
                             break
 
                 if not image_url and description:
                     img_match = re.search(r'<img[^>]+src=["\'](https?://[^"\']+)["\']', description, re.IGNORECASE)
-                    if img_match:
+                    if img_match and is_valid_subject_photo(img_match.group(1)):
                         image_url = img_match.group(1)
 
                 if not image_url and link and link.startswith("http"):
                     try:
-                        art_resp = requests.get(link, headers=headers, timeout=4)
+                        art_resp = requests.get(link, headers=headers, timeout=5, allow_redirects=True)
                         if art_resp.status_code == 200:
-                            og_m = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\'](https?://[^"\']+)["\']', art_resp.text, re.IGNORECASE) or re.search(r'<meta[^>]+content=["\'](https?://[^"\']+)["\'][^>]+property=["\']og:image["\']', art_resp.text, re.IGNORECASE)
-                            if og_m:
-                                image_url = og_m.group(1)
+                            actual_url = art_resp.url or link
+                            if "//" in actual_url:
+                                source_domain = actual_url.split("/")[2]
+                            meta_m = (
+                                re.search(r'<meta[^>]+(?:property|name)=["\'](?:og|twitter):image(?::src)?["\'][^>]+content=["\']([^"\']+)["\']', art_resp.text, re.IGNORECASE)
+                                or re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+(?:property|name)=["\'](?:og|twitter):image(?::src)?["\']', art_resp.text, re.IGNORECASE)
+                            )
+                            if meta_m:
+                                extracted_img = meta_m.group(1).strip()
+                                if extracted_img.startswith("//"):
+                                    extracted_img = "https:" + extracted_img
+                                elif not extracted_img.startswith("http"):
+                                    extracted_img = urllib.parse.urljoin(actual_url, extracted_img)
+                                if is_valid_subject_photo(extracted_img):
+                                    image_url = extracted_img
                     except Exception as og_err:
-                        logger.debug(f"og:image extraction skipped for {link}: {og_err}")
+                        logger.debug(f"Image meta extraction skipped for {link}: {og_err}")
 
                 content_id = self.generate_stable_id(link, source_domain)
 
@@ -289,12 +307,15 @@ class InstagramRealNewsSource(InstagramContentSource):
                 media_rights_status = "AUTHORIZED"
 
 
+                LAUNCH_KEYWORDS = ("unveil", "unveils", "launch", "launches", "announces", "reveal", "reveals", "introduced", "specs", "new product")
+                is_launch = category == "launches" or any(kw in title.lower() for kw in LAUNCH_KEYWORDS)
+
                 results.append(
                     {
                         "content_id": content_id,
                         "title": title,
                         "summary": clean_desc[:250] if clean_desc else title,
-                        "category": category,
+                        "category": "launches" if (category == "technology" and is_launch) else category,
                         "source_name": source_domain,
                         "source_url": link,
                         "discovery_source": feed_url,
@@ -308,6 +329,7 @@ class InstagramRealNewsSource(InstagramContentSource):
                         "image_url": image_url,
                         "video_url": video_url,
                         "media_rights_status": media_rights_status,
+                        "is_launch": is_launch,
                     }
                 )
 
@@ -318,18 +340,25 @@ class InstagramRealNewsSource(InstagramContentSource):
             return []
 
     def get_content_items(self) -> List[Dict[str, Any]]:
-        """Collects real Cricket and Tech news items across all configured RSS sources."""
+        """Collects real news items across all enabled content categories and RSS sources."""
         all_items: List[Dict[str, Any]] = []
 
-        # 1. Fetch Cricket feeds
-        for feed in self.cricket_feeds:
-            items = self.fetch_feed_items(feed, category="cricket")
-            all_items.extend(items)
+        category_map = [
+            ("cricket", getattr(self.config, "enable_cricket_category", True), self.cricket_feeds),
+            ("technology", getattr(self.config, "enable_technology_category", True), self.tech_feeds),
+            ("launches", getattr(self.config, "enable_launches_category", True), self.launches_feeds),
+            ("geopolitics", getattr(self.config, "enable_geopolitics_category", True), self.geopolitics_feeds),
+            ("democracy", getattr(self.config, "enable_democracy_category", True), self.democracy_feeds),
+            ("entertainment", getattr(self.config, "enable_entertainment_category", True), self.entertainment_feeds),
+        ]
 
-        # 2. Fetch Tech feeds
-        for feed in self.tech_feeds:
-            items = self.fetch_feed_items(feed, category="technology")
-            all_items.extend(items)
+        for cat_name, is_enabled, feeds in category_map:
+            if not is_enabled:
+                logger.info(f"Skipping category '{cat_name}' (disabled by configuration)")
+                continue
+            for feed in feeds:
+                items = self.fetch_feed_items(feed, category=cat_name)
+                all_items.extend(items)
 
         logger.info(f"RealNewsSource acquired {len(all_items)} verified articles from RSS feeds.")
         return all_items

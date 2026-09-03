@@ -91,7 +91,17 @@ class InstagramContentScorer:
             completeness_score += 10
 
         total = title_score + summary_score + category_score + media_score + completeness_score
-        total = max(0, min(100, total))
+
+        # 6. Trend Signal Boost Factor (up to 1.5x multiplier)
+        trend_mult = 1.0
+        if hasattr(self, "trend_provider") and self.trend_provider:
+            try:
+                trend_mult = self.trend_provider.score_trend_relevance(title, summary)
+            except Exception:
+                trend_mult = 1.0
+
+        trend_boost_points = int(round(total * (trend_mult - 1.0)))
+        total = max(0, min(100, total + trend_boost_points))
 
         # Classify priority
         if total >= 90:
@@ -113,12 +123,13 @@ class InstagramContentScorer:
             "category_relevance": category_score,
             "media_quality": media_score,
             "completeness": completeness_score,
+            "trend_boost": trend_boost_points,
         }
 
         explanation = (
             f"Total score: {total}/100. Title: {title_score}/20, Summary: {summary_score}/20, "
-            f"Category: {category_score}/20, Media: {media_score}/20, Completeness: {completeness_score}/20. "
-            f"Decision: {decision} ({priority})."
+            f"Category: {category_score}/20, Media: {media_score}/20, Completeness: {completeness_score}/20, "
+            f"Trend Boost: +{trend_boost_points} (mult {trend_mult:.2f}x). Decision: {decision} ({priority})."
         )
 
         return ContentScore(

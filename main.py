@@ -167,60 +167,27 @@ def test_reel_publishing() -> bool:
             return False
 
         item = items[0]
-        title = item["title"]
-        summary = item["summary"]
-        source_name = item["source_name"]
+        source_video = InstagramRealVideoSource(config=config)
+        video_items = source_video.get_content_items()
+        if not video_items:
+            print("ERROR: No authentic real video media acquired from live video feeds.")
+            return False
 
-        print(f"\nAcquired Real News Story for Reel:")
+        v_item = video_items[0]
+        title = v_item["title"]
+        summary = v_item["summary"]
+        source_name = v_item["source_name"]
+        video_url = v_item.get("video_url")
+
+        print(f"\nAcquired Real News Video Footage for Reel:")
         print(f"Title: {title}")
         print(f"Summary: {summary}")
         print(f"Source: {source_name}")
+        print(f"Video URL: {video_url}")
 
-        # Generate custom animated vertical video Reel from real story facts
-        reel_gen = InstagramReelGenerator()
-        reel_res = reel_gen.generate_reel_from_facts(
-            {
-                "content_id": item["content_id"],
-                "title": title,
-                "summary": summary,
-                "source_name": source_name,
-            }
-        )
-
-        video_url = None
-        if reel_res.get("success") and reel_res.get("reel_path"):
-            reel_file_path = reel_res["reel_path"]
-            rel_name = os.path.basename(reel_file_path)
-            gen_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "media", "generated")
-            os.makedirs(gen_dir, exist_ok=True)
-            dst_path = os.path.join(gen_dir, rel_name)
-            shutil.copy(reel_file_path, dst_path)
-
-            # Upload to direct Range-supported video host (catbox.moe) for Meta API compliance
-            try:
-                import requests
-                with open(dst_path, "rb") as f:
-                    up_resp = requests.post(
-                        "https://catbox.moe/user/api.php",
-                        files={"fileToUpload": f},
-                        data={"reqtype": "fileupload"},
-                        timeout=15,
-                    )
-                if up_resp.status_code == 200 and up_resp.text.startswith("https://"):
-                    video_url = up_resp.text.strip()
-                    print(f"Uploaded Reel Video to Direct Host: {video_url}")
-            except Exception as up_err:
-                print(f"Direct host upload fallback warning: {up_err}")
-
-            if not video_url:
-                # Commit and push to GitHub as fallback
-                import subprocess
-                import time
-                subprocess.run(["git", "add", "media/generated/"], check=False)
-                subprocess.run(["git", "commit", "-m", f"Add generated reel {rel_name}"], check=False)
-                subprocess.run(["git", "push", "origin", "main"], check=False)
-                time.sleep(5)
-                video_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/{rel_name}"
+        if not video_url:
+            print("ERROR: Acquired video item does not have a direct video URL.")
+            return False
 
         if not video_url:
             print(f"ERROR: Failed to render dynamic story Reel MP4 video for '{title}'. Reason: {reel_res.get('reason')}")
@@ -2153,71 +2120,6 @@ def cloud_publishing_diagnostics() -> bool:
         return False
 
 
-def publish_test() -> bool:
-    if hasattr(sys.stdout, "reconfigure"):
-        try:
-            sys.stdout.reconfigure(encoding="utf-8")
-        except Exception:
-            pass
-
-    print("Instagram Publish Test (Phase 13.6)")
-    print("---------------------------------")
-    config = Config.load_from_env(validate=False)
-    if config.dry_run or not config.production_enabled:
-        print("ERROR: publish-test requires INSTAGRAM_DRY_RUN=false and INSTAGRAM_PRODUCTION_ENABLED=true.")
-        print("Status: SKIPPED (Dry run enabled)")
-        return False
-
-    try:
-        source = InstagramRealNewsSource()
-        items = source.get_content_items()
-        if not items:
-            print("ERROR: No real news items available for publish test.")
-            return False
-
-        item = items[0]
-        normalizer = InstagramContentNormalizer()
-        content = normalizer.normalize(item)
-        guard = InstagramFinalPublishGuard(config=config)
-
-        bundle = ContentBundle(
-            content_id=(content.metadata or {}).get("content_id") or "pub-test-01",
-            category=content.category,
-            title=content.title,
-            summary=content.summary,
-            source_url=(content.metadata or {}).get("source_url") or "",
-            source_domain=(content.metadata or {}).get("source_domain") or "",
-            published_at=content.published_at or "",
-            media_url=content.image_url or "",
-            media_type=content.media_type,
-            caption=content.caption or "",
-            hashtags=content.hashtags or [],
-        )
-
-        res = guard.verify_and_guard(bundle)
-        if not res.is_valid:
-            print(f"Publish Test Blocked by Guard: {res.message}")
-            return False
-
-        pipeline = InstagramContentPipeline(dry_run=False)
-        pub_res = pipeline.process_content(content)
-
-        if pub_res.success and pub_res.media_id:
-            guard.record_published_item(bundle=bundle, media_id=pub_res.media_id)
-            print(f"\nStatus: SUCCESS")
-            print(f"Instagram Media ID: {pub_res.media_id}")
-            print(f"Source URL: {bundle.source_url}")
-            print(f"Content Hash: {guard.calculate_fact_fingerprint(bundle.title, bundle.summary)}")
-            print(f"Media Hash: {bundle.media_hash}")
-            print(f"Published Timestamp: {datetime.now(timezone.utc).isoformat()}")
-            return True
-        else:
-            print(f"Publish Test Failed: {pub_res.message}")
-            return False
-    except Exception as e:
-        print(f"Publish Test Error: {e}")
-        return False
-
 
 def validate_github_secrets() -> bool:
     """Safely verifies GitHub Actions secret presence without printing raw credentials."""
@@ -3749,7 +3651,7 @@ def verify_live_discovery() -> bool:
     video_source = InstagramRealVideoSource(config=config)
     news_source = InstagramRealNewsSource(config=config)
 
-    categories = ["cricket", "technology", "geopolitics", "democracy", "entertainment"]
+    categories = ["cricket", "technology", "launches", "geopolitics", "democracy", "entertainment"]
     total_found = 0
 
     print("\n--- DISCOVERING LIVE VIDEO ITEMS ---")
@@ -3762,13 +3664,15 @@ def verify_live_discovery() -> bool:
         total_found += len(video_items)
 
     print("\n--- DISCOVERING LIVE NEWS ARTICLES ---")
+    all_news_items = news_source.get_content_items()
+    print(f"Total Live News Items across all configured feeds: {len(all_news_items)}")
     for cat in categories:
-        news_items = news_source.fetch_feed_items("https://news.google.com/rss/search?q=" + cat + "&hl=en-US&gl=US&ceid=US:en", category=cat)
-        print(f"Category '{cat}': {len(news_items)} live article(s)")
-        for item in news_items:
+        cat_news = [i for i in all_news_items if i.get("category") == cat]
+        print(f"Category '{cat}': {len(cat_news)} live article(s)")
+        for item in cat_news[:3]:
             clean_title = item.get('title', '').encode('ascii', 'ignore').decode('ascii')
             print(f"  - [{item.get('source_domain')}] {clean_title[:60]}...")
-        total_found += len(news_items)
+        total_found += len(cat_news)
 
     print(f"\nTotal Discovered Live Items: {total_found}")
     print("LIVE CONTENT DISCOVERY VERIFICATION: SUCCESS")

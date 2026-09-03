@@ -171,7 +171,7 @@ def test_media_story_mismatch():
 def test_real_content_only(monkeypatch):
     source = InstagramRealNewsSource()
     sample_xml = """<rss version="2.0"><channel>
-    <item><title>India vs Australia Test Cricket Update</title><link>https://espncricinfo.com/story/101</link><description>Great cricket match update.</description></item>
+    <item><title>India vs Australia Test Cricket Update</title><link>https://espncricinfo.com/story/101</link><description>Great cricket match update.</description><enclosure url="https://espncricinfo.com/photo.jpg" type="image/jpeg"/></item>
     </channel></rss>"""
     from unittest.mock import patch, MagicMock
     mock_resp = MagicMock()
@@ -195,7 +195,7 @@ def test_real_content_only(monkeypatch):
 def test_fresh_content_only(monkeypatch):
     source = InstagramRealNewsSource()
     sample_xml = """<rss version="2.0"><channel>
-    <item><title>India vs Australia Test Cricket Update</title><link>https://espncricinfo.com/story/101</link><description>Great cricket match update.</description></item>
+    <item><title>India vs Australia Test Cricket Update</title><link>https://espncricinfo.com/story/101</link><description>Great cricket match update.</description><enclosure url="https://espncricinfo.com/photo.jpg" type="image/jpeg"/></item>
     </channel></rss>"""
     from unittest.mock import patch, MagicMock
     mock_resp = MagicMock()

@@ -183,8 +183,33 @@ python main.py --run
 
 ---
 
+## Trend-Aware Growth Bot Architecture
+
+### 1. Multi-Source Internet Content Discovery & Category Toggles
+- **Data-Driven Feed Architecture**: `InstagramRealNewsSource` and `InstagramRealVideoSource` query verified multi-source feeds across **Cricket** (ESPNcricinfo, ICC, Cricbuzz, NDTV), **Tech** (TechCrunch, Hacker News, The Verge, Engadget, Ars Technica), **Product Launches** (GSMArena, Apple Newsroom, TechCrunch Gadgets), **Geopolitics**, **Democracy**, and **Entertainment**.
+- **Product Launches Category (`launches`)**: Automatic heuristic classification tagging hardware, silicon, and gadget announcements (`"unveils"`, `"launches"`, `"announces"`, `"specs"`).
+- **Explicit Category Toggles**: Controlled via environment variables (`ENABLE_CRICKET_CATEGORY`, `ENABLE_TECHNOLOGY_CATEGORY`, `ENABLE_LAUNCHES_CATEGORY`, `ENABLE_GEOPOLITICS_CATEGORY`, `ENABLE_DEMOCRACY_CATEGORY`, `ENABLE_ENTERTAINMENT_CATEGORY`).
+- **Live Discovery Diagnostic**: `python main.py --verify-live-discovery` reports per-category and per-feed item discovery breadth.
+
+### 2. Meta Graph API Engagement Insights Integration
+- **`MetaGraphEngagementProvider` (`instagram_engagement.py`)**: Fetches real `impressions`, `reach`, `likes`, `comments`, `saved`, and `shares` directly from Meta Graph API endpoints (`GET /{media-id}/insights`).
+- **Pending Insight Handling**: Identifies recently published posts where Graph API insights are not yet calculated and marks status as `PENDING`.
+- **7-Day Engagement Sync**: `sync_recent_post_engagement()` periodically queries recently published media and persists metrics into `data/instagram_engagement_history.json`.
+
+### 3. Real Trend Signals & Content Boost
+- **`InstagramTrendSignalProvider` (`instagram_trend_signals.py`)**: Continuously fetches live Google Trends RSS topics and Meta Graph hashtag signals.
+- **Trend-Boost Scoring**: Candidate content matching active trend keywords receives a multiplier boost (up to 1.50x) in `InstagramContentScorer`.
+
+### 4. Growth Feedback Loop & Auto-Tuning
+- **`InstagramOptimizer` Growth Loop**: Analyzes real reach, saves, and shares across categories and time slots.
+- **Conservative Confidence Thresholding**: Applies a confidence-gated check (`SUFFICIENT` vs `INSUFFICIENT_DATA`) requiring a minimum sample size (`INSTAGRAM_ANALYTICS_MIN_SAMPLE_SIZE=10`).
+- **Gradual Auto-Tuning**: Top-performing categories receive conservative weight adjustments (+15% boost) without destabilizing content variety.
+
+---
+
 ## Safety & Isolation Policies
 - **Phase 11 is completely standalone. Telegram integration is intentionally NOT implemented.**
 - `INSTAGRAM_DRY_RUN=true`, `INSTAGRAM_SCHEDULER_ENABLED=false`, and `INSTAGRAM_AUTOMATION_ENABLED=false` are **enabled by default**.
 - Access tokens are strictly redacted (`[REDACTED]`) across all logs, exceptions, formatters, sanitizers, validators, `PipelineResult`, `InstagramQueueItem`, `InstagramHealthTracker`, `InstagramAnalyticsEvent`, and representation methods.
 - `.env` is ignored by Git and must never be committed.
+

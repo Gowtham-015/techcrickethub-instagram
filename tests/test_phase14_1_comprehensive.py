@@ -102,3 +102,42 @@ def test_content_bundle_rights_status_verification():
     g_res = guard.verify_and_guard(bundle)
     assert g_res.is_valid is False
     assert g_res.error_code in ("MEDIA_RIGHTS_RESTRICTED", "MEDIA_RIGHTS_UNKNOWN")
+
+
+def test_validate_meta_media_accessibility_cdn_retry_success(monkeypatch):
+    from unittest.mock import MagicMock, patch
+    import urllib.error
+
+    attempts = 0
+
+    def mock_urlopen(req, timeout=15):
+        nonlocal attempts
+        attempts += 1
+        if attempts < 3:
+            raise urllib.error.HTTPError(
+                req.full_url, 404, "Not Found", {}, None
+            )
+
+        resp = MagicMock()
+        resp.__enter__.return_value = resp
+        resp.getcode.return_value = 200
+        resp.headers = {
+            "Content-Type": "video/mp4",
+            "Content-Length": "1000",
+        }
+        # Valid MP4 ftyp magic bytes
+        resp.read.side_effect = [
+            b"\x00\x00\x00\x18ftypisom\x00\x00\x02\x00",
+            b"\x00" * 980,
+        ]
+        return resp
+
+    monkeypatch.setattr("time.sleep", lambda s: None)
+    with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+        res = InstagramMediaVerifier.validate_meta_media_accessibility(
+            "https://raw.githubusercontent.com/test_probe/retry_success.mp4",
+            media_type="REEL",
+        )
+        assert res["is_valid"] is True
+        assert res["error_code"] == "SUCCESS"
+        assert attempts == 3
