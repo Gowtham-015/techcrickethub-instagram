@@ -17,11 +17,9 @@ def test_trend_signal_provider():
 
 def test_content_scorer_trend_boost():
     provider = InstagramTrendSignalProvider()
-    scorer = InstagramContentScorer(score_threshold=35)
-    scorer.trend_provider = provider
+    scorer = InstagramContentScorer(score_threshold=35, trend_provider=provider)
 
     content = InstagramContent(
-        content_id="t1",
         title="India vs Australia Test Match Cricket Wicket Highlights",
         summary="Watch the bowling spell and century celebrations in the Test match.",
         category="cricket",

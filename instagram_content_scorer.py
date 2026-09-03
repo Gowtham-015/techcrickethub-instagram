@@ -30,8 +30,9 @@ class InstagramContentScorer:
     freshness, and engagement potential yielding a deterministic score from 0–100.
     """
 
-    def __init__(self, score_threshold: int = 35):
+    def __init__(self, score_threshold: int = 35, trend_provider: Optional[Any] = None):
         self.score_threshold = score_threshold
+        self.trend_provider = trend_provider
 
     def score_content(
         self,

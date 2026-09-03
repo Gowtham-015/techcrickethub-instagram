@@ -31,6 +31,10 @@ def test_category_toggle_disables_fetching(monkeypatch):
     cfg.enable_technology_category = True
     src = InstagramRealNewsSource(config=cfg)
 
+    monkeypatch.setattr(src, "fetch_feed_items", lambda feed_url, category: [{"category": category, "title": "Test"}])
+
     items = src.get_content_items()
     cricket_items = [i for i in items if i.get("category") == "cricket"]
+    tech_items = [i for i in items if i.get("category") == "technology"]
     assert len(cricket_items) == 0
+    assert len(tech_items) > 0
