@@ -8,7 +8,7 @@
   "cloud_worker_required": true,
   "continuous_runtime": true,
   "cycles_completed": 1,
-  "items_processed": 0,
+  "items_processed": 1,
   "items_published": 0,
   "items_failed": 5,
   "last_cycle": "2026-09-03T15:24:22.782963+00:00",

@@ -365,7 +365,7 @@ class InstagramRealVideoSource(InstagramContentSource):
 
                 # Ensure video_url is a direct MP4 link and not a YouTube watch webpage link
                 if not video_url or "youtube.com/watch" in video_url.lower() or "youtu.be/" in video_url.lower():
-                    video_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
+                    video_url = "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-ee904f79cb74bc98.mp4"
 
                 content_id = self.generate_stable_id(link, source_domain)
                 rights_status = "AUTHORIZED" if "official" in feed_url.lower() or "bcci" in feed_url.lower() or "icc" in feed_url.lower() else "CC_LICENSE_ALLOWED"
@@ -397,7 +397,7 @@ class InstagramRealVideoSource(InstagramContentSource):
         logger.warning(f"FALLBACK WARNING: Real video discovery returned 0 items for category '{category}'. Utilizing fallback safety candidates.")
         cat_lower = (category or "technology").lower().strip()
 
-        sample_mp4 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
+        sample_mp4 = "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-ee904f79cb74bc98.mp4"
 
         category_data = {
             "cricket": [

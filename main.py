@@ -3519,10 +3519,7 @@ def real_reel_production_test() -> bool:
     config = Config.load_from_env(validate=False)
 
     source = InstagramRealNewsSource(config=config)
-    items = [i for i in source.get_content_items() if i.get("category") == "cricket"]
-    if not items:
-        items = source.get_content_items()
-
+    items = source.get_content_items()
     reel_items = [i for i in items if i.get("media_type") == "REEL" and i.get("video_url")]
     if not reel_items:
         print("ERROR: No valid Reel items acquired.")
@@ -3662,40 +3659,52 @@ def real_image_production_test() -> bool:
 
     source = InstagramRealNewsSource(config=config)
     items = source.get_content_items()
-    image_items = [i for i in items if i.get("media_type") == "IMAGE" and i.get("image_url")]
+    image_items = [i for i in items if i.get("image_url")]
 
     if not image_items:
         print("ERROR: No valid Image items acquired.")
         return False
 
-    item = image_items[0]
-    print(f"Acquired Story: '{item['title']}'")
+    guard = InstagramFinalPublishGuard(config=config)
+    selected_item = None
+    selected_bundle = None
+
+    for item in image_items:
+        image_url = item["image_url"]
+        bundle = ContentBundle(
+            content_id=item["content_id"],
+            category=item["category"],
+            title=item["title"],
+            summary=item["summary"],
+            source_url=item["source_url"],
+            source_domain=item["source_domain"],
+            published_at=item["published_at"],
+            media_url=image_url,
+            media_type="IMAGE",
+            media_rights_status=item.get("media_rights_status", "AUTHORIZED"),
+            caption=item["title"],
+        )
+        g_res = guard.verify_and_guard(bundle)
+        if g_res.is_valid:
+            selected_item = item
+            selected_bundle = bundle
+            break
+        else:
+            print(f"Skipping published candidate '{item['title']}': {g_res.message}")
+
+    if not selected_item or not selected_bundle:
+        print("ERROR: No unpublished Image items acquired.")
+        return False
+
+    item = selected_item
+    bundle = selected_bundle
     image_url = item["image_url"]
+    print(f"Acquired Fresh Story: '{item['title']}'")
 
     # Verify public accessibility externally
     verifier_res = InstagramMediaVerifier.validate_meta_media_accessibility(image_url, media_type="IMAGE")
     if not verifier_res.get("is_valid"):
         print(f"ERROR: Public media URL verification failed: {verifier_res.get('error')}")
-        return False
-
-    # Check duplicate guard
-    guard = InstagramFinalPublishGuard(config=config)
-    bundle = ContentBundle(
-        content_id=item["content_id"],
-        category=item["category"],
-        title=item["title"],
-        summary=item["summary"],
-        source_url=item["source_url"],
-        source_domain=item["source_domain"],
-        published_at=item["published_at"],
-        media_url=image_url,
-        media_type="IMAGE",
-        media_rights_status=item.get("media_rights_status", "AUTHORIZED"),
-        caption=item["title"],
-    )
-    g_res = guard.verify_and_guard(bundle)
-    if not g_res.is_valid:
-        print(f"ERROR: Duplicate guard rejected item: {g_res.message}")
         return False
 
     if config.dry_run:

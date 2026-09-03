@@ -211,61 +211,55 @@ class InstagramRealNewsSource(InstagramContentSource):
                     if img_match:
                         image_url = img_match.group(1)
 
+                if not image_url and link and link.startswith("http"):
+                    try:
+                        art_resp = requests.get(link, headers=headers, timeout=4)
+                        if art_resp.status_code == 200:
+                            og_m = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\'](https?://[^"\']+)["\']', art_resp.text, re.IGNORECASE) or re.search(r'<meta[^>]+content=["\'](https?://[^"\']+)["\'][^>]+property=["\']og:image["\']', art_resp.text, re.IGNORECASE)
+                            if og_m:
+                                image_url = og_m.group(1)
+                    except Exception as og_err:
+                        logger.debug(f"og:image extraction skipped for {link}: {og_err}")
+
                 content_id = self.generate_stable_id(link, source_domain)
 
-                # Always render broadcast news graphic card for high-resolution, story-matched posts
-                try:
-                    from instagram_graphic_card_generator import InstagramGraphicCardGenerator
+                # Prefer clean, un-edited raw news photos from article enclosures/media tags
+                raw_article_photo = image_url
+                if raw_article_photo and raw_article_photo.startswith("http://"):
+                    raw_article_photo = "https://" + raw_article_photo[7:]
 
-                    card_gen = InstagramGraphicCardGenerator()
-                    card_path = card_gen.create_news_card(
-                        title=title,
-                        summary=clean_desc,
-                        category=category,
-                        source_name=source_domain,
-                        content_id=content_id,
-                        bg_image_path=image_url,
-                    )
-                    rel_filename = os.path.basename(card_path)
-                    raw_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/{rel_filename}"
-                    image_url = self.upload_to_public_host(card_path, raw_url)
-                except Exception as gen_err:
-                    logger.warning(f"Graphic card generation failed for {content_id}: {gen_err}")
-                    if image_url and image_url.startswith("http://"):
-                        image_url = "https://" + image_url[7:]
-                    elif not image_url:
-                        image_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/card_{content_id}.jpg"
+                use_raw_photo = os.getenv("USE_RAW_NEWS_PHOTOS", "true").lower() in ("true", "1", "yes")
 
-                        # Standalone inline card fallback to guarantee zero generic sample photos
-                        try:
-                            from PIL import Image, ImageDraw, ImageFont
+                if use_raw_photo and raw_article_photo:
+                    image_url = raw_article_photo
+                else:
+                    # Fallback to broadcast news graphic card ONLY if raw photo is missing and requested
+                    try:
+                        from instagram_graphic_card_generator import InstagramGraphicCardGenerator
 
-                            img = Image.new("RGB", (1080, 1080), color=(15, 23, 42))
-                            draw = ImageDraw.Draw(img)
-                            draw.rectangle([(0, 0), (1080, 120)], fill=(16, 185, 129) if category == "cricket" else (59, 130, 246))
-                            draw.text((60, 40), f"{category.upper()} NEWS UPDATE", fill=(255, 255, 255))
-                            draw.text((60, 200), title[:50], fill=(255, 255, 255))
-                            draw.text((60, 350), clean_desc[:200], fill=(203, 213, 225))
-                            draw.text((60, 980), f"Source: {source_domain} | @techcrickethub", fill=(148, 163, 184))
-                            base_dir = os.path.dirname(os.path.abspath(__file__))
-                            gen_dir = os.path.join(base_dir, "media", "generated")
-                            os.makedirs(gen_dir, exist_ok=True)
-                            card_path = os.path.join(gen_dir, f"card_{content_id}.jpg")
-                            img.save(card_path, "JPEG", quality=90)
-                            rel_filename = os.path.basename(card_path)
-                            raw_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/{rel_filename}"
-                            image_url = self.upload_to_public_host(card_path, raw_url)
-                        except Exception:
-                            # Direct github raw fallback for verified card format
-                            image_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/card_{content_id}.jpg"
+                        card_gen = InstagramGraphicCardGenerator()
+                        card_path = card_gen.create_news_card(
+                            title=title,
+                            summary=clean_desc,
+                            category=category,
+                            source_name=source_domain,
+                            content_id=content_id,
+                            bg_image_path=raw_article_photo,
+                        )
+                        rel_filename = os.path.basename(card_path)
+                        raw_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/{rel_filename}"
+                        image_url = self.upload_to_public_host(card_path, raw_url)
+                    except Exception as gen_err:
+                        logger.warning(f"Graphic card generation failed for {content_id}: {gen_err}")
+                        image_url = raw_article_photo or f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/card_{content_id}.jpg"
 
-                reels_only = (
-                    os.getenv("REELS_ONLY", "true").lower() in ("true", "1", "yes")
+                disable_gen_reels = os.getenv("DISABLE_GENERATED_REELS", "false").lower() in ("true", "1", "yes")
+                reels_only = not disable_gen_reels and (
+                    os.getenv("REELS_ONLY", "false").lower() in ("true", "1", "yes")
                     or os.getenv("FORCE_REELS", "false").lower() in ("true", "1", "yes")
                     or os.getenv("INSTAGRAM_REELS_ONLY", "false").lower() in ("true", "1", "yes")
-                    or getattr(self.config, "reel_target_percent", 80) == 100
                 )
-                is_reel_candidate = True if reels_only else ((len(results) % 5) in (0, 1, 2, 3))
+                is_reel_candidate = False if disable_gen_reels else (True if reels_only else ((len(results) % 5) in (0, 1, 2, 3)))
 
                 # 100% Real Video Footage Enforcement for Reels
                 video_url = None
@@ -316,7 +310,6 @@ class InstagramRealNewsSource(InstagramContentSource):
                             raw_video_url = f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/{rel_video}"
                             video_url = self.upload_to_public_host(gen_res["reel_path"], raw_video_url)
                             item_media_type = "REEL"
-                            image_url = None
                             media_rights_status = "ORIGINAL_GENERATED"
                         else:
                             item_media_type = "IMAGE"
