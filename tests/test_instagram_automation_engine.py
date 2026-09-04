@@ -110,3 +110,99 @@ def test_engine_error_isolation(engine_env):
 
     assert metrics["discovered"] == 2
     assert metrics["failed"] >= 1
+
+
+def test_intra_cycle_deduplication(engine_env):
+    engine, queue, health, lock_file = engine_env
+
+    duplicate_item_1 = {
+        "content_id": "test-intra-cycle-dup-id",
+        "title": "Duplicate Item First Instance",
+        "summary": "First instance summary content",
+        "category": "cricket",
+        "media_type": "IMAGE",
+        "image_url": "https://example.com/intra_cycle_image.jpg",
+        "media_rights_status": "ORIGINAL_GENERATED",
+    }
+
+    duplicate_item_2 = {
+        "content_id": "test-intra-cycle-dup-id",
+        "title": "Duplicate Item Second Instance",
+        "summary": "Second instance summary content",
+        "category": "cricket",
+        "media_type": "IMAGE",
+        "image_url": "https://example.com/intra_cycle_image.jpg",
+        "media_rights_status": "ORIGINAL_GENERATED",
+    }
+
+    engine.source.get_content_items.return_value = [duplicate_item_1, duplicate_item_2]
+
+    metrics = engine.run_cycle()
+
+    assert metrics["discovered"] == 2
+    assert metrics["duplicates"] == 1
+    assert metrics["queued"] == 1
+
+
+def test_transient_failure_retried_on_next_cycle(engine_env):
+    from unittest.mock import patch
+
+    engine, queue, health, lock_file = engine_env
+
+    transient_item = {
+        "content_id": "test-transient-retry-id",
+        "title": "Transient Failure Item",
+        "summary": "Summary of item with transient failure",
+        "category": "cricket",
+        "media_type": "IMAGE",
+        "image_url": "https://example.com/transient_image.jpg",
+        "media_rights_status": "ORIGINAL_GENERATED",
+    }
+
+    engine.source.get_content_items.return_value = [transient_item]
+
+    # Cycle 1: Simulate transient media verification failure (e.g. connection timeout)
+    mock_transient_res = MagicMock(is_valid=False, error_code="HTTP_ERROR", message="Public media URL connection failed: Connection timed out")
+    with patch.object(engine.media_verifier, "verify_and_deduplicate", return_value=mock_transient_res):
+        metrics1 = engine.run_cycle()
+
+    assert metrics1["discovered"] == 1
+    assert metrics1["duplicates"] == 0
+    assert metrics1["queued"] == 0
+
+    # Cycle 2: Same item is provided again, media verification now succeeds
+    mock_success_res = MagicMock(is_valid=True, message="Media OK", error_code="SUCCESS")
+    with patch.object(engine.media_verifier, "verify_and_deduplicate", return_value=mock_success_res):
+        metrics2 = engine.run_cycle()
+
+    assert metrics2["discovered"] == 1
+    assert metrics2["duplicates"] == 0
+    assert metrics2["queued"] == 1
+
+
+def test_permanent_failure_skipped_on_next_cycle(engine_env):
+    engine, queue, health, lock_file = engine_env
+
+    permanent_item = {
+        "content_id": "test-permanent-fail-id",
+        "title": "Permanent Failure Item",
+        "summary": "Summary of item with permanent invalid source",
+        "category": "cricket",
+        "media_type": "IMAGE",
+        "image_url": "https://example.com/permanent_image.jpg",
+        "media_rights_status": "RIGHTS_NOT_VERIFIED",
+    }
+
+    engine.source.get_content_items.return_value = [permanent_item]
+
+    # Cycle 1: Fails source verification (permanent failure)
+    metrics1 = engine.run_cycle()
+    assert metrics1["discovered"] == 1
+    assert metrics1["failed"] == 1
+
+    # Cycle 2: Same item presented on next cycle is caught as duplicate
+    metrics2 = engine.run_cycle()
+    assert metrics2["discovered"] == 1
+    assert metrics2["duplicates"] == 1
+
+

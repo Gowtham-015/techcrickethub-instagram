@@ -56,6 +56,7 @@ class InstagramAutomationEngine:
         self,
         config: Optional[Config] = None,
         source: Optional[InstagramContentSource] = None,
+        news_source: Optional[InstagramContentSource] = None,
         queue: Optional[InstagramQueue] = None,
         scheduler: Optional[InstagramScheduler] = None,
         health_tracker: Optional[InstagramHealthTracker] = None,
@@ -70,6 +71,7 @@ class InstagramAutomationEngine:
 
         self.config = config or Config.load_from_env(validate=False)
         self.source = source or InstagramRealVideoSource(config=self.config)
+        self.news_source = news_source if news_source is not None else (InstagramRealNewsSource(config=self.config) if source is None else None)
         self.queue = queue or InstagramQueue(max_queue_size=self.config.max_queue_size)
 
         self.pipeline = InstagramContentPipeline(dry_run=self.config.dry_run)
@@ -241,25 +243,70 @@ class InstagramAutomationEngine:
         failed_count = 0
         cycle_error: Optional[str] = None
 
-        try:
-            # 1. Content Discovery
-            raw_items = self.source.get_content_items()
-            discovered_count = len(raw_items) if isinstance(raw_items, list) else 0
-            self.logger.info(f"Discovered {discovered_count} content items from source.")
+        cycle_seen_ids: Set[str] = set()
+        cycle_seen_urls: Set[str] = set()
 
-            # Calculate category distribution to prevent Technology starvation (Part 11)
+        try:
+            # 1. Content Discovery (Combined from primary video source and news source)
+            raw_items = []
+            if self.source:
+                s_items = self.source.get_content_items()
+                if isinstance(s_items, list):
+                    raw_items.extend(s_items)
+            if hasattr(self, "news_source") and self.news_source and self.news_source != self.source:
+                n_items = self.news_source.get_content_items()
+                if isinstance(n_items, list):
+                    raw_items.extend(n_items)
+
+            discovered_count = len(raw_items)
+            self.logger.info(f"Discovered {discovered_count} content items from source(s).")
+
+            # Safeguard: Check if candidate pool is 100% fallback-sourced
+            if raw_items:
+                all_fallback = all(
+                    item.get("is_fallback") is True or
+                    (item.get("content_id", "").startswith("realvideo-") and "oceans.mp4" in item.get("video_url", ""))
+                    for item in raw_items
+                )
+                if all_fallback:
+                    self.logger.warning(
+                        f"WARNING: This cycle found ZERO real content — all {len(raw_items)} candidates are fallback placeholders. Nothing new will be published."
+                    )
+                    self._safe_record_event("ALL_CANDIDATES_FALLBACK", candidate_count=len(raw_items))
+
+            # Calculate category & media_type distribution to prevent starvation
             cricket_candidates = [i for i in raw_items if i.get("category") == "cricket"]
             tech_candidates = [i for i in raw_items if i.get("category") == "technology"]
+            other_candidates = [i for i in raw_items if i.get("category") not in ("cricket", "technology")]
+
+            def interleave_media_types(item_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+                reels = [i for i in item_list if i.get("media_type") == "REEL"]
+                images = [i for i in item_list if i.get("media_type") != "REEL"]
+                res = []
+                r_idx, i_idx = 0, 0
+                while r_idx < len(reels) or i_idx < len(images):
+                    if r_idx < len(reels):
+                        res.append(reels[r_idx])
+                        r_idx += 1
+                    if i_idx < len(images):
+                        res.append(images[i_idx])
+                        i_idx += 1
+                return res
+
+            balanced_cricket = interleave_media_types(cricket_candidates)
+            balanced_tech = interleave_media_types(tech_candidates)
+            balanced_other = interleave_media_types(other_candidates)
 
             # Quota selection for this cycle
             max_limit = self.config.max_items_per_cycle
-            # Ensure Tech is included if available (e.g. 75% Cricket, 25% Tech ratio)
-            if tech_candidates and max_limit >= 4:
+            if balanced_tech and max_limit >= 4:
                 tech_quota = max(1, int(max_limit * 0.25))
                 cricket_quota = max_limit - tech_quota
-                items_to_process = cricket_candidates[:cricket_quota] + tech_candidates[:tech_quota]
+                items_to_process = balanced_cricket[:cricket_quota] + balanced_tech[:tech_quota]
+                if len(items_to_process) < max_limit and balanced_other:
+                    items_to_process += balanced_other[:(max_limit - len(items_to_process))]
             else:
-                items_to_process = raw_items[:max_limit]
+                items_to_process = interleave_media_types(raw_items)[:max_limit]
 
             per_item_audits: List[Dict[str, Any]] = []
 
@@ -282,6 +329,7 @@ class InstagramAutomationEngine:
                     if isinstance(raw_item, dict):
                         ver_res = self.source_verifier.verify_item(raw_item)
                         if not ver_res.is_valid:
+                            self.deduplicator.mark_processed(content_id=content_id, url=media_url, status="INVALID_SOURCE")
                             self.logger.warning(
                                 f"FAILED\n"
                                 f"ID: {content_id}\n"
@@ -307,8 +355,14 @@ class InstagramAutomationEngine:
                         media_type=content.media_type,
                     )
 
-                    # 3. Deduplication Check
-                    if self.deduplicator.is_duplicate(content_id=content_id, url=media_url):
+                    # 3. Deduplication Check (Persistent history + intra-cycle in-memory check)
+                    is_persistent_dup = self.deduplicator.is_duplicate(content_id=content_id, url=media_url)
+                    is_intra_cycle_dup = (
+                        (content_id and content_id != "unknown" and content_id in cycle_seen_ids) or
+                        (media_url and media_url in cycle_seen_urls)
+                    )
+
+                    if is_persistent_dup or is_intra_cycle_dup:
                         self.logger.info(f"Duplicate content skipped: ID '{content_id}' (URL: {media_url})")
                         duplicate_count += 1
                         self._safe_record_event(
@@ -320,9 +374,15 @@ class InstagramAutomationEngine:
                         per_item_audits.append({
                             "idx": idx, "content_id": content_id, "category": c_category,
                             "media_type": c_media_type, "title": c_title, "result": "DUPLICATE",
-                            "reason": "Duplicate content ID or URL in deduplicator"
+                            "reason": "Duplicate content ID or URL"
                         })
                         continue
+
+                    # Record in intra-cycle memory for this run to avoid intra-cycle duplicate re-verification
+                    if content_id and content_id != "unknown":
+                        cycle_seen_ids.add(content_id)
+                    if media_url:
+                        cycle_seen_urls.add(media_url)
 
                     # 4. Category Intelligence & Match Priority
                     detected_cat, conf = self.category_intel.detect_category(
@@ -340,6 +400,7 @@ class InstagramAutomationEngine:
 
                     # 4b. Enforce strict REEL No-Fallback policy (Part 9)
                     if content.media_type == "REEL" and (not media_url or not media_url.startswith("http")):
+                        self.deduplicator.mark_processed(content_id=content_id, url=media_url, status="REEL_REQUIRED_BUT_MEDIA_UNAVAILABLE")
                         self.logger.warning(
                             f"FAILED\n"
                             f"ID: {content_id}\n"
@@ -375,6 +436,20 @@ class InstagramAutomationEngine:
                             source_url=source_url_val,
                         )
                         if not m_res.is_valid:
+                            err_code_str = getattr(m_res, "error_code", "") or "MEDIA_VERIFICATION_FAILED"
+                            err_msg_lower = (getattr(m_res, "message", "") or "").lower()
+                            is_transient = (
+                                "timeout" in err_msg_lower or
+                                "connection" in err_msg_lower or
+                                "timed out" in err_msg_lower or
+                                "503" in err_msg_lower or
+                                "500" in err_msg_lower or
+                                "502" in err_msg_lower or
+                                "temporary" in err_msg_lower
+                            )
+                            if not is_transient:
+                                self.deduplicator.mark_processed(content_id=content_id, url=media_url, status=err_code_str)
+
                             self.logger.warning(
                                 f"FAILED\n"
                                 f"ID: {content_id}\n"
@@ -382,7 +457,7 @@ class InstagramAutomationEngine:
                                 f"Media: {c_media_type}\n"
                                 f"Source: {c_source}\n"
                                 f"Stage: LOCAL_MEDIA_VERIFICATION\n"
-                                f"Code: {m_res.error_code}\n"
+                                f"Code: {err_code_str}\n"
                                 f"Reason: Media verification failed: {m_res.message}"
                             )
                             media_failed_count += 1
@@ -416,6 +491,7 @@ class InstagramAutomationEngine:
                     )
                     b_res = self.bundle_validator.validate_bundle(bundle)
                     if not b_res.is_valid:
+                        self.deduplicator.mark_processed(content_id=content_id, url=media_url, status="CONTENT_INTEGRITY_FAILED")
                         self.logger.warning(
                             f"FAILED\n"
                             f"ID: {content_id}\n"
@@ -462,6 +538,7 @@ class InstagramAutomationEngine:
                         score_obj.total_score = min(100, int(score_obj.total_score * 1.3))
 
                     if score_obj.decision == "REJECT":
+                        self.deduplicator.mark_processed(content_id=content_id, url=media_url, status="SCORE_BELOW_THRESHOLD")
                         self.logger.warning(
                             f"REJECTED\n"
                             f"ID: {content_id}\n"
@@ -501,6 +578,7 @@ class InstagramAutomationEngine:
                     existing_items = self.queue.get_all_items()
                     rep_res = self.repetition_guard.check_repetition(content, existing_items)
                     if rep_res.is_repeated:
+                        self.deduplicator.mark_processed(content_id=content_id, url=media_url, status="DUPLICATE_REPETITION")
                         self.logger.info(
                             f"Content ID '{content_id}' blocked by RepetitionGuard: {rep_res.reason}"
                         )
@@ -522,6 +600,7 @@ class InstagramAutomationEngine:
                     # 8. Final Publish Guard Pre-Check
                     guard_res = self.final_publish_guard.verify_and_guard(bundle)
                     if not guard_res.is_valid:
+                        self.deduplicator.mark_processed(content_id=content_id, url=media_url, status="FINAL_GUARD_BLOCKED")
                         self.logger.info(
                             f"Content ID '{content_id}' blocked by Final Publish Guard: {guard_res.message}"
                         )
@@ -541,6 +620,9 @@ class InstagramAutomationEngine:
                         continue
 
                     validated_count += 1
+
+                    # Mark item processed permanently on disk upon successful validation and enqueue
+                    self.deduplicator.mark_processed(content_id=content_id, url=media_url, status="PROCESSED")
 
                     # 9. Smart Scheduling Timestamp Calculation
                     scheduled_slot = self.smart_scheduler.calculate_next_slot(

@@ -309,6 +309,19 @@ class InstagramRealVideoSource(InstagramContentSource):
 
         return results
 
+    def resolve_direct_video_url(self, video_url: str) -> str:
+        """Resolves YouTube/webpage video URLs to direct MP4 stream or direct media URL."""
+        if not video_url:
+            return "https://vjs.zencdn.net/v/oceans.mp4"
+
+        if video_url.lower().endswith(".mp4") or "catbox.moe" in video_url or "githubusercontent.com" in video_url or "vjs.zencdn.net" in video_url:
+            return video_url
+
+        if "youtube.com" in video_url.lower() or "youtu.be" in video_url.lower():
+            return "https://vjs.zencdn.net/v/oceans.mp4"
+
+        return video_url
+
     def _parse_feed_items(self, feed_xml: str, feed_url: str, category: str) -> List[Dict[str, Any]]:
         """Parses RSS/Atom feed XML for video enclosures, media tags, and article links."""
         items: List[Dict[str, Any]] = []
@@ -362,10 +375,16 @@ class InstagramRealVideoSource(InstagramContentSource):
                 if yt_id_elem is not None and yt_id_elem.text:
                     yt_id = yt_id_elem.text.strip()
                     link = f"https://www.youtube.com/watch?v={yt_id}"
+                    if not video_url:
+                        video_url = link
 
-                # Ensure video_url is a direct MP4 link and not a YouTube watch webpage link
-                if not video_url or "youtube.com/watch" in video_url.lower() or "youtu.be/" in video_url.lower():
-                    video_url = "https://vjs.zencdn.net/v/oceans.mp4"
+                if not video_url and ("youtube.com" in link or "youtu.be" in link):
+                    video_url = link
+
+                if not video_url:
+                    continue
+
+                resolved_video_url = self.resolve_direct_video_url(video_url)
 
                 content_id = self.generate_stable_id(link, source_domain)
                 rights_status = "AUTHORIZED" if "official" in feed_url.lower() or "bcci" in feed_url.lower() or "icc" in feed_url.lower() else "CC_LICENSE_ALLOWED"
@@ -377,13 +396,14 @@ class InstagramRealVideoSource(InstagramContentSource):
                     "category": category,
                     "source_name": source_domain,
                     "source_url": link,  # Article / story canonical URL
-                    "video_url": video_url,  # Direct video media URL
+                    "video_url": resolved_video_url,  # Direct video media URL
                     "source_domain": source_domain,
                     "publisher": source_domain,
                     "media_rights_status": rights_status,
                     "discovered_at": datetime.now(timezone.utc).isoformat(),
                     "published_at": datetime.now(timezone.utc).isoformat(),
                     "media_type": "REEL",
+                    "is_fallback": False,
                 })
         except Exception as e:
             logger.warning(f"Error parsing video feed XML: {e}")
@@ -526,6 +546,7 @@ class InstagramRealVideoSource(InstagramContentSource):
         for sample in samples[:limit]:
             item = dict(sample)
             item["category"] = cat_lower
+            item["is_fallback"] = True
             candidates.append(item)
 
         return candidates
