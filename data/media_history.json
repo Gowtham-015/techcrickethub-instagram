@@ -62,6 +62,55 @@
       "url": "https://techcrunch.com/wp-content/uploads/2026/09/Cheeseburger-stack.png?resize=1200,800",
       "status": "PROCESSED",
       "processed_at": "2026-09-04T11:34:01.580018+00:00"
+    },
+    {
+      "content_id": "real-a823629ce1c2ac6d",
+      "media_hash": "d246ee88a502f0b630cd5388782524d4c1b3c442c921d5e0dc767f7c5c1e42d5",
+      "url": "https://p.imgci.com/db/PICTURES/CMS/407200/407288.jpg",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-04T15:08:27.251891+00:00"
+    },
+    {
+      "content_id": "real-36662525c82baf2f",
+      "media_hash": "a7ea18beef6253715c2d2edb9b89a4912133e6d9304b0715fad7b1da4552911b",
+      "url": "https://p.imgci.com/db/PICTURES/CMS/418900/418958.jpg",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-04T15:08:29.349534+00:00"
+    },
+    {
+      "content_id": "real-3d5d231623312b73",
+      "media_hash": "eb924992b6c661793c1d663752b70b8ba6663a4bb866f970f649c4e3208f8832",
+      "url": "https://p.imgci.com/db/PICTURES/CMS/421800/421817.jpg",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-04T15:08:30.171082+00:00"
+    },
+    {
+      "content_id": "real-c3042107d79d00e2",
+      "media_hash": "37c40a0ddc1316cfd2712b7c4c71372913271ce1a2182fd9fdf1349e6a56c9f2",
+      "url": "https://techcrunch.com/wp-content/uploads/2026/09/krafton-india.jpg?resize=1200,800",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-04T15:08:31.640788+00:00"
+    },
+    {
+      "content_id": "real-19c87be071f0c645",
+      "media_hash": "6b97acbdf5228dd894d94452e15ed115809af1a5bc037fe82b6fa54c07db624f",
+      "url": "https://fdn.gsmarena.com/imgroot/news/26/09/apple-a20-pro-chip-leak/-184x111/gsmarena_000.jpg",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-04T15:08:32.862844+00:00"
+    },
+    {
+      "content_id": "real-86ac29d5f8613bc7",
+      "media_hash": "bf2ee20eba9f654d74be9e64993493ec4a08a9a7910dd42b67825ea356ce1cbd",
+      "url": "https://fdn.gsmarena.com/imgroot/news/26/09/google-pixel-watch-5-stephen-curry-special-edition-price-sale-date/-184x111/gsmarena_001.jpg",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-04T15:08:34.215583+00:00"
+    },
+    {
+      "content_id": "real-b07a88e966a87cc0",
+      "media_hash": "35467e5bfa212170e5f2f104b17381f44997a9bf98560279ffc00270a98b3f15",
+      "url": "https://fdn.gsmarena.com/imgroot/news/26/09/rugone-xsnap-7-pro-announced/-184x111/gsmarena_00.jpg",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-04T15:08:35.510860+00:00"
     }
   ]
 }
