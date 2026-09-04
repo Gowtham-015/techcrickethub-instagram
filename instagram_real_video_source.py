@@ -236,6 +236,10 @@ class InstagramRealVideoSource(InstagramContentSource):
         Downloads authentic YouTube/Google video clips via yt-dlp, formats them into 9:16 vertical (1080x1920) Reels,
         uploads them to public CDN, and attaches the public video URL.
         """
+        if not getattr(self.config, "reel_discovery_enabled", False):
+            logger.info("Reel video discovery is disabled via INSTAGRAM_REEL_DISCOVERY_ENABLED=false. Skipping Reel discovery.")
+            return []
+
         items: List[Dict[str, Any]] = []
         categories = [category] if category else ["cricket", "technology", "geopolitics", "democracy", "entertainment"]
 

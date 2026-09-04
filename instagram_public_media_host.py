@@ -19,6 +19,7 @@ class PublicMediaHost:
 
     SUPPORTED_IMAGE_MIMES = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
     SUPPORTED_VIDEO_MIMES = {"video/mp4", "video/quicktime", "video/x-m4v"}
+    _VERIFICATION_CACHE: Dict[Any, Any] = {}
 
     def __init__(self, repo_owner_repo: str = "Gowtham-015/techcrickethub-instagram", branch: str = "main"):
         self.repo = os.getenv("GITHUB_REPOSITORY", repo_owner_repo)
@@ -42,11 +43,15 @@ class PublicMediaHost:
                 rel_path = f"{sub_folder}/{rel_name}"
             fallback_raw_url = f"https://raw.githubusercontent.com/{self.repo}/{self.branch}/{rel_path}"
 
-
         if fallback_raw_url and fallback_raw_url.startswith("https://") and "raw.githubusercontent.com" not in fallback_raw_url and "missing" not in fallback_raw_url and "fail" not in fallback_raw_url:
             from instagram_media_verifier import InstagramMediaVerifier
             m_type = "REEL" if local_path.lower().endswith((".mp4", ".mov", ".avi")) else "IMAGE"
-            v_check = InstagramMediaVerifier.validate_meta_media_accessibility(fallback_raw_url, media_type=m_type)
+            cache_key = (fallback_raw_url, m_type)
+            if cache_key in self._VERIFICATION_CACHE:
+                v_check = self._VERIFICATION_CACHE[cache_key]
+            else:
+                v_check = InstagramMediaVerifier.validate_meta_media_accessibility(fallback_raw_url, media_type=m_type)
+                self._VERIFICATION_CACHE[cache_key] = v_check
             if v_check.get("is_valid"):
                 logger.info(f"Fallback URL is already publicly valid ({fallback_raw_url}). Skipping local upload.")
                 return fallback_raw_url

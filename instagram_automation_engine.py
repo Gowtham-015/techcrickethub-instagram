@@ -250,9 +250,18 @@ class InstagramAutomationEngine:
             # 1. Content Discovery (Combined from primary video source and news source)
             raw_items = []
             if self.source:
-                s_items = self.source.get_content_items()
-                if isinstance(s_items, list):
-                    raw_items.extend(s_items)
+                from instagram_real_video_source import InstagramRealVideoSource
+                if isinstance(self.source, InstagramRealVideoSource):
+                    if getattr(self.config, "reel_discovery_enabled", False):
+                        s_items = self.source.get_content_items()
+                        if isinstance(s_items, list):
+                            raw_items.extend(s_items)
+                    else:
+                        self.logger.info("Reel video discovery is disabled (INSTAGRAM_REEL_DISCOVERY_ENABLED=false). Skipping Reel discovery.")
+                else:
+                    s_items = self.source.get_content_items()
+                    if isinstance(s_items, list):
+                        raw_items.extend(s_items)
             if hasattr(self, "news_source") and self.news_source and self.news_source != self.source:
                 n_items = self.news_source.get_content_items()
                 if isinstance(n_items, list):
@@ -268,7 +277,7 @@ class InstagramAutomationEngine:
                     (item.get("content_id", "").startswith("realvideo-") and "oceans.mp4" in item.get("video_url", ""))
                     for item in raw_items
                 )
-                if all_fallback:
+                if all_fallback and getattr(self.config, "reel_discovery_enabled", False):
                     self.logger.warning(
                         f"WARNING: This cycle found ZERO real content — all {len(raw_items)} candidates are fallback placeholders. Nothing new will be published."
                     )
