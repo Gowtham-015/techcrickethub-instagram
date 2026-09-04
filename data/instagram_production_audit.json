@@ -5627,5 +5627,18 @@
     "duration": 0.0,
     "dry_run": false,
     "production_mode": "PRODUCTION"
+  },
+  {
+    "timestamp": "2026-09-04T11:34:11.153943+00:00",
+    "content_id": "scheduled-item",
+    "media_type": "IMAGE",
+    "category": "cricket",
+    "status": "FAILED",
+    "creation_id": "",
+    "media_id": "",
+    "error_type": "Application request limit reached",
+    "duration": 0.0,
+    "dry_run": false,
+    "production_mode": "PRODUCTION"
   }
 ]
