@@ -55,7 +55,8 @@ class PublicMediaHost:
             return fallback_raw_url
 
         is_video = local_path.lower().endswith((".mp4", ".mov", ".avi"))
-        timeout = 12 if is_video else 8
+        # Timeouts: 25s for multi-MB video Reel assets over CI runner connections, 15s for image files.
+        timeout = 25 if is_video else 15
 
         # Host 1: Catbox.moe
         for attempt in range(2):
@@ -104,12 +105,12 @@ class PublicMediaHost:
                 repo = os.getenv("GITHUB_REPOSITORY", self.repo)
                 remote_target = f"https://x-access-token:{token}@github.com/{repo}.git" if token else "origin"
 
-                # Rebase first to avoid git push rejection
-                subprocess.run(["git", "pull", remote_target, self.branch, "--rebase", "-X", "ours"], check=False)
+                # Rebase first to avoid git push rejection (without ours strategy to prevent silent state loss)
+                subprocess.run(["git", "pull", remote_target, self.branch, "--rebase"], check=False)
                 push_res = subprocess.run(["git", "push", remote_target, f"HEAD:{self.branch}" if token else self.branch], capture_output=True, text=True, check=False)
                 if push_res.returncode != 0:
                     logger.warning(f"Git push rejected, pulling and retrying push: {push_res.stderr.strip()[:200]}")
-                    subprocess.run(["git", "pull", remote_target, self.branch, "--rebase", "-X", "ours"], check=False)
+                    subprocess.run(["git", "pull", remote_target, self.branch, "--rebase"], check=False)
                     subprocess.run(["git", "push", remote_target, f"HEAD:{self.branch}" if token else self.branch], check=False)
             except Exception as git_err:
                 logger.warning(f"Git push for GitHub Raw fallback failed: {git_err}")

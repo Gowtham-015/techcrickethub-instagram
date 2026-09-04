@@ -51,3 +51,24 @@ def test_real_news_source_sample_content_excluded(monkeypatch):
         assert item.get("source_url") is not None
 
 
+def test_upload_to_public_host_catbox_success(tmp_path):
+    from unittest.mock import patch, MagicMock
+    from instagram_public_media_host import PublicMediaHost
+
+    test_file = tmp_path / "test_image.jpg"
+    test_file.write_bytes(b"\xff\xd8\xff\xe0\x00\x10JFIF" + b"\x00" * 100)
+
+    mock_post_resp = MagicMock()
+    mock_post_resp.status_code = 200
+    mock_post_resp.text = "https://files.catbox.moe/test_image.jpg\n"
+
+    fallback_url = "https://raw.githubusercontent.com/foo/bar/main/test_image.jpg"
+
+    with patch("requests.post", return_value=mock_post_resp):
+        res = InstagramRealNewsSource.upload_to_public_host(str(test_file), fallback_url)
+        assert res == "https://files.catbox.moe/test_image.jpg"
+
+        host_res = PublicMediaHost().upload_video(str(test_file), fallback_raw_url=fallback_url)
+        assert host_res == "https://files.catbox.moe/test_image.jpg"
+
+

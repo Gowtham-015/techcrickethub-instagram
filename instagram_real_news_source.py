@@ -40,87 +40,9 @@ class InstagramRealNewsSource(InstagramContentSource):
 
     @staticmethod
     def upload_to_public_host(local_path: str, fallback_url: str) -> str:
-        """Uploads a local generated image/video file to Catbox with browser User-Agent headers and retries."""
-        if not local_path or not os.path.exists(local_path):
-            return fallback_url
-        if os.getenv("SKIP_CATBOX_UPLOAD", "false").lower() in ("true", "1", "yes"):
-            return fallback_url
-
-        if fallback_url and fallback_url.startswith("https://") and "raw.githubusercontent.com" not in fallback_url and "missing" not in fallback_url and "fail" not in fallback_url:
-            from instagram_media_verifier import InstagramMediaVerifier
-            m_type = "REEL" if local_path.lower().endswith((".mp4", ".mov", ".avi")) else "IMAGE"
-            v_check = InstagramMediaVerifier.validate_meta_media_accessibility(fallback_url, media_type=m_type)
-            if v_check.get("is_valid"):
-                logger.info(f"Fallback URL is already publicly valid ({fallback_url}). Skipping local upload.")
-                return fallback_url
-        timeout = 12 if is_video else 8
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-        }
-
-        # Attempt Catbox.moe upload with retries
-        for attempt in range(1):
-            try:
-                with open(local_path, "rb") as f:
-                    resp = requests.post(
-                        "https://catbox.moe/user/api.php",
-                        data={"reqtype": "fileupload"},
-                        files={"fileToUpload": f},
-                        headers=headers,
-                        timeout=timeout,
-                    )
-                    if resp.status_code == 200 and resp.text.strip().startswith("https://files.catbox.moe/"):
-                        res_url = resp.text.strip()
-                        try:
-                            chk = requests.get(res_url, headers=headers, timeout=5, stream=True)
-                            if chk.status_code == 200 and int(chk.headers.get("Content-Length", 1000)) > 100:
-                                logger.info(f"Public host upload (Catbox) success for {local_path}: {res_url}")
-                                return res_url
-                        except Exception:
-                            pass
-            except Exception as e:
-                logger.warning(f"Catbox upload attempt {attempt + 1} failed for {local_path}: {e}")
-
-        # Attempt Litterbox upload fallback if Catbox fails
-        try:
-            with open(local_path, "rb") as f:
-                resp = requests.post(
-                    "https://litterbox.catbox.moe/resources/internals/api.php",
-                    data={"reqtype": "fileupload", "time": "24h"},
-                    files={"fileToUpload": f},
-                    headers=headers,
-                    timeout=timeout,
-                )
-                if resp.status_code == 200 and resp.text.strip().startswith("https://litterbox.catbox.moe/"):
-                    logger.info(f"Public host upload (Litterbox) success for {local_path}: {resp.text.strip()}")
-                    return resp.text.strip()
-        except Exception as l_err:
-            logger.warning(f"Litterbox upload fallback failed for {local_path}: {l_err}")
-
-        # If falling back to raw.githubusercontent.com, ensure file is pushed to GitHub Raw immediately
-        if "raw.githubusercontent.com" in fallback_url and os.path.exists(local_path):
-            try:
-                import subprocess
-                rel_n = os.path.basename(local_path)
-                logger.info(f"Ensuring local file '{rel_n}' is pushed to GitHub Raw...")
-                subprocess.run(["git", "add", "-f", local_path], check=False)
-                subprocess.run(["git", "add", "-A"], check=False)
-                subprocess.run(["git", "commit", "-m", f"Chore: publish asset {rel_n} [skip ci]"], check=False)
-                token = os.getenv("GITHUB_TOKEN")
-                repo = os.getenv("GITHUB_REPOSITORY", "Gowtham-015/techcrickethub-instagram")
-                remote_target = f"https://x-access-token:{token}@github.com/{repo}.git" if token else "origin"
-                
-                # Rebase first to avoid git push rejection
-                subprocess.run(["git", "pull", remote_target, "main", "--rebase", "-X", "ours"], check=False)
-                push_res = subprocess.run(["git", "push", remote_target, "HEAD:main" if token else "main"], capture_output=True, text=True, check=False)
-                if push_res.returncode != 0:
-                    logger.warning(f"Git push rejected, pulling and retrying push: {push_res.stderr.strip()[:200]}")
-                    subprocess.run(["git", "pull", remote_target, "main", "--rebase", "-X", "ours"], check=False)
-                    subprocess.run(["git", "push", remote_target, "HEAD:main" if token else "main"], check=False)
-            except Exception as git_err:
-                logger.warning(f"Git push for raw URL failed: {git_err}")
-
-        return fallback_url
+        """Delegates asset upload to consolidated PublicMediaHost implementation."""
+        from instagram_public_media_host import PublicMediaHost
+        return PublicMediaHost().upload_video(local_path, fallback_raw_url=fallback_url)
 
     def prepare_instagram_compliant_photo(self, image_url: str, content_id: str) -> Optional[str]:
         """Ensures photo complies with Meta Graph API aspect ratio requirements (4:5 to 1.91:1) without adding any text or graphics."""
