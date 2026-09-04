@@ -98,27 +98,9 @@ class PublicMediaHost:
         except Exception as l_err:
             logger.warning(f"Litterbox upload fallback failed for {rel_name}: {l_err}")
 
-        # Host 3: Authenticated GitHub Raw push with instant git commit & push
-        if "raw.githubusercontent.com" in fallback_raw_url and os.path.exists(local_path):
-            try:
-                import subprocess
-                logger.info(f"Pushed local file '{rel_name}' to GitHub Raw...")
-                subprocess.run(["git", "add", "-f", local_path], check=False)
-                subprocess.run(["git", "add", "-A"], check=False)
-                subprocess.run(["git", "commit", "-m", f"Chore: add asset {rel_name} for Meta publication [skip ci]"], check=False)
-                token = os.getenv("GITHUB_TOKEN")
-                repo = os.getenv("GITHUB_REPOSITORY", self.repo)
-                remote_target = f"https://x-access-token:{token}@github.com/{repo}.git" if token else "origin"
-
-                # Rebase first to avoid git push rejection (without ours strategy to prevent silent state loss)
-                subprocess.run(["git", "pull", remote_target, self.branch, "--rebase"], check=False)
-                push_res = subprocess.run(["git", "push", remote_target, f"HEAD:{self.branch}" if token else self.branch], capture_output=True, text=True, check=False)
-                if push_res.returncode != 0:
-                    logger.warning(f"Git push rejected, pulling and retrying push: {push_res.stderr.strip()[:200]}")
-                    subprocess.run(["git", "pull", remote_target, self.branch, "--rebase"], check=False)
-                    subprocess.run(["git", "push", remote_target, f"HEAD:{self.branch}" if token else self.branch], check=False)
-            except Exception as git_err:
-                logger.warning(f"Git push for GitHub Raw fallback failed: {git_err}")
+        # Host 3: GitHub Raw fallback URL construction
+        if "raw.githubusercontent.com" in fallback_raw_url:
+            logger.info(f"Using GitHub Raw fallback URL for '{rel_name}': {fallback_raw_url}")
 
         return fallback_raw_url
 
@@ -129,6 +111,7 @@ class PublicMediaHost:
         media_type: str = "REEL",
         retries: int = 10,
         delay_sec: float = 3.0,
+        strict_production: bool = False,
     ) -> Dict[str, Any]:
         """Polls external public URL up to retries attempts requiring HTTP 200, non-zero Content-Length, and valid MIME."""
         if not url or not isinstance(url, str):
@@ -147,8 +130,13 @@ class PublicMediaHost:
                 "public_url": url,
             }
 
-        # Short-circuit mock / test URLs in test mode
-        if "example.com" in url or "mock" in url or "sample" in url or "test_video" in url:
+        is_production_mode = (
+            strict_production or
+            os.getenv("INSTAGRAM_PRODUCTION_ENABLED", "false").lower() in ("true", "1", "yes")
+        )
+
+        # Short-circuit mock / test URLs ONLY when NOT in production mode
+        if not is_production_mode and ("example.com" in url or "mock" in url or "sample" in url or "test_video" in url):
             return {
                 "is_valid": True,
                 "error_code": "SUCCESS",

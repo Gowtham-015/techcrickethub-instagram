@@ -95,7 +95,7 @@ class InstagramAutomationEngine:
         self.source_verifier = InstagramSourceVerifier()
         self.bundle_validator = ContentIntegrityValidator()
         self.media_verifier = InstagramMediaVerifier()
-        self.final_publish_guard = InstagramFinalPublishGuard(config=self.config)
+        self.final_publish_guard = InstagramFinalPublishGuard(config=self.config, data_dir=self.data_dir)
         self.cloud_runtime = InstagramCloudRuntime(config=self.config)
 
         self.normalizer = InstagramContentNormalizer()
@@ -436,6 +436,25 @@ class InstagramAutomationEngine:
                         })
                         continue
 
+                    # 4c. Production Guard against synthetic / fake / demo video reels
+                    if self.config.production_enabled and not self.config.dry_run and content.media_type == "REEL":
+                        is_synthetic = (
+                            raw_item.get("is_synthetic", False) or
+                            raw_item.get("is_fallback", False) or
+                            "oceans.mp4" in (media_url or "") or
+                            "sample" in (media_url or "").lower()
+                        )
+                        if is_synthetic:
+                            self.deduplicator.mark_processed(content_id=content_id, url=media_url, status="SYNTHETIC_REEL_REJECTED")
+                            self.logger.warning(f"Production Guard rejected synthetic/demo Reel '{content_id}' (URL: {media_url})")
+                            rejected_count += 1
+                            per_item_audits.append({
+                                "idx": idx, "content_id": content_id, "category": c_category,
+                                "media_type": c_media_type, "title": c_title, "result": "REJECTED",
+                                "reason": "Synthetic or demo Reel rejected in production mode"
+                            })
+                            continue
+
                     # 5. Media Verification & Content Bundle Integrity Check
                     if media_url and media_url.startswith("https://"):
                         m_res = self.media_verifier.verify_and_deduplicate(
@@ -530,19 +549,22 @@ class InstagramAutomationEngine:
                     if media_url:
                         asset = self.acquirer.acquire_media(url=media_url, media_type=content.media_type)
 
-                    # 6. Content Scoring & Balance Enforcement
+                    # 6. Content Scoring & Balance Enforcement over Published History
                     match_summary = self.match_intel.analyze_matches()
                     score_obj = self.scorer.score_content(content, asset=asset)
                     if match_summary.is_match_day and content.category == "cricket":
                         score_obj.total_score = min(100, int(score_obj.total_score * match_summary.priority_multiplier))
 
-                    balance = self.cricket_balancer.evaluate_balance(self.queue.get_all_items())
+                    published_history = self.final_publish_guard.get_published_history()
+                    items_for_balance = published_history if published_history else self.queue.get_all_items()
+                    balance = self.cricket_balancer.evaluate_balance(items_for_balance)
+
                     if balance.priority_boost_active and content.category == "cricket":
                         score_obj.total_score = min(100, int(score_obj.total_score * 1.25))
                     elif getattr(balance, "should_prefer_tech", False) and content.category != "cricket":
                         score_obj.total_score = min(100, int(score_obj.total_score * 1.5))
 
-                    reel_bal = self.reel_balancer.evaluate_balance(self.queue.get_all_items())
+                    reel_bal = self.reel_balancer.evaluate_balance(items_for_balance)
                     if getattr(reel_bal, "should_prefer_reels", False) and content.media_type == "REEL":
                         score_obj.total_score = min(100, int(score_obj.total_score * 1.3))
 
@@ -885,6 +907,235 @@ class InstagramAutomationEngine:
 
 
 
+
+    def prepare_media(self) -> Dict[str, Any]:
+        """Phase A: Discovers candidate, acquires and prepares media locally, constructs public URL,
+        and saves prepared state to data/prepared_media.json without calling Meta Graph API.
+        """
+        self.logger.info("Executing Phase A: Prepare Media...")
+        prepared_file = os.path.join(self.data_dir, "prepared_media.json")
+        
+        # 1. Discover raw candidates
+        raw_items = []
+        if self.source:
+            from instagram_real_video_source import InstagramRealVideoSource
+            if isinstance(self.source, InstagramRealVideoSource):
+                if getattr(self.config, "reel_discovery_enabled", False):
+                    s_items = self.source.get_content_items()
+                    if isinstance(s_items, list):
+                        raw_items.extend(s_items)
+            else:
+                s_items = self.source.get_content_items()
+                if isinstance(s_items, list):
+                    raw_items.extend(s_items)
+        if hasattr(self, "news_source") and self.news_source and self.news_source != self.source:
+            n_items = self.news_source.get_content_items()
+            if isinstance(n_items, list):
+                raw_items.extend(n_items)
+
+        if not raw_items:
+            self.logger.warning("Prepare Media: No content items discovered.")
+            return {"status": "FAILED", "reason": "No content items discovered", "prepared": False}
+
+        # 2. Category & Reel balance selection
+        published_history = self.final_publish_guard.get_published_history()
+        selected_raw = None
+        for raw_item in raw_items:
+            content = self.normalizer.normalize(raw_item)
+            content_id = (content.metadata or {}).get("content_id") or "unknown"
+            media_url = content.image_url if content.media_type == "IMAGE" else content.video_url
+
+            # Skip duplicates
+            if self.deduplicator.is_duplicate(content_id=content_id, url=media_url):
+                continue
+            
+            # Skip synthetic reels in production mode
+            if self.config.production_enabled and not self.config.dry_run and content.media_type == "REEL":
+                is_synthetic = (
+                    raw_item.get("is_synthetic", False) or
+                    raw_item.get("is_fallback", False) or
+                    "oceans.mp4" in (media_url or "") or
+                    "sample" in (media_url or "").lower()
+                )
+                if is_synthetic:
+                    continue
+            
+            bundle = ContentBundle(
+                content_id=content_id,
+                category=content.category,
+                title=content.title,
+                summary=content.summary,
+                source_url=getattr(content, "source_url", "") or "",
+                source_domain=getattr(content, "source_domain", "") or "",
+                published_at=getattr(content, "published_at", "") or "",
+                media_url=media_url or "",
+                media_type=content.media_type,
+                media_rights_status=raw_item.get("media_rights_status", "AUTHORIZED"),
+                caption=content.caption or "",
+                hashtags=content.hashtags or [],
+            )
+            g_res = self.final_publish_guard.verify_and_guard(bundle)
+            if g_res.is_valid:
+                selected_raw = raw_item
+                break
+
+        if not selected_raw:
+            self.logger.warning("Prepare Media: No valid unpublished candidate passed duplicate guard.")
+            return {"status": "FAILED", "reason": "No valid unpublished candidate", "prepared": False}
+
+        content = self.normalizer.normalize(selected_raw)
+        content_id = (content.metadata or {}).get("content_id") or f"prep-{int(time.time())}"
+        media_url = content.image_url if content.media_type == "IMAGE" else content.video_url
+
+        from instagram_public_media_host import PublicMediaHost
+        host = PublicMediaHost()
+        
+        local_file = selected_raw.get("local_path") or selected_raw.get("video_url") or selected_raw.get("image_url") or ""
+        if local_file and not os.path.exists(local_file) and media_url and media_url.startswith("http"):
+            asset = self.acquirer.acquire_media(media_url, media_type=content.media_type)
+            if asset and asset.url:
+                local_file = asset.url
+
+        public_url = host.get_public_url(local_file) if local_file else media_url
+
+        prepared_data = {
+            "content_id": content_id,
+            "title": content.title,
+            "summary": content.summary,
+            "category": content.category,
+            "media_type": content.media_type,
+            "local_file": local_file,
+            "public_url": public_url,
+            "caption": content.title,
+            "hashtags": content.hashtags or [],
+            "source_url": getattr(content, "source_url", "") or "",
+            "source_domain": getattr(content, "source_domain", "") or "",
+            "media_rights_status": selected_raw.get("media_rights_status", "AUTHORIZED"),
+            "prepared_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        os.makedirs(os.path.dirname(prepared_file), exist_ok=True)
+        with open(f"{prepared_file}.tmp", "w", encoding="utf-8") as f:
+            json.dump(prepared_data, f, indent=2)
+        os.replace(f"{prepared_file}.tmp", prepared_file)
+
+        self.logger.info(f"Prepare Media SUCCESS: Prepared candidate '{content_id}' ({public_url})")
+        return {
+            "status": "PREPARED",
+            "prepared": True,
+            "content_id": content_id,
+            "category": content.category,
+            "media_type": content.media_type,
+            "public_url": public_url,
+            "local_file": local_file,
+        }
+
+    def publish_prepared(self) -> Dict[str, Any]:
+        """Phase B/C: Reads prepared media, verifies public accessibility, performs Meta Graph API publishing,
+        verifies published media ID, records history, and cleans up prepared state.
+        """
+        self.logger.info("Executing Phase B/C: Publish Prepared Media...")
+        prepared_file = os.path.join(self.data_dir, "prepared_media.json")
+
+        if not os.path.exists(prepared_file):
+            self.logger.info("No prepared_media.json found. Fallback to prepare_media first...")
+            prep_res = self.prepare_media()
+            if not prep_res.get("prepared"):
+                return {"status": "FAILED", "reason": "Could not prepare media for publishing", "published": 0}
+
+        try:
+            with open(prepared_file, "r", encoding="utf-8") as f:
+                prep_data = json.load(f)
+        except Exception as e:
+            return {"status": "FAILED", "reason": f"Failed to load prepared_media.json: {e}", "published": 0}
+
+        content_id = prep_data.get("content_id")
+        public_url = prep_data.get("public_url")
+        media_type = prep_data.get("media_type", "REEL")
+        caption = prep_data.get("caption", prep_data.get("title", ""))
+        category = prep_data.get("category", "cricket")
+
+        # 1. Verify external public accessibility
+        verifier_res = InstagramMediaVerifier.validate_meta_media_accessibility(public_url, media_type=media_type)
+        if not verifier_res.get("is_valid"):
+            err_msg = verifier_res.get("error", "Public media verification failed")
+            self.logger.error(f"Publish Prepared FAILED: Public media accessibility verification failed for {public_url}: {err_msg}")
+            return {"status": "FAILED", "reason": err_msg, "published": 0}
+
+        bundle = ContentBundle(
+            content_id=content_id,
+            category=category,
+            title=prep_data.get("title", ""),
+            summary=prep_data.get("summary", ""),
+            source_url=prep_data.get("source_url", ""),
+            source_domain=prep_data.get("source_domain", ""),
+            published_at=prep_data.get("prepared_at", ""),
+            media_url=public_url,
+            media_type=media_type,
+            media_rights_status=prep_data.get("media_rights_status", "AUTHORIZED"),
+            caption=caption,
+            hashtags=prep_data.get("hashtags", []),
+        )
+
+        g_res = self.final_publish_guard.verify_and_guard(bundle)
+        if not g_res.is_valid:
+            self.logger.warning(f"Publish Prepared BLOCKED by duplicate guard: {g_res.message}")
+            try:
+                os.remove(prepared_file)
+            except Exception:
+                pass
+            return {"status": "BLOCKED", "reason": g_res.message, "published": 0}
+
+        if self.config.dry_run:
+            self.logger.info(f"Publish Prepared SKIPPED (DRY_RUN mode active). Target URL: {public_url}")
+            return {"status": "SKIPPED_DRY_RUN", "published": 0, "dry_run": True, "creation_id": None, "media_id": None}
+
+        # 2. Real Publishing via Meta Graph API
+        from instagram_client import InstagramAPIClient
+        from instagram_reel_publisher import InstagramReelPublisher
+        from instagram_publisher import InstagramImagePublisher
+
+        try:
+            client = InstagramAPIClient(user_id=self.config.user_id, access_token=self.config.access_token)
+            if media_type == "REEL":
+                publisher = InstagramReelPublisher(client=client)
+                pub_res = publisher.publish_reel(video_url=public_url, caption=caption)
+            else:
+                publisher = InstagramImagePublisher(client=client)
+                pub_res = publisher.publish_image(image_url=public_url, caption=caption)
+
+            if pub_res.success and pub_res.media_id:
+                # 3. Post-publish verification call
+                is_verified = client.verify_published_media(pub_res.media_id)
+                if is_verified:
+                    self.final_publish_guard.record_published_item(bundle=bundle, media_id=pub_res.media_id)
+                    self.health_tracker.record_publish_success(media_id=pub_res.media_id)
+                    try:
+                        os.remove(prepared_file)
+                    except Exception:
+                        pass
+                    self.logger.info(f"Publish Prepared SUCCESS: Media ID {pub_res.media_id}")
+                    return {
+                        "status": "SUCCESS",
+                        "published": 1,
+                        "creation_id": pub_res.creation_id,
+                        "media_id": pub_res.media_id,
+                        "verified": True,
+                    }
+                else:
+                    err = "Published media verification on Meta API returned false"
+                    self.health_tracker.record_publish_failure(err)
+                    return {"status": "FAILED", "reason": err, "published": 0}
+            else:
+                err = pub_res.message or "Meta API publication failed"
+                self.health_tracker.record_publish_failure(err)
+                return {"status": "FAILED", "reason": err, "published": 0}
+
+        except Exception as e:
+            err_str = redact_token(str(e))
+            self.logger.error(f"Publish Prepared Exception: {err_str}")
+            self.health_tracker.record_publish_failure(err_str)
+            return {"status": "FAILED", "reason": err_str, "published": 0}
 
     def run(self) -> None:
         """Starts the continuous automation loop until stopped or interrupted."""

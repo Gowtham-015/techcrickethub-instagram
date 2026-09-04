@@ -847,6 +847,58 @@ def run_once() -> bool:
         return False
 
 
+def prepare_media_cmd() -> bool:
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+
+    print("========================================")
+    print("INSTAGRAM PREPARE MEDIA (PHASE A)")
+    print("========================================")
+    try:
+        config = Config.load_from_env(validate=False)
+        engine = InstagramAutomationEngine(config=config)
+        res = engine.prepare_media()
+        print(f"Status: {res.get('status')}")
+        print(f"Prepared: {res.get('prepared', False)}")
+        print(f"Content ID: {res.get('content_id', 'N/A')}")
+        print(f"Public URL: {res.get('public_url', 'N/A')}")
+        print("========================================")
+        return bool(res.get("prepared", False))
+    except Exception as e:
+        print(f"Error: {redact_token(str(e))}")
+        print("========================================")
+        return False
+
+
+def publish_prepared_cmd() -> bool:
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+
+    print("========================================")
+    print("INSTAGRAM PUBLISH PREPARED (PHASE B/C)")
+    print("========================================")
+    try:
+        config = Config.load_from_env(validate=False)
+        engine = InstagramAutomationEngine(config=config)
+        res = engine.publish_prepared()
+        print(f"Status: {res.get('status')}")
+        print(f"Published Count: {res.get('published', 0)}")
+        if res.get("media_id"):
+            print(f"Instagram Media ID: {res.get('media_id')}")
+        print("========================================")
+        return bool(res.get("published", 0) > 0 or res.get("dry_run"))
+    except Exception as e:
+        print(f"Error: {redact_token(str(e))}")
+        print("========================================")
+        return False
+
+
 def engine_status() -> bool:
     if hasattr(sys.stdout, "reconfigure"):
         try:
@@ -3017,10 +3069,26 @@ def main():
         action="store_true",
         help="Discover and verify live RSS content items across all 5 supported categories",
     )
+    parser.add_argument(
+        "--prepare-media",
+        action="store_true",
+        help="Phase A: Prepare media locally and construct public URL without publishing",
+    )
+    parser.add_argument(
+        "--publish-prepared",
+        action="store_true",
+        help="Phase B/C: Publish previously prepared media to Meta Graph API",
+    )
     args = parser.parse_args()
 
 
-    if getattr(args, "verify_live_discovery", False):
+    if getattr(args, "prepare_media", False):
+        success = prepare_media_cmd()
+        sys.exit(0 if success else 1)
+    elif getattr(args, "publish_prepared", False):
+        success = publish_prepared_cmd()
+        sys.exit(0 if success else 1)
+    elif getattr(args, "verify_live_discovery", False):
         success = verify_live_discovery()
         sys.exit(0 if success else 1)
     elif args.test_instagram:

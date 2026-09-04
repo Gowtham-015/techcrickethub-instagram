@@ -176,10 +176,11 @@ class TestPhase151CriticalBugFix:
         client.get.return_value = {"status_code": "FINISHED"}
 
         publisher = InstagramReelPublisher(client=client, poll_interval_seconds=0)
-        res = publisher.publish_reel(
-            video_url="https://raw.githubusercontent.com/test/video.mp4",
-            caption="Test Caption",
-        )
+        with patch("instagram_media_verifier.InstagramMediaVerifier.validate_meta_media_accessibility", return_value={"is_valid": True, "error": None}):
+            res = publisher.publish_reel(
+                video_url="https://raw.githubusercontent.com/test/video.mp4",
+                caption="Test Caption",
+            )
 
         assert res.success is False
         assert res.media_id is None

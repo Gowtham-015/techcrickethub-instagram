@@ -17,7 +17,7 @@ def test_github_actions_runs_production_command():
     assert os.path.exists(workflow_path)
     with open(workflow_path, "r", encoding="utf-8") as f:
         content = f.read()
-    assert "python main.py --run-once" in content
+    assert ("python main.py --run-once" in content) or ("python main.py --publish-prepared" in content)
     assert ("7,22,37,52 * * * *" in content) or ("7,27,47 * * * *" in content)
     assert "concurrency:" in content
     assert "ffmpeg" in content
@@ -191,9 +191,10 @@ def test_real_publish_confirmation_required():
     ]
     client.get.return_value = {"status_code": "FINISHED"}
     publisher = InstagramReelPublisher(client=client)
-    res = publisher.publish_reel(video_url="https://files.catbox.moe/test.mp4", caption="Test Reel")
-    assert res.success is True
-    assert res.media_id == "published_media_456"
+    with patch("instagram_media_verifier.InstagramMediaVerifier.validate_meta_media_accessibility", return_value={"is_valid": True}):
+        res = publisher.publish_reel(video_url="https://files.catbox.moe/test.mp4", caption="Test Reel")
+        assert res.success is True
+        assert res.media_id == "published_media_456"
 
 
 

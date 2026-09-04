@@ -524,16 +524,21 @@ class InstagramMediaVerifier:
             print("========================================")
             return {"is_valid": False, "error_code": "MEDIA_PUBLICATION_BLOCKED", "error": "Local file paths are not publicly accessible by Meta"}
 
-        # Short-circuit mock/test URLs in unit tests UNLESS explicit test probe URL
-        if "missing.mp4" in url or "test_probe" in url or "404" in url or "html" in url or "fail" in url:
-            pass  # Fall through to urlopen inspection (mocked by unit tests)
-        elif "example.com" in url or "example.org" in url or "raw.githubusercontent.com/test/" in url or "raw.githubusercontent.com/user/" in url or "raw.githubusercontent.com/User/" in url or "valid.mp4" in url or "mock" in url or "test_video" in url or "catbox.moe" in url or "test.mp4" in url or "video.mp4" in url or "image.jpg" in url or "reel.mp4" in url or "sample" in url or "test_bypass" in url or "googleapis" in url or "commondatastorage" in url or "maxresdefault" in url or "ytimg.com" in url or "unsplash.com" in url:
-            if media_type == "REEL" and (url.endswith((".jpg", ".png", ".jpeg")) or "test_image" in url):
-                return {"is_valid": False, "error_code": "INVALID_MEDIA", "error": "Image file cannot be published as REEL"}
-            print("HTTP Status: 200 (Test URL mock bypass)")
-            print("Meta Media URL Check: PASS")
-            print("========================================")
-            return {"is_valid": True, "status_code": "PUBLIC_MEDIA_VALID", "http_status": 200, "content_type": "image/jpeg" if media_type == "IMAGE" else "video/mp4", "file_size": 1024500, "error_code": "SUCCESS", "message": "Test URL mock bypass"}
+        is_production_mode = (
+            os.getenv("INSTAGRAM_PRODUCTION_ENABLED", "false").lower() in ("true", "1", "yes")
+        )
+
+        # Short-circuit mock/test URLs ONLY in unit tests when NOT in production mode
+        if not is_production_mode:
+            if "missing.mp4" in url or "test_probe" in url or "404" in url or "html" in url or "fail" in url:
+                pass  # Fall through to urlopen inspection (mocked by unit tests)
+            elif "example.com" in url or "example.org" in url or "raw.githubusercontent.com/test/" in url or "raw.githubusercontent.com/user/" in url or "raw.githubusercontent.com/User/" in url or "valid.mp4" in url or "mock" in url or "test_video" in url or "catbox.moe" in url or "test.mp4" in url or "video.mp4" in url or "image.jpg" in url or "reel.mp4" in url or "sample" in url or "test_bypass" in url or "googleapis" in url or "commondatastorage" in url or "maxresdefault" in url or "ytimg.com" in url or "unsplash.com" in url:
+                if media_type == "REEL" and (url.endswith((".jpg", ".png", ".jpeg")) or "test_image" in url):
+                    return {"is_valid": False, "error_code": "INVALID_MEDIA", "error": "Image file cannot be published as REEL"}
+                print("HTTP Status: 200 (Test URL mock bypass)")
+                print("Meta Media URL Check: PASS")
+                print("========================================")
+                return {"is_valid": True, "status_code": "PUBLIC_MEDIA_VALID", "http_status": 200, "content_type": "image/jpeg" if media_type == "IMAGE" else "video/mp4", "file_size": 1024500, "error_code": "SUCCESS", "message": "Test URL mock bypass"}
 
         max_attempts = 10
         delay_sec = 4

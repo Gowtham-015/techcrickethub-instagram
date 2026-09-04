@@ -72,7 +72,7 @@ class InstagramRealVideoSource(InstagramContentSource):
         "AUTHORIZED",
         "PUBLIC_DOMAIN",
         "CC_LICENSE_ALLOWED",
-        "ORIGINAL_GENERATED",
+        "USER_PROVIDED_WITH_PERMISSION",
     }
 
     def __init__(self, config: Optional[Config] = None, timeout: int = 15):
@@ -307,22 +307,15 @@ class InstagramRealVideoSource(InstagramContentSource):
             except Exception as e:
                 logger.warning(f"Failed to discover video feed {redact_url(feed_url)}: {e}")
 
-        # If real video feed is offline/empty, fallback to verified fallback video candidates
-        if not results:
-            results = self._get_fallback_real_video_candidates(category=cat_clean, limit=limit)
-
         return results
 
     def resolve_direct_video_url(self, video_url: str) -> str:
         """Resolves YouTube/webpage video URLs to direct MP4 stream or direct media URL."""
         if not video_url:
-            return "https://vjs.zencdn.net/v/oceans.mp4"
+            return ""
 
-        if video_url.lower().endswith(".mp4") or "catbox.moe" in video_url or "githubusercontent.com" in video_url or "vjs.zencdn.net" in video_url:
+        if video_url.lower().endswith(".mp4") or "catbox.moe" in video_url or "githubusercontent.com" in video_url:
             return video_url
-
-        if "youtube.com" in video_url.lower() or "youtu.be" in video_url.lower():
-            return "https://vjs.zencdn.net/v/oceans.mp4"
 
         return video_url
 
@@ -389,6 +382,8 @@ class InstagramRealVideoSource(InstagramContentSource):
                     continue
 
                 resolved_video_url = self.resolve_direct_video_url(video_url)
+                if not resolved_video_url:
+                    continue
 
                 content_id = self.generate_stable_id(link, source_domain)
                 rights_status = "AUTHORIZED" if "official" in feed_url.lower() or "bcci" in feed_url.lower() or "icc" in feed_url.lower() else "CC_LICENSE_ALLOWED"
@@ -414,143 +409,3 @@ class InstagramRealVideoSource(InstagramContentSource):
 
         return items
 
-    def _get_fallback_real_video_candidates(self, category: str, limit: int) -> List[Dict[str, Any]]:
-        """Provides verified authentic real footage video candidates with direct MP4 assets
-        and NEVER returns YouTube webpage links or generic/mislabeled fallback categories.
-        """
-        logger.warning(f"FALLBACK WARNING: Real video discovery returned 0 items for category '{category}'. Utilizing fallback safety candidates.")
-        cat_lower = (category or "technology").lower().strip()
-
-        sample_mp4 = "https://vjs.zencdn.net/v/oceans.mp4"
-
-        category_data = {
-            "cricket": [
-                {
-                    "content_id": "realvideo-cricket-match-highlights-01",
-                    "title": "India vs Australia Test Match Official Action Highlights & Bowling Spells",
-                    "summary": "Watch key match moments, wicket-taking bowling spells, and team celebration highlights from the Test series.",
-                    "category": "cricket",
-                    "source_name": "BCCI Official",
-                    "source_url": "https://www.bcci.tv/videos",
-                    "video_url": sample_mp4,
-                    "source_domain": "bcci.tv",
-                    "publisher": "BCCI",
-                    "media_rights_status": "AUTHORIZED",
-                    "discovered_at": datetime.now(timezone.utc).isoformat(),
-                    "published_at": datetime.now(timezone.utc).isoformat(),
-                    "media_type": "REEL",
-                },
-                {
-                    "content_id": "realvideo-cricket-press-conference-02",
-                    "title": "Captain Post-Match Press Conference & Team Strategy Update",
-                    "summary": "Official press briefing highlighting match tactics, key player fitness, and upcoming tournament selection.",
-                    "category": "cricket",
-                    "source_name": "ICC Official",
-                    "source_url": "https://www.icc-cricket.com/news",
-                    "video_url": sample_mp4,
-                    "source_domain": "icc-cricket.com",
-                    "publisher": "ICC",
-                    "media_rights_status": "AUTHORIZED",
-                    "discovered_at": datetime.now(timezone.utc).isoformat(),
-                    "published_at": datetime.now(timezone.utc).isoformat(),
-                    "media_type": "REEL",
-                },
-            ],
-            "technology": [
-                {
-                    "content_id": "realvideo-tech-product-unveil-01",
-                    "title": "Next-Gen AI Hardware & Quantum Processor Keynote Showcase",
-                    "summary": "Official keynote video revealing breakthrough silicon architecture, neural engine benchmarks, and live demo.",
-                    "category": "technology",
-                    "source_name": "TechCrunch Video",
-                    "source_url": "https://techcrunch.com/video/",
-                    "video_url": sample_mp4,
-                    "source_domain": "techcrunch.com",
-                    "publisher": "TechCrunch",
-                    "media_rights_status": "AUTHORIZED",
-                    "discovered_at": datetime.now(timezone.utc).isoformat(),
-                    "published_at": datetime.now(timezone.utc).isoformat(),
-                    "media_type": "REEL",
-                }
-            ],
-            "geopolitics": [
-                {
-                    "content_id": "realvideo-geopolitics-summit-01",
-                    "title": "Global Diplomacy & Trade Security Summit Briefing",
-                    "summary": "Highlights from international diplomatic summit on trade policy and regional security agreements.",
-                    "category": "geopolitics",
-                    "source_name": "World News Media",
-                    "source_url": "https://www.reuters.com/world/",
-                    "video_url": sample_mp4,
-                    "source_domain": "reuters.com",
-                    "publisher": "Reuters",
-                    "media_rights_status": "AUTHORIZED",
-                    "discovered_at": datetime.now(timezone.utc).isoformat(),
-                    "published_at": datetime.now(timezone.utc).isoformat(),
-                    "media_type": "REEL",
-                }
-            ],
-            "democracy": [
-                {
-                    "content_id": "realvideo-democracy-forum-01",
-                    "title": "Democratic Governance & Electoral Transparency Forum",
-                    "summary": "Key speeches and discussions on modern voter engagement and transparent governance mechanisms.",
-                    "category": "democracy",
-                    "source_name": "Democracy Policy Watch",
-                    "source_url": "https://www.idea.int/",
-                    "video_url": sample_mp4,
-                    "source_domain": "idea.int",
-                    "publisher": "International IDEA",
-                    "media_rights_status": "AUTHORIZED",
-                    "discovered_at": datetime.now(timezone.utc).isoformat(),
-                    "published_at": datetime.now(timezone.utc).isoformat(),
-                    "media_type": "REEL",
-                }
-            ],
-            "entertainment": [
-                {
-                    "content_id": "realvideo-entertainment-gala-01",
-                    "title": "Global Film & Media Industry Innovation Showcase",
-                    "summary": "Coverage of international film festival developments, media tech showcases, and creator awards.",
-                    "category": "entertainment",
-                    "source_name": "Variety News",
-                    "source_url": "https://variety.com/",
-                    "video_url": sample_mp4,
-                    "source_domain": "variety.com",
-                    "publisher": "Variety",
-                    "media_rights_status": "AUTHORIZED",
-                    "discovered_at": datetime.now(timezone.utc).isoformat(),
-                    "published_at": datetime.now(timezone.utc).isoformat(),
-                    "media_type": "REEL",
-                }
-            ],
-        }
-
-        samples = category_data.get(cat_lower)
-        if not samples:
-            samples = [
-                {
-                    "content_id": f"realvideo-{cat_lower}-general-01",
-                    "title": f"Latest Updates & Insights in {cat_lower.capitalize()}",
-                    "summary": f"Comprehensive report and video briefing covering current trends in {cat_lower}.",
-                    "category": cat_lower,
-                    "source_name": f"{cat_lower.capitalize()} News Network",
-                    "source_url": "https://news.google.com",
-                    "video_url": sample_mp4,
-                    "source_domain": "google.com",
-                    "publisher": f"{cat_lower.capitalize()} Press",
-                    "media_rights_status": "AUTHORIZED",
-                    "discovered_at": datetime.now(timezone.utc).isoformat(),
-                    "published_at": datetime.now(timezone.utc).isoformat(),
-                    "media_type": "REEL",
-                }
-            ]
-
-        candidates = []
-        for sample in samples[:limit]:
-            item = dict(sample)
-            item["category"] = cat_lower
-            item["is_fallback"] = True
-            candidates.append(item)
-
-        return candidates

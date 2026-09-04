@@ -74,15 +74,19 @@ jobs:
         run: |
           python main.py --production-diagnostics || true
 
-      - name: Commit & Push Generated Media BEFORE Meta Publication
+      - name: Phase A - Prepare Media Assets
+        run: |
+          python main.py --prepare-media || true
+
+      - name: Commit & Push Prepared Media BEFORE Meta Publication
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           mkdir -p data/generated_reels data/acquired_videos media/generated
-          git add -f data/generated_reels/* media/generated/* 2>/dev/null || true
+          git add -f data/generated_reels/* media/generated/* data/prepared_media.json 2>/dev/null || true
           git add -A || true
           if ! git diff --staged --quiet; then
-            git commit -m "Chore: commit generated media before Meta publication [skip ci]" || true
+            git commit -m "Chore: commit prepared media before Meta publication [skip ci]" || true
             git pull origin main --rebase || true
             git push origin main || true
             sleep 2
@@ -91,18 +95,18 @@ jobs:
             echo "No pre-run media changes to commit."
           fi
 
-      - name: Execute Production Publisher Cycle
+      - name: Phase B/C - Execute Meta Publication
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          python main.py --run-once
+          python main.py --publish-prepared
 
       - name: Update Heartbeat & Cloud Status
         if: always()
         run: |
           python main.py --cloud-status || true
 
-      - name: Commit & Push Persistent History
+      - name: Phase D - Commit & Push Persistent History
         if: always()
         run: |
           git config user.name "github-actions[bot]"
@@ -116,3 +120,4 @@ jobs:
             echo "STATE COMMITTED"
             echo "STATE PUSHED"
           fi
+
