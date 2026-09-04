@@ -66,6 +66,7 @@ class TestPhase151CriticalBugFix:
     def test_valid_reel_enters_queue(self):
         """A valid generated Reel candidate must enter the queue as PENDING."""
         config = Config.load_from_env(validate=False)
+        config.reel_discovery_enabled = True
         engine = InstagramAutomationEngine(config=config)
         engine.queue.clear()
 
@@ -112,6 +113,8 @@ class TestPhase151CriticalBugFix:
             engine.normalizer.normalize = MagicMock(return_value=real_content)
 
             engine.source.get_content_items = MagicMock(return_value=[test_item])
+            if hasattr(engine, "news_source") and engine.news_source:
+                engine.news_source.get_content_items = MagicMock(return_value=[])
             res = engine.run_cycle()
 
             assert res["queued"] >= 1

@@ -125,7 +125,9 @@ class TestProductionRepair(unittest.TestCase):
             "image_url": "https://example.com/photo.jpg",
         }
         with tempfile.TemporaryDirectory() as tmp_dir:
-            engine = InstagramAutomationEngine(config=self.config, data_dir=tmp_dir)
+            config = Config.load_from_env(validate=False)
+            config.reel_discovery_enabled = True
+            engine = InstagramAutomationEngine(config=config, data_dir=tmp_dir)
 
             with patch.object(engine.source, "get_content_items", return_value=[raw_item]):
                 cycle_res = engine.run_cycle()
