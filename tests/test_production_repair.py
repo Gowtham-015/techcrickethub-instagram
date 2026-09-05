@@ -150,7 +150,7 @@ class TestProductionRepair(unittest.TestCase):
                 published_at="2026-08-27T10:00:00Z",
                 media_url="https://raw.githubusercontent.com/user/repo/main/data/generated_reels/reel_match_101.mp4",
                 media_type="REEL",
-                media_rights_status="ORIGINAL_GENERATED",
+                media_rights_status="LICENSED",
                 caption="Australia vs England Test Highlight Match #cricket",
             )
 

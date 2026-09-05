@@ -3651,7 +3651,7 @@ def real_image_production_test() -> bool:
             published_at=item["published_at"],
             media_url=image_url,
             media_type="IMAGE",
-            media_rights_status=item.get("media_rights_status", "AUTHORIZED"),
+            media_rights_status=item.get("media_rights_status", "RIGHTS_EVIDENCE_MISSING"),
             caption=item["title"],
         )
         g_res = guard.verify_and_guard(bundle)

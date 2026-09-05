@@ -306,15 +306,40 @@ class InstagramAutomationEngine:
             balanced_tech = interleave_media_types(tech_candidates)
             balanced_other = interleave_media_types(other_candidates)
 
-            # Quota selection for this cycle
+            # Quota selection for this cycle using persistent history balancer
             max_limit = self.config.max_items_per_cycle
-            if balanced_tech and max_limit >= 4:
-                tech_quota = max(1, int(max_limit * 0.25))
-                cricket_quota = max_limit - tech_quota
-                items_to_process = balanced_cricket[:cricket_quota] + balanced_tech[:tech_quota]
-                if len(items_to_process) < max_limit and balanced_other:
-                    items_to_process += balanced_other[:(max_limit - len(items_to_process))]
-            else:
+            history = self.final_publish_guard.get_published_history()
+            balance = self.cricket_balancer.evaluate_balance(history)
+
+            items_to_process: List[Dict[str, Any]] = []
+
+            # If technology is in deficit or should be preferred, and tech candidates exist, prioritize technology
+            if balance.should_prefer_tech and balanced_tech:
+                tech_count = min(len(balanced_tech), max_limit)
+                items_to_process.extend(balanced_tech[:tech_count])
+
+            # Fill remaining quota with cricket candidates, then tech, then other
+            if len(items_to_process) < max_limit and balanced_cricket:
+                needed = max_limit - len(items_to_process)
+                items_to_process.extend(balanced_cricket[:needed])
+
+            if len(items_to_process) < max_limit and balanced_tech:
+                existing_ids = {i.get("content_id") for i in items_to_process}
+                for item in balanced_tech:
+                    if item.get("content_id") not in existing_ids:
+                        items_to_process.append(item)
+                        if len(items_to_process) >= max_limit:
+                            break
+
+            if len(items_to_process) < max_limit and balanced_other:
+                existing_ids = {i.get("content_id") for i in items_to_process}
+                for item in balanced_other:
+                    if item.get("content_id") not in existing_ids:
+                        items_to_process.append(item)
+                        if len(items_to_process) >= max_limit:
+                            break
+
+            if not items_to_process:
                 items_to_process = interleave_media_types(raw_items)[:max_limit]
 
             per_item_audits: List[Dict[str, Any]] = []
@@ -970,7 +995,7 @@ class InstagramAutomationEngine:
                 published_at=getattr(content, "published_at", "") or "",
                 media_url=media_url or "",
                 media_type=content.media_type,
-                media_rights_status=raw_item.get("media_rights_status", "AUTHORIZED"),
+                media_rights_status=raw_item.get("media_rights_status", "RIGHTS_EVIDENCE_MISSING"),
                 caption=content.caption or "",
                 hashtags=content.hashtags or [],
             )
@@ -1010,7 +1035,7 @@ class InstagramAutomationEngine:
             "hashtags": content.hashtags or [],
             "source_url": getattr(content, "source_url", "") or "",
             "source_domain": getattr(content, "source_domain", "") or "",
-            "media_rights_status": selected_raw.get("media_rights_status", "AUTHORIZED"),
+            "media_rights_status": selected_raw.get("media_rights_status", "RIGHTS_EVIDENCE_MISSING"),
             "prepared_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -1072,7 +1097,7 @@ class InstagramAutomationEngine:
             published_at=prep_data.get("prepared_at", ""),
             media_url=public_url,
             media_type=media_type,
-            media_rights_status=prep_data.get("media_rights_status", "AUTHORIZED"),
+            media_rights_status=prep_data.get("media_rights_status", "RIGHTS_EVIDENCE_MISSING"),
             caption=caption,
             hashtags=prep_data.get("hashtags", []),
         )

@@ -36,7 +36,7 @@ class TestPhase151CriticalBugFix:
                 "media_type": "REEL",
                 "image_url": None,
                 "video_url": f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-{uid}.mp4",
-                "media_rights_status": "ORIGINAL_GENERATED",
+                "media_rights_status": "LICENSED",
             }
         ]
 
@@ -83,7 +83,7 @@ class TestPhase151CriticalBugFix:
             "source_url": f"https://techcrunch.com/qc-{uid}",
             "media_type": "REEL",
             "video_url": f"https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-{uid}.mp4",
-            "media_rights_status": "ORIGINAL_GENERATED",
+            "media_rights_status": "LICENSED",
         }
 
         with patch.object(engine.source_verifier, "verify_item") as mock_sv, \

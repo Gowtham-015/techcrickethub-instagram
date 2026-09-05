@@ -33,7 +33,7 @@ def engine_env(tmp_path):
             "category": "cricket",
             "media_type": "IMAGE",
             "image_url": "https://example.com/engine_test_image.jpg",
-            "media_rights_status": "ORIGINAL_GENERATED",
+            "media_rights_status": "LICENSED",
         }
     ]
     scheduler = MagicMock(spec=InstagramScheduler)
@@ -102,7 +102,7 @@ def test_engine_error_isolation(engine_env):
             "category": "cricket",
             "media_type": "IMAGE",
             "image_url": "https://example.com/unique_valid_image_2.jpg",
-            "media_rights_status": "ORIGINAL_GENERATED",
+            "media_rights_status": "LICENSED",
         },
     ]
 
@@ -122,7 +122,7 @@ def test_intra_cycle_deduplication(engine_env):
         "category": "cricket",
         "media_type": "IMAGE",
         "image_url": "https://example.com/intra_cycle_image.jpg",
-        "media_rights_status": "ORIGINAL_GENERATED",
+        "media_rights_status": "LICENSED",
     }
 
     duplicate_item_2 = {
@@ -132,7 +132,7 @@ def test_intra_cycle_deduplication(engine_env):
         "category": "cricket",
         "media_type": "IMAGE",
         "image_url": "https://example.com/intra_cycle_image.jpg",
-        "media_rights_status": "ORIGINAL_GENERATED",
+        "media_rights_status": "LICENSED",
     }
 
     engine.source.get_content_items.return_value = [duplicate_item_1, duplicate_item_2]
@@ -156,7 +156,7 @@ def test_transient_failure_retried_on_next_cycle(engine_env):
         "category": "cricket",
         "media_type": "IMAGE",
         "image_url": "https://example.com/transient_image.jpg",
-        "media_rights_status": "ORIGINAL_GENERATED",
+        "media_rights_status": "LICENSED",
     }
 
     engine.source.get_content_items.return_value = [transient_item]

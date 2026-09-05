@@ -60,7 +60,7 @@ class Config:
     cricket_api_url: str = "https://api.cricapi.com/v1"
     reel_target_percent: int = 80
     image_target_percent: int = 20
-    media_rights_allowed_statuses: str = "OWNED,LICENSED,AUTHORIZED,PUBLIC_DOMAIN,CC_LICENSE_ALLOWED,USER_PROVIDED_WITH_PERMISSION,ORIGINAL_GENERATED"
+    media_rights_allowed_statuses: str = "OWNED,LICENSED,EXPLICITLY_AUTHORIZED,PUBLIC_DOMAIN,VERIFIED_CC_LICENSE,PERMITTED_COMMERCIAL_REUSE,CC_LICENSE_ALLOWED,USER_PROVIDED_WITH_PERMISSION"
     cricket_api_key: str = ""
     tech_rss_feeds: str = "https://feeds.feedburner.com/TechCrunch/,https://news.ycombinator.com/rss,https://www.theverge.com/rss/index.xml,https://www.engadget.com/rss.xml,https://feeds.arstechnica.com/arstechnica/index"
     cricket_rss_feeds: str = "https://www.espncricinfo.com/rss/content/story/feeds/0.xml,https://sports.ndtv.com/rss/cricket"

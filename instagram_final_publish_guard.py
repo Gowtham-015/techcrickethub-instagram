@@ -187,7 +187,6 @@ class InstagramFinalPublishGuard:
             "PERMITTED_COMMERCIAL_REUSE",
             "CC_LICENSE_ALLOWED",
             "USER_PROVIDED_WITH_PERMISSION",
-            "ORIGINAL_GENERATED",
         }
         rights_status = (getattr(bundle, "media_rights_status", "RIGHTS_EVIDENCE_MISSING") or "RIGHTS_EVIDENCE_MISSING").strip().upper()
         if rights_status not in allowed_rights or rights_status in ("RIGHTS_EVIDENCE_MISSING", "RIGHTS_NOT_VERIFIED", "UNKNOWN"):

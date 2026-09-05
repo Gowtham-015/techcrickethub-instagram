@@ -55,7 +55,7 @@ def test_content_integrity_verification():
         media_url="https://raw.githubusercontent.com/user/repo/media.jpg",
         media_type="IMAGE",
         caption="India Wins Colombo Test Match #Cricket",
-        media_rights_status="ORIGINAL_GENERATED",
+        media_rights_status="LICENSED",
     )
     res = validator.validate_bundle(bundle)
     assert res.is_valid is True
@@ -74,7 +74,7 @@ def test_caption_integrity_mismatch_rejection():
         media_url="https://raw.githubusercontent.com/user/repo/media.jpg",
         media_type="IMAGE",
         caption="Unrelated commentary about gardening and organic vegetables.",
-        media_rights_status="ORIGINAL_GENERATED",
+        media_rights_status="LICENSED",
     )
     res = validator.validate_bundle(bundle)
     assert res.is_valid is False
@@ -94,7 +94,7 @@ def test_media_content_binding_validation():
         media_url="https://example.com/fake_sample_video.mp4",
         media_type="REEL",
         caption="Kohli Hits 80th International Century",
-        media_rights_status="ORIGINAL_GENERATED",
+        media_rights_status="LICENSED",
     )
     res = guard.verify_and_guard(bundle)
     assert res.is_valid is False
@@ -114,7 +114,7 @@ def test_duplicate_story_rejection(tmp_path):
         media_url="https://images.unsplash.com/photo-1540747913346-19e32dc3e97e",
         media_type="IMAGE",
         caption="BCCI Announces Test Squad",
-        media_rights_status="ORIGINAL_GENERATED",
+        media_rights_status="LICENSED",
     )
     guard.record_published_item(bundle, media_id="media_101")
     res = guard.verify_and_guard(bundle)
@@ -134,7 +134,7 @@ def test_duplicate_source_url(tmp_path):
         media_url="https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?v=1",
         media_type="IMAGE",
         caption="Match Report Story 1",
-        media_rights_status="ORIGINAL_GENERATED",
+        media_rights_status="LICENSED",
     )
     guard.record_published_item(b1, media_id="media_src_1")
 
@@ -149,7 +149,7 @@ def test_duplicate_source_url(tmp_path):
         media_url="https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?v=2",
         media_type="IMAGE",
         caption="Match Report Story 2",
-        media_rights_status="ORIGINAL_GENERATED",
+        media_rights_status="LICENSED",
     )
     res = guard.verify_and_guard(b2)
     assert res.is_valid is False
@@ -169,7 +169,7 @@ def test_duplicate_media_url(tmp_path):
         media_url="https://images.unsplash.com/photo-1540747913346-19e32dc3e97e",
         media_type="IMAGE",
         caption="Title A",
-        media_rights_status="ORIGINAL_GENERATED",
+        media_rights_status="LICENSED",
     )
     guard.record_published_item(b, media_id="m_1")
     res = guard.verify_and_guard(b)
@@ -189,7 +189,7 @@ def test_near_duplicate_title_detection(tmp_path):
         media_url="https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?v=1",
         media_type="IMAGE",
         caption="India Defeats Australia by 5 Wickets in 1st ODI",
-        media_rights_status="ORIGINAL_GENERATED",
+        media_rights_status="LICENSED",
     )
     guard.record_published_item(b1, media_id="m_near_1")
 
@@ -204,7 +204,7 @@ def test_near_duplicate_title_detection(tmp_path):
         media_url="https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?v=2",
         media_type="IMAGE",
         caption="India Defeats Australia by 5 Wickets in First ODI",
-        media_rights_status="ORIGINAL_GENERATED",
+        media_rights_status="LICENSED",
     )
     res = guard.verify_and_guard(b2)
     assert res.is_valid is False
@@ -358,7 +358,7 @@ def test_retry_without_duplicate(tmp_path):
         media_url="https://images.unsplash.com/photo-1540747913346-19e32dc3e97e",
         media_type="IMAGE",
         caption="Retry Test Story",
-        media_rights_status="ORIGINAL_GENERATED",
+        media_rights_status="LICENSED",
     )
     guard.record_published_item(bundle, media_id="m_retry_1")
     res = guard.verify_and_guard(bundle)
