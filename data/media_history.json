@@ -594,6 +594,48 @@
       "url": "https://fdn.gsmarena.com/imgroot/news/26/09/samsung-galaxy-a18-4g-leak/-184x111/gsmarena_001.jpg",
       "status": "FINAL_GUARD_BLOCKED",
       "processed_at": "2026-09-05T16:19:37.784171+00:00"
+    },
+    {
+      "content_id": "test-valid-63974c73",
+      "media_hash": "6296ca84792001d7bbd07af8ec710a45d6d54a4230da9784e58eab4302938800",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-63974c73.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-05T17:35:59.777748+00:00"
+    },
+    {
+      "content_id": "test-reel-q-9da4c233",
+      "media_hash": "6bfa751cd8f6476a815166cdfa8a64280c2fbe31c0fa630b2e5924512dde868f",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-9da4c233.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-05T17:36:00.346537+00:00"
+    },
+    {
+      "content_id": "real-c73724af47d173cb",
+      "media_hash": "a44cfccc9adb5df4f699d1eabce4755bd8f8b3bf344e29cfe1e67a2047097b30",
+      "url": "https://d2eehagpk5cl65.cloudfront.net/img/q60/uploads/2026/09/PoliceFlockv2.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-05T17:38:09.486285+00:00"
+    },
+    {
+      "content_id": "real-e18f74ca5037c7a9",
+      "media_hash": "10b3aa28a720cd853723fda563b969c77346683eaedccf0eb0169f0d051928d2",
+      "url": "https://p.imgci.com/db/PICTURES/CMS/422000/422097.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-05T17:38:13.859366+00:00"
+    },
+    {
+      "content_id": "real-a4b1dffc6019447f",
+      "media_hash": "edce1ddafa9b328c8c5faf931f449442df463909227e5bad61ed8c5663e667ce",
+      "url": "https://p.imgci.com/db/PICTURES/CMS/422000/422099.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-05T17:38:31.208095+00:00"
+    },
+    {
+      "content_id": "real-646b6dd00263cb62",
+      "media_hash": "aaa9f69e6699e1a6c1dab04d922cbec035b60cf12af9efe243e66e69b5452e7c",
+      "url": "https://fdn.gsmarena.com/imgroot/news/26/09/xiaomi-unveil-smart-band-11/-184x111/gsmarena_001.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-05T17:42:06.871922+00:00"
     }
   ]
 }

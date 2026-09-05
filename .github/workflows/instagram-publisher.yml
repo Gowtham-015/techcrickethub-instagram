@@ -109,7 +109,7 @@ jobs:
         run: |
           python main.py --cloud-status
 
-      - name: Phase D - Commit & Push Persistent History
+      - name: Phase D - Commit & Push Persistent History & Health Status
         if: always()
         run: |
           git config user.name "github-actions[bot]"
@@ -117,10 +117,9 @@ jobs:
           mkdir -p data
           git add -A
           if ! git diff --staged --quiet; then
-            git commit -m "Chore: update published history and state [skip ci]"
+            git commit -m "Chore: update published history, health status, and proof [skip ci]"
             git pull origin main --rebase
             git push origin main
-            echo "STATE COMMITTED"
-            echo "STATE PUSHED"
+            echo "STATE COMMITTED AND PUSHED"
           fi
 

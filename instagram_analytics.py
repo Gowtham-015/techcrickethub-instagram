@@ -154,3 +154,67 @@ class InstagramAnalyticsStore:
     def clear(self) -> None:
         """Clears all analytics events."""
         self._save({"events": []})
+
+
+def record_performance_history(
+    entry: Dict[str, Any],
+    history_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Records a publication's performance data into data/performance_history.json."""
+    if history_path is None:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        history_path = os.path.join(base_dir, "data", "performance_history.json")
+
+    os.makedirs(os.path.dirname(history_path), exist_ok=True)
+
+    history = []
+    if os.path.exists(history_path):
+        try:
+            with open(history_path, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+                if isinstance(loaded, list):
+                    history = loaded
+        except Exception:
+            history = []
+
+    clean_entry = {
+        "media_id": entry.get("media_id") or entry.get("instagram_media_id") or "",
+        "category": entry.get("category", "cricket"),
+        "caption": entry.get("caption", ""),
+        "published_at": entry.get("published_at") or datetime.now(timezone.utc).isoformat(),
+        "source": entry.get("source") or entry.get("source_name") or "",
+        "content_id": entry.get("content_id", ""),
+        "permalink": entry.get("permalink") or entry.get("instagram_permalink") or "",
+        "views": entry.get("views"),
+        "likes": entry.get("likes"),
+        "comments": entry.get("comments"),
+        "shares": entry.get("shares"),
+    }
+
+    # Avoid duplicate media_id records
+    history = [h for h in history if h.get("media_id") != clean_entry["media_id"] or not clean_entry["media_id"]]
+    history.append(clean_entry)
+
+    temp_path = f"{history_path}.tmp"
+    with open(temp_path, "w", encoding="utf-8") as f:
+        json.dump(history, f, indent=2)
+    os.replace(temp_path, history_path)
+    return clean_entry
+
+
+def get_performance_history(history_path: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Retrieves all records from data/performance_history.json."""
+    if history_path is None:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        history_path = os.path.join(base_dir, "data", "performance_history.json")
+
+    if not os.path.exists(history_path):
+        return []
+
+    try:
+        with open(history_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data if isinstance(data, list) else []
+    except Exception:
+        return []
+

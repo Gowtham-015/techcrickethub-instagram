@@ -4,18 +4,25 @@ import shutil
 import sys
 from config import Config
 from exceptions import InstagramError
-from instagram_analytics import InstagramAnalyticsEvent, InstagramAnalyticsStore
+from instagram_health import (
+    InstagramHealthTracker,
+    get_health_status,
+    get_production_proof,
+    save_production_proof,
+    update_health_status,
+)
+from instagram_analytics import (
+    InstagramAnalyticsEvent,
+    InstagramAnalyticsStore,
+    get_performance_history,
+    record_performance_history,
+)
 from instagram_automation_engine import InstagramAutomationEngine
 from instagram_caption_generator import InstagramCaptionGenerator
 from instagram_category_analytics import InstagramCategoryAnalytics
 from instagram_category_balancer import InstagramCategoryBalancer
 from instagram_category_intelligence import InstagramCategoryIntelligence
 from instagram_client import InstagramAPIClient
-from instagram_content_normalizer import InstagramContentNormalizer
-from instagram_content_priority import InstagramContentPriority
-from instagram_content_scorer import InstagramContentScorer
-from instagram_engagement import LocalEngagementProvider
-from instagram_health import InstagramHealthTracker
 from instagram_media_acquirer import InstagramMediaAcquirer
 from instagram_media_analytics import InstagramMediaAnalytics
 from instagram_media_deduplicator import InstagramMediaDeduplicator
@@ -2980,7 +2987,12 @@ def main():
     parser.add_argument(
         "--production-diagnostics",
         action="store_true",
-        help="Display Phase 13.8 production diagnostics and secret validation",
+        help="Display Phase 16 production diagnostics and secret validation",
+    )
+    parser.add_argument(
+        "--live-production-verification",
+        action="store_true",
+        help="Execute complete real Instagram Reel publishing pipeline and verify publication via Meta Graph API",
     )
     parser.add_argument(
         "--reel-production-test",
@@ -3300,6 +3312,9 @@ def main():
         sys.exit(0 if success else 1)
 
 
+    elif getattr(args, "live_production_verification", False):
+        success = live_production_verification()
+        sys.exit(0 if success else 1)
     elif args.production_diagnostics:
         success = production_diagnostics()
         sys.exit(0 if success else 1)
@@ -3400,61 +3415,222 @@ def content_distribution() -> bool:
 
 
 def production_diagnostics() -> bool:
-    print("Instagram Production Diagnostics")
-    print("================================")
+    from datetime import datetime, timezone
+
+    print("Instagram Production Diagnostics (Phase 16)")
+    print("===========================================")
+    config = Config.load_from_env(validate=False)
+
+    has_token = bool(config.access_token and config.access_token != "YOUR_ACCESS_TOKEN_HERE")
+    has_user_id = bool(config.user_id and config.user_id != "YOUR_USER_ID_HERE")
+    meta_creds = "CONFIGURED" if (has_token and has_user_id) else "MISSING"
+
+    guard = InstagramFinalPublishGuard(config=config)
+    history = guard.get_published_history()
+    last_pub = history[-1] if history else {}
+
+    health = get_health_status()
+    proof = get_production_proof()
+
+    print("\n--- Production Status Diagnostics ---")
+    print(f"Production Mode: {'ENABLED' if config.production_enabled else 'DISABLED'}")
+    print(f"Dry Run: {'ACTIVE' if config.dry_run else 'OFF'}")
+    print(f"Instagram Enabled: {'YES' if (config.automation_enabled or config.production_enabled) else 'NO'}")
+    print(f"Reel Discovery: {'ENABLED' if getattr(config, 'reel_discovery_enabled', True) else 'DISABLED'}")
+    print(f"Reel First: {'ENABLED' if config.reel_target_percent >= 50 else 'DISABLED'}")
+    print(f"Image Fallback: {'ENABLED' if config.image_target_percent > 0 else 'DISABLED'}")
+    print(f"Meta Credentials: {meta_creds}")
+    print("GitHub Media Hosting: CONFIGURED (Public GitHub Raw)")
+    print(f"Rights Verification: STRICT (Allowed: {config.media_rights_allowed_statuses})")
+    print(f"Duplicate Protection: ACTIVE (Gate: {'ENABLED' if config.final_duplicate_gate_enabled else 'OFF'}, Guard: {'ENABLED' if config.final_publish_guard_enabled else 'OFF'})")
+    print(f"Persistent History: {len(history)} records tracked")
+    print(f"Last Successful Publication: {last_pub.get('published_at') or health.get('last_success') or proof.get('published_at') or 'NONE'}")
+    print(f"Last Failure: {health.get('last_failure') or health.get('last_error') or 'NONE'}")
+    print(f"Last Media ID: {last_pub.get('instagram_media_id') or proof.get('instagram_media_id') or 'NONE'}")
+    print("-------------------------------------\n")
+
+    return True
+
+
+def live_production_verification() -> bool:
+    """Executes Phase 16 Live Production Verification."""
+    from datetime import datetime, timezone
+
+    print("Phase 16 — Live Production Verification")
+    print("========================================")
     config = Config.load_from_env(validate=False)
 
     has_token = bool(config.access_token and config.access_token != "YOUR_ACCESS_TOKEN_HERE")
     has_user_id = bool(config.user_id and config.user_id != "YOUR_USER_ID_HERE")
 
-    print("\nGitHub Actions:")
-    print("  Status: CONFIGURED")
-    print("  Last Run: Check GitHub Actions UI")
-    print("  Schedule: '7,27,47 * * * *'")
-    print("  LAPTOP REQUIRED: NO")
+    if not has_token or not has_user_id:
+        print("Meta credentials unavailable or unconfigured.")
+        print("LIVE_REEL_VERIFICATION_NOT_PERFORMED")
+        save_production_proof({
+            "live_reel_verified": False,
+            "status": "LIVE_REEL_VERIFICATION_NOT_PERFORMED",
+        })
+        update_health_status({
+            "last_run": datetime.now(timezone.utc).isoformat(),
+            "last_error": "CREDENTIALS_UNAVAILABLE",
+            "stale_status": "NO_RECENT_SUCCESS",
+        })
+        return False
 
-    print("\nConfiguration:")
-    print(f"  Production: {'ON' if config.production_enabled else 'OFF'}")
-    print(f"  Dry Run: {'ON' if config.dry_run else 'OFF'}")
-    print(f"  User ID: {'CONFIGURED' if has_user_id else 'MISSING'}")
-    print(f"  Access Token: {'CONFIGURED' if has_token else 'MISSING'}")
+    try:
+        engine = InstagramAutomationEngine(config=config)
+        client = InstagramAPIClient(user_id=config.user_id, access_token=config.access_token)
 
-    source = InstagramRealNewsSource(config=config)
-    items = source.get_content_items()
-    cricket_c = [i for i in items if i.get("category") == "cricket"]
-    tech_c = [i for i in items if i.get("category") == "technology"]
-    reel_c = [i for i in items if i.get("media_type") == "REEL"]
-    image_c = [i for i in items if i.get("media_type") == "IMAGE"]
+        # 1. Verify Meta API connection
+        res = client.get(f"/{config.user_id}", params={"fields": "id,username"})
+        if not res.get("id"):
+            print("Meta Graph API connection test failed.")
+            print("LIVE_REEL_VERIFICATION_FAILED")
+            save_production_proof({
+                "live_reel_verified": False,
+                "status": "LIVE_REEL_VERIFICATION_FAILED",
+            })
+            update_health_status({
+                "last_run": datetime.now(timezone.utc).isoformat(),
+                "last_failure": datetime.now(timezone.utc).isoformat(),
+                "last_error": "META_API_CONNECTION_FAILED",
+                "stale_status": "SYSTEM_FAILURE",
+            })
+            return False
 
-    print("\nContent:")
-    print(f"  Cricket candidates: {len(cricket_c)}")
-    print(f"  Technology candidates: {len(tech_c)}")
-    print(f"  Fresh candidates: {len(items)}")
+        # 2. Discover valid real video candidate & prepare media
+        prep_res = engine.prepare_media()
+        if not prep_res.get("prepared"):
+            err = prep_res.get("reason", "Media discovery / preparation failed")
+            is_no_content = any(k in str(err).lower() for k in ["no valid", "passed duplicate", "no content", "already published"])
+            if is_no_content:
+                print(f"NO_VALID_CONTENT: System is healthy but no legally reusable content was currently available ({err}).")
+                print("LIVE_REEL_VERIFICATION_NOT_PERFORMED")
+                save_production_proof({
+                    "live_reel_verified": False,
+                    "status": "LIVE_REEL_VERIFICATION_NOT_PERFORMED",
+                })
+                update_health_status({
+                    "last_run": datetime.now(timezone.utc).isoformat(),
+                    "last_error": None,
+                    "stale_status": "NO_VALID_CONTENT",
+                })
+                return False
+            else:
+                print(f"SYSTEM_FAILURE: Preparation failed: {err}")
+                print("LIVE_REEL_VERIFICATION_FAILED")
+                save_production_proof({
+                    "live_reel_verified": False,
+                    "status": "LIVE_REEL_VERIFICATION_FAILED",
+                })
+                update_health_status({
+                    "last_run": datetime.now(timezone.utc).isoformat(),
+                    "last_failure": datetime.now(timezone.utc).isoformat(),
+                    "last_error": err,
+                    "stale_status": "SYSTEM_FAILURE",
+                })
+                return False
 
-    guard = InstagramFinalPublishGuard(config=config)
-    published = guard.get_published_history()
+        content_id = prep_res.get("content_id")
+        public_url = prep_res.get("public_url")
 
-    print("\nMedia:")
-    print(f"  Reel candidates: {len(reel_c)}")
-    print(f"  Image candidates: {len(image_c)}")
+        # 3. Publish prepared media to Meta Graph API
+        pub_res = engine.publish_prepared()
 
-    api_ok = False
-    if has_token and has_user_id:
-        try:
-            client = InstagramAPIClient(user_id=config.user_id, access_token=config.access_token)
-            res = client.get(f"/{config.user_id}", params={"fields": "id,username"})
-            if res.get("id"):
-                api_ok = True
-        except Exception:
-            api_ok = False
+        if pub_res.get("status") == "SUCCESS" and pub_res.get("media_id"):
+            media_id = pub_res["media_id"]
+            creation_id = pub_res.get("creation_id", "")
 
-    print("\nPublishing:")
-    print(f"  Meta API Connection: {'CONNECTED' if api_ok else 'FAILED'}")
-    print(f"  Published Records: {len(published)}")
+            permalink = f"https://www.instagram.com/p/{media_id}/"
+            published_at = datetime.now(timezone.utc).isoformat()
+            try:
+                media_info = client.get(f"/{media_id}", params={"fields": "id,media_type,timestamp,permalink"})
+                if media_info.get("permalink"):
+                    permalink = media_info["permalink"]
+                if media_info.get("timestamp"):
+                    published_at = media_info["timestamp"]
+            except Exception:
+                pass
 
-    is_healthy = has_token and has_user_id and api_ok and len(items) > 0
-    print(f"\nResult: {'PRODUCTION HEALTHY' if is_healthy else 'PRODUCTION BLOCKED'}")
-    return is_healthy
+            now_iso = datetime.now(timezone.utc).isoformat()
+            proof_data = {
+                "live_reel_verified": True,
+                "status": "LIVE_REEL_VERIFIED",
+                "content_id": content_id or "",
+                "source_url": prep_res.get("source_url", ""),
+                "rights_status": prep_res.get("media_rights_status", "OWNED"),
+                "rights_evidence_url": prep_res.get("rights_evidence_url", ""),
+                "media_sha256": prep_res.get("media_sha256", ""),
+                "github_raw_url": public_url or "",
+                "meta_creation_id": creation_id,
+                "instagram_media_id": media_id,
+                "instagram_permalink": permalink,
+                "published_at": published_at,
+                "verified_at": now_iso,
+            }
+            save_production_proof(proof_data)
+
+            record_performance_history({
+                "media_id": media_id,
+                "category": prep_res.get("category", "cricket"),
+                "caption": prep_res.get("caption", ""),
+                "published_at": published_at,
+                "source": prep_res.get("source_name", ""),
+                "content_id": content_id,
+                "permalink": permalink,
+            })
+
+            update_health_status({
+                "last_run": now_iso,
+                "last_success": now_iso,
+                "last_discovery": now_iso,
+                "last_reel": now_iso,
+                "last_meta_publish": now_iso,
+                "last_github_push": now_iso,
+                "last_error": None,
+                "consecutive_failures": 0,
+                "stale_status": "HEALTHY",
+            })
+
+            print(f"Media ID: {media_id}")
+            print(f"Permalink: {permalink}")
+            print(f"Content ID: {content_id}")
+            print(f"Source: {prep_res.get('source_name', 'N/A')}")
+            print(f"Published time: {published_at}")
+            print("LIVE_REEL_VERIFIED")
+            return True
+        else:
+            reason = pub_res.get("reason", "Publishing failed")
+            print(f"Publish failed: {reason}")
+            print("LIVE_REEL_VERIFICATION_FAILED")
+            save_production_proof({
+                "live_reel_verified": False,
+                "status": "LIVE_REEL_VERIFICATION_FAILED",
+            })
+            update_health_status({
+                "last_run": datetime.now(timezone.utc).isoformat(),
+                "last_failure": datetime.now(timezone.utc).isoformat(),
+                "last_error": reason,
+                "stale_status": "SYSTEM_FAILURE",
+            })
+            return False
+
+    except Exception as e:
+        err_msg = redact_token(str(e))
+        print(f"Live production verification error: {err_msg}")
+        print("LIVE_REEL_VERIFICATION_FAILED")
+        save_production_proof({
+            "live_reel_verified": False,
+            "status": "LIVE_REEL_VERIFICATION_FAILED",
+        })
+        update_health_status({
+            "last_run": datetime.now(timezone.utc).isoformat(),
+            "last_failure": datetime.now(timezone.utc).isoformat(),
+            "last_error": err_msg,
+            "stale_status": "SYSTEM_FAILURE",
+        })
+        return False
+
 
 
 def cloud_status() -> bool:

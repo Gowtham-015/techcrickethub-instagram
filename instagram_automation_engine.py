@@ -1115,52 +1115,78 @@ class InstagramAutomationEngine:
             self.logger.info(f"Publish Prepared SKIPPED (DRY_RUN mode active). Target URL: {public_url}")
             return {"status": "SKIPPED_DRY_RUN", "published": 0, "dry_run": True, "creation_id": None, "media_id": None}
 
-        # 2. Real Publishing via Meta Graph API
+        # 2. Real Publishing via Meta Graph API with Bounded Retries (max 3 attempts, exponential backoff)
+        import time
         from instagram_client import InstagramAPIClient
         from instagram_reel_publisher import InstagramReelPublisher
         from instagram_publisher import InstagramImagePublisher
 
-        try:
-            client = InstagramAPIClient(user_id=self.config.user_id, access_token=self.config.access_token)
-            if media_type == "REEL":
-                publisher = InstagramReelPublisher(client=client)
-                pub_res = publisher.publish_reel(video_url=public_url, caption=caption)
-            else:
-                publisher = InstagramImagePublisher(client=client)
-                pub_res = publisher.publish_image(image_url=public_url, caption=caption)
+        max_attempts = 3
+        last_error = ""
 
-            if pub_res.success and pub_res.media_id:
-                # 3. Post-publish verification call
-                is_verified = client.verify_published_media(pub_res.media_id)
-                if is_verified:
-                    self.final_publish_guard.record_published_item(bundle=bundle, media_id=pub_res.media_id)
-                    self.health_tracker.record_publish_success(media_id=pub_res.media_id)
+        for attempt in range(1, max_attempts + 1):
+            if attempt > 1:
+                # Pre-retry duplicate check: Was media already published?
+                hist = self.final_publish_guard.get_published_history()
+                existing = next((h for h in hist if h.get("content_id") == content_id), None)
+                if existing and existing.get("instagram_media_id"):
+                    existing_id = existing["instagram_media_id"]
+                    self.logger.info(f"Pre-retry check found media already published: {existing_id}. Stopping retries.")
                     try:
                         os.remove(prepared_file)
                     except Exception:
                         pass
-                    self.logger.info(f"Publish Prepared SUCCESS: Media ID {pub_res.media_id}")
                     return {
                         "status": "SUCCESS",
                         "published": 1,
-                        "creation_id": pub_res.creation_id,
-                        "media_id": pub_res.media_id,
+                        "creation_id": existing.get("meta_creation_id"),
+                        "media_id": existing_id,
                         "verified": True,
+                        "pre_retry_found": True,
                     }
-                else:
-                    err = "Published media verification on Meta API returned false"
-                    self.health_tracker.record_publish_failure(err)
-                    return {"status": "FAILED", "reason": err, "published": 0}
-            else:
-                err = pub_res.message or "Meta API publication failed"
-                self.health_tracker.record_publish_failure(err)
-                return {"status": "FAILED", "reason": err, "published": 0}
 
-        except Exception as e:
-            err_str = redact_token(str(e))
-            self.logger.error(f"Publish Prepared Exception: {err_str}")
-            self.health_tracker.record_publish_failure(err_str)
-            return {"status": "FAILED", "reason": err_str, "published": 0}
+                backoff_sec = 2 ** (attempt - 1)
+                self.logger.info(f"Retry attempt {attempt}/{max_attempts} after backoff of {backoff_sec}s...")
+                time.sleep(backoff_sec)
+
+            try:
+                client = InstagramAPIClient(user_id=self.config.user_id, access_token=self.config.access_token)
+                if media_type == "REEL":
+                    publisher = InstagramReelPublisher(client=client)
+                    pub_res = publisher.publish_reel(video_url=public_url, caption=caption)
+                else:
+                    publisher = InstagramImagePublisher(client=client)
+                    pub_res = publisher.publish_image(image_url=public_url, caption=caption)
+
+                if pub_res.success and pub_res.media_id:
+                    # 3. Post-publish verification call
+                    is_verified = client.verify_published_media(pub_res.media_id)
+                    if is_verified:
+                        self.final_publish_guard.record_published_item(bundle=bundle, media_id=pub_res.media_id)
+                        self.health_tracker.record_publish_success(media_id=pub_res.media_id)
+                        try:
+                            os.remove(prepared_file)
+                        except Exception:
+                            pass
+                        self.logger.info(f"Publish Prepared SUCCESS: Media ID {pub_res.media_id}")
+                        return {
+                            "status": "SUCCESS",
+                            "published": 1,
+                            "creation_id": pub_res.creation_id,
+                            "media_id": pub_res.media_id,
+                            "verified": True,
+                        }
+                    else:
+                        last_error = "Published media verification on Meta API returned false"
+                else:
+                    last_error = pub_res.message or "Meta API publication failed"
+
+            except Exception as e:
+                last_error = redact_token(str(e))
+                self.logger.warning(f"Publish Prepared Attempt {attempt} failed: {last_error}")
+
+        self.health_tracker.record_publish_failure(last_error)
+        return {"status": "FAILED", "reason": last_error, "published": 0}
 
     def run(self) -> None:
         """Starts the continuous automation loop until stopped or interrupted."""
