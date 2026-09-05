@@ -3477,6 +3477,21 @@ def live_production_verification() -> bool:
         })
         return False
 
+    if not getattr(config, "reel_discovery_enabled", False):
+        print("Reel Discovery is DISABLED while live-production-verification is requested. Failing closed.")
+        print("LIVE_REEL_VERIFICATION_FAILED")
+        save_production_proof({
+            "live_reel_verified": False,
+            "status": "LIVE_REEL_VERIFICATION_FAILED",
+        })
+        update_health_status({
+            "last_run": datetime.now(timezone.utc).isoformat(),
+            "last_failure": datetime.now(timezone.utc).isoformat(),
+            "last_error": "REEL_DISCOVERY_DISABLED",
+            "stale_status": "SYSTEM_FAILURE",
+        })
+        return False
+
     try:
         engine = InstagramAutomationEngine(config=config)
         client = InstagramAPIClient(user_id=config.user_id, access_token=config.access_token)

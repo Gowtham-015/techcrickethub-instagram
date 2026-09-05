@@ -304,13 +304,13 @@ def test_cricket_quota_enforcement():
 
 
 def test_reel_quota_enforcement():
-    balancer = InstagramReelBalancer()
+    balancer = InstagramReelBalancer(config=Config(user_id="dummy", access_token="dummy", reel_target_percent=80))
     targets = balancer.calculate_targets(30)
     assert targets["min_reels"] == 24  # ~80% of 30
 
 
 def test_image_quota_enforcement():
-    balancer = InstagramReelBalancer()
+    balancer = InstagramReelBalancer(config=Config(user_id="dummy", access_token="dummy", reel_target_percent=80))
     targets = balancer.calculate_targets(30)
     assert targets["max_images"] == 6  # ~20% of 30
 

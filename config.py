@@ -87,6 +87,7 @@ class Config:
     missed_post_max_age_hours: int = 6
     final_title_similarity_threshold: float = 0.50
     reel_discovery_enabled: bool = False
+    enable_image_fallback: bool = False
 
 
     @classmethod
@@ -352,6 +353,7 @@ class Config:
             missed_post_max_age_hours=int(os.getenv("INSTAGRAM_MISSED_POST_MAX_AGE_HOURS", "6").strip()),
             final_title_similarity_threshold=float(os.getenv("INSTAGRAM_FINAL_TITLE_SIMILARITY_THRESHOLD", "0.65").strip()),
             reel_discovery_enabled=os.getenv("INSTAGRAM_REEL_DISCOVERY_ENABLED", "false").strip().lower() in ("true", "1", "yes", "on"),
+            enable_image_fallback=os.getenv("INSTAGRAM_IMAGE_FALLBACK_ENABLED", "false").strip().lower() in ("true", "1", "yes", "on"),
         )
 
         if validate:

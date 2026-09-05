@@ -35,7 +35,7 @@ class TestPhase16LiveProductionVerification(unittest.TestCase):
     def test_missing_credentials_produces_not_performed(self):
         """Verify missing Meta credentials output LIVE_REEL_VERIFICATION_NOT_PERFORMED."""
         with patch.object(Config, "load_from_env") as mock_cfg:
-            cfg = Config(user_id="", access_token="", dry_run=False, production_enabled=True)
+            cfg = Config(user_id="", access_token="", dry_run=False, production_enabled=True, reel_discovery_enabled=True)
             mock_cfg.return_value = cfg
             with patch("main.save_production_proof") as mock_proof, patch("main.update_health_status") as mock_health:
                 res = live_production_verification()

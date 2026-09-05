@@ -57,7 +57,7 @@ def test_max_posts_per_cycle_limit(tmp_path):
             )
         )
 
-    scheduler = InstagramScheduler(queue=queue)
+    scheduler = InstagramScheduler(queue=queue, lock_path=str(tmp_path / "scheduler.lock"))
     results = scheduler.process_due_items(limit=1)
     assert len(results) == 1
 

@@ -33,6 +33,10 @@ jobs:
       INSTAGRAM_AUTOMATION_ENABLED: 'true'
       INSTAGRAM_SCHEDULER_ENABLED: 'true'
       INSTAGRAM_TIMEZONE: 'Asia/Kolkata'
+      INSTAGRAM_REEL_DISCOVERY_ENABLED: 'true'
+      INSTAGRAM_REEL_TARGET_PERCENT: '100'
+      INSTAGRAM_IMAGE_TARGET_PERCENT: '0'
+      INSTAGRAM_IMAGE_FALLBACK_ENABLED: 'false'
 
     steps:
       - name: Checkout Instagram Repository
