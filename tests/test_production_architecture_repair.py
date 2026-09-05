@@ -42,8 +42,9 @@ class TestProductionArchitectureRepair(unittest.TestCase):
         </rss>"""
         parsed = source._parse_feed_items(raw_xml, feed_url="https://example.com/rss", category="cricket")
         self.assertEqual(len(parsed), 1)
-        # Verify status is CC_LICENSE_ALLOWED or AUTHORIZED
-        self.assertIn(parsed[0]["media_rights_status"], source.ALLOWED_RIGHTS_STATUSES)
+        # Verify status is RIGHTS_EVIDENCE_MISSING and rejected from ALLOWED_RIGHTS_STATUSES
+        self.assertEqual(parsed[0]["media_rights_status"], "RIGHTS_EVIDENCE_MISSING")
+        self.assertNotIn(parsed[0]["media_rights_status"], source.ALLOWED_RIGHTS_STATUSES)
 
     def test_no_subprocess_git_calls_in_public_media_host(self):
         """Verify PublicMediaHost does NOT execute subprocess.run(['git', ...]) calls."""

@@ -72,11 +72,11 @@ jobs:
 
       - name: Run Preflight Diagnostics
         run: |
-          python main.py --production-diagnostics || true
+          python main.py --production-diagnostics
 
       - name: Phase A - Prepare Media Assets
         run: |
-          python main.py --prepare-media || true
+          python main.py --prepare-media
 
       - name: Commit & Push Prepared Media BEFORE Meta Publication
         run: |
@@ -84,11 +84,11 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           mkdir -p data/generated_reels data/acquired_videos media/generated
           git add -f data/generated_reels/* media/generated/* data/prepared_media.json 2>/dev/null || true
-          git add -A || true
+          git add -A
           if ! git diff --staged --quiet; then
-            git commit -m "Chore: commit prepared media before Meta publication [skip ci]" || true
-            git pull origin main --rebase || true
-            git push origin main || true
+            git commit -m "Chore: commit prepared media before Meta publication [skip ci]"
+            git pull origin main --rebase
+            git push origin main
             sleep 2
             echo "MEDIA COMMITTED AND PUSHED TO GITHUB RAW"
           else
@@ -112,11 +112,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           mkdir -p data
-          git add -A || true
+          git add -A
           if ! git diff --staged --quiet; then
-            git commit -m "Chore: update published history and state [skip ci]" || true
-            git pull origin main --rebase || true
-            git push origin main || true
+            git commit -m "Chore: update published history and state [skip ci]"
+            git pull origin main --rebase
+            git push origin main
             echo "STATE COMMITTED"
             echo "STATE PUSHED"
           fi

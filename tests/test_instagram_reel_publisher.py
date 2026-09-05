@@ -20,6 +20,12 @@ def mock_client():
     return client
 
 
+@pytest.fixture(autouse=True)
+def mock_media_verifier():
+    with patch("instagram_media_verifier.InstagramMediaVerifier.validate_meta_media_accessibility", return_value={"is_valid": True}):
+        yield
+
+
 def test_publish_reel_success(mock_client):
     mock_client.post.side_effect = [
         {"id": "18000000000000001"},

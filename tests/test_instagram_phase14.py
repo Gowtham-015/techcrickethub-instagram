@@ -283,8 +283,8 @@ def test_instagram_publish_confirmation():
     ]
     client.get.return_value = {"status_code": "FINISHED"}
     publisher = InstagramReelPublisher(client=client)
-    res = publisher.publish_reel(video_url="https://raw.githubusercontent.com/test_bypass/test_video.mp4", caption="Test Reel")
-
+    with patch("instagram_media_verifier.InstagramMediaVerifier.validate_meta_media_accessibility", return_value={"is_valid": True, "error": None}):
+        res = publisher.publish_reel(video_url="https://raw.githubusercontent.com/test_bypass/test_video.mp4", caption="Test Reel")
 
     assert res.success is True
     assert res.media_id == "media_published_111"

@@ -18,6 +18,8 @@ class InstagramPublishLockError(Exception):
 class InstagramPublishLock:
     """Process-safe and instance-aware file lock for Instagram publishing."""
 
+    _active_locks: dict[str, "InstagramPublishLock"] = {}
+
     def __init__(
         self,
         lock_file: Optional[str] = None,
@@ -74,6 +76,7 @@ class InstagramPublishLock:
 
     def acquire(self) -> bool:
         start_time = time.time()
+        abs_path = os.path.normcase(os.path.abspath(self.lock_file))
 
         while True:
             # Check for existing lock file
@@ -94,23 +97,37 @@ class InstagramPublishLock:
                     # 1. Re-entrant lock check: Same instance already owns the lock file
                     if owner_in_file and owner_in_file == self.owner_id:
                         self.acquired = True
+                        InstagramPublishLock._active_locks[abs_path] = self
                         return True
 
-
-
-                    pid_active = self._is_pid_active(pid_in_file) if pid_in_file > 0 else False
-
-                    # 2. Dead process, corrupt file, or stale age check
-                    if pid_in_file == 0 or not pid_active or age > self.stale_threshold_seconds:
-                        logger.warning(
-                            f"Recovering publish lock '{self.lock_file}' (PID {pid_in_file}, active: {pid_active}, Age: {round(age, 1)}s)."
-                        )
-                        self.release_force()
-                    else:
+                    # 2. Active lock instance in same process currently holding lock
+                    active_inst = InstagramPublishLock._active_locks.get(abs_path)
+                    if active_inst and active_inst is not self and active_inst.acquired:
                         if time.time() - start_time >= self.timeout_seconds:
                             return False
                         time.sleep(0.2)
                         continue
+
+                    # 3. Same process ID but no active lock instance holding it: Leftover from previous completed instance
+                    if pid_in_file == os.getpid() and owner_in_file != self.owner_id and not active_inst:
+                        logger.warning(
+                            f"Recovering publish lock '{self.lock_file}' left over by previous lock instance in same process (PID {pid_in_file})."
+                        )
+                        self.release_force()
+                    else:
+                        pid_active = self._is_pid_active(pid_in_file) if pid_in_file > 0 else False
+
+                        # 4. Dead process, corrupt file, or stale age check
+                        if pid_in_file == 0 or not pid_active or age > self.stale_threshold_seconds:
+                            logger.warning(
+                                f"Recovering publish lock '{self.lock_file}' (PID {pid_in_file}, active: {pid_active}, Age: {round(age, 1)}s)."
+                            )
+                            self.release_force()
+                        else:
+                            if time.time() - start_time >= self.timeout_seconds:
+                                return False
+                            time.sleep(0.2)
+                            continue
                 except OSError:
                     pass
 
@@ -121,6 +138,7 @@ class InstagramPublishLock:
                 os.write(fd, lock_info.encode("utf-8"))
                 os.close(fd)
                 self.acquired = True
+                InstagramPublishLock._active_locks[abs_path] = self
                 logger.info(f"Publish lock acquired successfully ({self.lock_file}).")
                 return True
             except OSError:
@@ -136,6 +154,8 @@ class InstagramPublishLock:
 
     def release_force(self) -> None:
         """Forcefully removes the lock file if present."""
+        abs_path = os.path.normcase(os.path.abspath(self.lock_file))
+        InstagramPublishLock._active_locks.pop(abs_path, None)
         try:
             if os.path.exists(self.lock_file):
                 os.remove(self.lock_file)

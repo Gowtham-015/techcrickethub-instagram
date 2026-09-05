@@ -181,18 +181,20 @@ class InstagramFinalPublishGuard:
         allowed_rights = {
             "OWNED",
             "LICENSED",
-            "AUTHORIZED",
+            "EXPLICITLY_AUTHORIZED",
             "PUBLIC_DOMAIN",
+            "VERIFIED_CC_LICENSE",
+            "PERMITTED_COMMERCIAL_REUSE",
             "CC_LICENSE_ALLOWED",
             "USER_PROVIDED_WITH_PERMISSION",
             "ORIGINAL_GENERATED",
         }
-        rights_status = (getattr(bundle, "media_rights_status", "UNKNOWN") or "UNKNOWN").strip().upper()
-        if rights_status not in allowed_rights:
+        rights_status = (getattr(bundle, "media_rights_status", "RIGHTS_EVIDENCE_MISSING") or "RIGHTS_EVIDENCE_MISSING").strip().upper()
+        if rights_status not in allowed_rights or rights_status in ("RIGHTS_EVIDENCE_MISSING", "RIGHTS_NOT_VERIFIED", "UNKNOWN"):
             return GuardResult(
                 is_valid=False,
-                error_code="MEDIA_RIGHTS_UNKNOWN" if rights_status == "UNKNOWN" else "MEDIA_RIGHTS_RESTRICTED",
-                message=f"Media rights status '{rights_status}' is unallowed for live publishing.",
+                error_code="RIGHTS_EVIDENCE_MISSING",
+                message=f"Media rights status '{rights_status}' lacks explicit verification evidence.",
                 bundle=bundle,
             )
 

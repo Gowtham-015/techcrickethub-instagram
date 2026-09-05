@@ -13,23 +13,57 @@ class TestRealYouTubeAcquisition(unittest.TestCase):
 
     def test_discover_video_items_cricket(self):
         """Verify Cricket real video discovery returns authorized video items."""
-        items = self.source.discover_video_items(category="cricket", limit=2)
-        self.assertGreater(len(items), 0)
-        first = items[0]
-        self.assertEqual(first["category"], "cricket")
-        self.assertEqual(first["media_type"], "REEL")
-        self.assertIsNotNone(first["video_url"])
-        self.assertIn(first["media_rights_status"], self.source.ALLOWED_RIGHTS_STATUSES)
+        sample_rss = """<rss version="2.0">
+            <channel>
+                <title>Cricket Feed</title>
+                <item>
+                    <title>Cricket Match Highlight Reel</title>
+                    <link>https://example.com/cricket-highlight</link>
+                    <description>Highlights of recent cricket match</description>
+                    <enclosure url="https://example.com/cricket.mp4" type="video/mp4"/>
+                    <creativeCommons>https://creativecommons.org/licenses/by/4.0/</creativeCommons>
+                </item>
+            </channel>
+        </rss>"""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = sample_rss
+
+        with patch("requests.get", return_value=mock_resp):
+            items = self.source.discover_video_items(category="cricket", limit=2)
+            self.assertGreater(len(items), 0)
+            first = items[0]
+            self.assertEqual(first["category"], "cricket")
+            self.assertEqual(first["media_type"], "REEL")
+            self.assertIsNotNone(first["video_url"])
+            self.assertIn(first["media_rights_status"], self.source.ALLOWED_RIGHTS_STATUSES)
 
     def test_discover_video_items_technology(self):
         """Verify Technology real video discovery returns authorized video items."""
-        items = self.source.discover_video_items(category="technology", limit=2)
-        self.assertGreater(len(items), 0)
-        first = items[0]
-        self.assertEqual(first["category"], "technology")
-        self.assertEqual(first["media_type"], "REEL")
-        self.assertIsNotNone(first["video_url"])
-        self.assertIn(first["media_rights_status"], self.source.ALLOWED_RIGHTS_STATUSES)
+        sample_rss = """<rss version="2.0">
+            <channel>
+                <title>Tech Feed</title>
+                <item>
+                    <title>Tech Launch Highlight Reel</title>
+                    <link>https://example.com/tech-launch</link>
+                    <description>Keynote video highlights</description>
+                    <enclosure url="https://example.com/tech.mp4" type="video/mp4"/>
+                    <creativeCommons>https://creativecommons.org/licenses/by/4.0/</creativeCommons>
+                </item>
+            </channel>
+        </rss>"""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = sample_rss
+
+        with patch("requests.get", return_value=mock_resp):
+            items = self.source.discover_video_items(category="technology", limit=2)
+            self.assertGreater(len(items), 0)
+            first = items[0]
+            self.assertEqual(first["category"], "technology")
+            self.assertEqual(first["media_type"], "REEL")
+            self.assertIsNotNone(first["video_url"])
+            self.assertIn(first["media_rights_status"], self.source.ALLOWED_RIGHTS_STATUSES)
 
     def test_get_content_items_interface(self):
         """Verify get_content_items conforms to InstagramContentSource interface."""

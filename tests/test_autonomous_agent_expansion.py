@@ -18,14 +18,31 @@ class TestAutonomousAgentExpansion(unittest.TestCase):
 
     def test_multi_category_discovery(self):
         """Verify video items can be discovered across all expanded categories."""
+        sample_rss = """<rss version="2.0">
+            <channel>
+                <title>Feed Title</title>
+                <item>
+                    <title>Category News Reel</title>
+                    <link>https://example.com/story</link>
+                    <description>Story summary</description>
+                    <enclosure url="https://example.com/video.mp4" type="video/mp4"/>
+                    <creativeCommons>https://creativecommons.org/licenses/by/4.0/</creativeCommons>
+                </item>
+            </channel>
+        </rss>"""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = sample_rss
+
         categories = ["cricket", "technology", "geopolitics", "democracy", "entertainment"]
-        for cat in categories:
-            items = self.source.discover_video_items(category=cat, limit=1)
-            self.assertGreater(len(items), 0, f"No candidates found for category {cat}")
-            first = items[0]
-            self.assertEqual(first["category"], cat)
-            self.assertEqual(first["media_type"], "REEL")
-            self.assertIn(first["media_rights_status"], self.source.ALLOWED_RIGHTS_STATUSES)
+        with patch("requests.get", return_value=mock_resp):
+            for cat in categories:
+                items = self.source.discover_video_items(category=cat, limit=1)
+                self.assertGreater(len(items), 0, f"No candidates found for category {cat}")
+                first = items[0]
+                self.assertEqual(first["category"], cat)
+                self.assertEqual(first["media_type"], "REEL")
+                self.assertIn(first["media_rights_status"], self.source.ALLOWED_RIGHTS_STATUSES)
 
     def test_category_keyword_detection(self):
         """Verify category intelligence detects geopolitics and democracy keywords."""

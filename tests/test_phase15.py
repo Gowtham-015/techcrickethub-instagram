@@ -41,10 +41,11 @@ class TestPhase15Requirements(unittest.TestCase):
         ])
 
         publisher = InstagramReelPublisher(client=client)
-        res = publisher.publish_reel(
-            video_url="https://catbox.moe/test.mp4",
-            caption="Real Cricket Reel",
-        )
+        with patch("instagram_media_verifier.InstagramMediaVerifier.validate_meta_media_accessibility", return_value={"is_valid": True, "error": None}):
+            res = publisher.publish_reel(
+                video_url="https://catbox.moe/test.mp4",
+                caption="Real Cricket Reel",
+            )
 
         self.assertTrue(res.success)
         self.assertEqual(res.media_id, "published-media-555")
@@ -77,7 +78,7 @@ class TestPhase15Requirements(unittest.TestCase):
         self.assertIn("cron: '7,27,47 * * * *'", content)
         self.assertIn("concurrency:", content)
         self.assertIn("group: instagram-production-publisher", content)
-        self.assertIn("python main.py --run-once", content)
+        self.assertIn("python main.py --publish-prepared", content)
         self.assertNotIn('echo "INSTAGRAM MEDIA PUBLISHED"', content)
 
     def test_telegram_isolation(self):

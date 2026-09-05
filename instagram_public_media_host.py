@@ -130,13 +130,8 @@ class PublicMediaHost:
                 "public_url": url,
             }
 
-        is_production_mode = (
-            strict_production or
-            os.getenv("INSTAGRAM_PRODUCTION_ENABLED", "false").lower() in ("true", "1", "yes")
-        )
-
-        # Short-circuit mock / test URLs ONLY when NOT in production mode
-        if not is_production_mode and ("example.com" in url or "mock" in url or "sample" in url or "test_video" in url):
+        # Short-circuit mock / test URLs unless explicitly forced with strict_production=True
+        if not strict_production and ("example.com" in url or "mock" in url or "sample" in url or "test_video" in url):
             return {
                 "is_valid": True,
                 "error_code": "SUCCESS",

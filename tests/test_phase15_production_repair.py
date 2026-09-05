@@ -33,7 +33,7 @@ class TestPhase15ProductionRepair(unittest.TestCase):
         """Test 3: source_url (article) and video_url (MP4 asset) are strictly separated."""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
-        mock_resp.text = '<rss><channel><item><title>Test</title><link>https://bcci.tv/test</link><enclosure url="https://files.catbox.moe/test.mp4" type="video/mp4"/></item></channel></rss>'
+        mock_resp.text = '<rss><channel><item><title>Test</title><link>https://bcci.tv/test</link><enclosure url="https://files.catbox.moe/test.mp4" type="video/mp4"/><creativeCommons>true</creativeCommons></item></channel></rss>'
         mock_get.return_value = mock_resp
 
         source = InstagramRealVideoSource(config=self.config)

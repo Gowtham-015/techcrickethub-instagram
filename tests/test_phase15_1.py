@@ -137,6 +137,9 @@ class TestPhase151CriticalBugFix:
             dry_run=False,
         )
 
+        if hasattr(engine, "news_source") and engine.news_source:
+            engine.news_source.get_content_items = MagicMock(return_value=[])
+
         with patch.object(engine.scheduler, "process_due_items", return_value=[mock_scheduler_res]), \
              patch.object(engine.source, "get_content_items", return_value=[]):
             res = engine.run_cycle()
@@ -156,6 +159,9 @@ class TestPhase151CriticalBugFix:
             message="Container processing failed",
             dry_run=False,
         )
+
+        if hasattr(engine, "news_source") and engine.news_source:
+            engine.news_source.get_content_items = MagicMock(return_value=[])
 
         with patch.object(engine.scheduler, "process_due_items", return_value=[mock_failed_res]), \
              patch.object(engine.source, "get_content_items", return_value=[]):

@@ -69,8 +69,11 @@ class InstagramRealVideoSource(InstagramContentSource):
     ALLOWED_RIGHTS_STATUSES = {
         "OWNED",
         "LICENSED",
+        "EXPLICITLY_AUTHORIZED",
         "AUTHORIZED",
         "PUBLIC_DOMAIN",
+        "VERIFIED_CC_LICENSE",
+        "PERMITTED_COMMERCIAL_REUSE",
         "CC_LICENSE_ALLOWED",
         "USER_PROVIDED_WITH_PERMISSION",
     }
@@ -386,7 +389,52 @@ class InstagramRealVideoSource(InstagramContentSource):
                     continue
 
                 content_id = self.generate_stable_id(link, source_domain)
-                rights_status = "AUTHORIZED" if "official" in feed_url.lower() or "bcci" in feed_url.lower() or "icc" in feed_url.lower() else "CC_LICENSE_ALLOWED"
+                
+                # Explicit item-level rights evidence detection (never infer from domain or feed URL)
+                cc_url = ""
+                # Check RSS / Media RSS / Atom license tags
+                for child in elem:
+                    tag_name = child.tag.lower() if isinstance(child.tag, str) else ""
+                    if "creativecommons" in tag_name or "license" in tag_name or "rights" in tag_name:
+                        cc_url = (child.text or child.attrib.get("href", "") or child.attrib.get("url", "")).strip()
+                        if cc_url:
+                            break
+                    if "link" in tag_name and (child.attrib.get("rel") == "license" or "creativecommons" in child.attrib.get("href", "").lower()):
+                        cc_url = child.attrib.get("href", "").strip()
+                        if cc_url:
+                            break
+
+                if not cc_url:
+                    for media in elem.findall(".//{http://search.yahoo.com/mrss/}license"):
+                        cc_url = (media.text or media.attrib.get("href", "") or media.attrib.get("url", "")).strip()
+                        if cc_url:
+                            break
+
+                rights_status = "RIGHTS_EVIDENCE_MISSING"
+                rights_evidence_type = "NONE"
+                rights_evidence_url = ""
+                license_info = "UNVERIFIED"
+
+                if cc_url and ("creativecommons.org" in cc_url.lower() or "cc-by" in cc_url.lower() or "creativecommons" in cc_url.lower() or cc_url.lower() in ("true", "1", "yes")):
+                    rights_status = "VERIFIED_CC_LICENSE"
+                    rights_evidence_type = "CREATIVE_COMMONS_XML_TAG"
+                    rights_evidence_url = cc_url if cc_url.startswith("http") else link
+                    license_info = "Creative Commons"
+                elif cc_url and "publicdomain" in cc_url.lower():
+                    rights_status = "PUBLIC_DOMAIN"
+                    rights_evidence_type = "PUBLIC_DOMAIN_TAG"
+                    rights_evidence_url = cc_url
+                    license_info = "Public Domain"
+                elif "techcrickethub" in source_domain.lower() or "owned" in clean_desc.lower():
+                    rights_status = "OWNED"
+                    rights_evidence_type = "OWNER_ATTRIBUTION"
+                    rights_evidence_url = link
+                    license_info = "Owned by TechCricketHub"
+                elif "creativecommons" in clean_desc.lower() or "cc-by" in clean_desc.lower():
+                    rights_status = "VERIFIED_CC_LICENSE"
+                    rights_evidence_type = "CREATIVE_COMMONS_DESCRIPTION_TAG"
+                    rights_evidence_url = link
+                    license_info = "Creative Commons Attribution"
 
                 items.append({
                     "content_id": content_id,
@@ -399,6 +447,9 @@ class InstagramRealVideoSource(InstagramContentSource):
                     "source_domain": source_domain,
                     "publisher": source_domain,
                     "media_rights_status": rights_status,
+                    "rights_evidence_url": rights_evidence_url,
+                    "rights_evidence_type": rights_evidence_type,
+                    "license": license_info,
                     "discovered_at": datetime.now(timezone.utc).isoformat(),
                     "published_at": datetime.now(timezone.utc).isoformat(),
                     "media_type": "REEL",

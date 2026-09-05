@@ -101,7 +101,7 @@ def test_content_bundle_rights_status_verification():
     guard = InstagramFinalPublishGuard()
     g_res = guard.verify_and_guard(bundle)
     assert g_res.is_valid is False
-    assert g_res.error_code in ("MEDIA_RIGHTS_RESTRICTED", "MEDIA_RIGHTS_UNKNOWN")
+    assert g_res.error_code in ("MEDIA_RIGHTS_RESTRICTED", "MEDIA_RIGHTS_UNKNOWN", "RIGHTS_EVIDENCE_MISSING")
 
 
 def test_validate_meta_media_accessibility_cdn_retry_success(monkeypatch):
