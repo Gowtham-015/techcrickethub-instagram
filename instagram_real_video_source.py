@@ -301,11 +301,20 @@ class InstagramRealVideoSource(InstagramContentSource):
                 for item in items:
                     if len(results) >= limit:
                         break
-                    if item.get("media_rights_status") in self.ALLOWED_RIGHTS_STATUSES:
-                        results.append(item)
+                    r_status = item.get("media_rights_status")
+                    ev_type = (item.get("rights_evidence_type") or "").upper()
+                    ev_url = (item.get("rights_evidence_url") or "").strip()
+
+                    if r_status in self.ALLOWED_RIGHTS_STATUSES:
+                        if r_status in ("AUTHORIZED", "EXPLICITLY_AUTHORIZED", "CC_LICENSE_ALLOWED") and (not ev_url or ev_type in ("", "NONE")):
+                            logger.warning(
+                                f"Rejected candidate '{item.get('title')}' because status '{r_status}' lacks non-empty rights evidence URL or type."
+                            )
+                        else:
+                            results.append(item)
                     else:
                         logger.warning(
-                            f"Rejected candidate '{item.get('title')}' due to unverified rights status: {item.get('media_rights_status')}"
+                            f"Rejected candidate '{item.get('title')}' due to unverified rights status: {r_status}"
                         )
             except Exception as e:
                 logger.warning(f"Failed to discover video feed {redact_url(feed_url)}: {e}")

@@ -44,9 +44,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A || true
-          git reset --hard HEAD || true
-          git pull origin main --rebase || true
+          git pull origin main --rebase
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
@@ -83,13 +81,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           mkdir -p data/generated_reels data/acquired_videos media/generated
-          git add -f data/generated_reels/* media/generated/* data/prepared_media.json 2>/dev/null || true
+          if [ -f data/prepared_media.json ]; then
+            git add -f data/prepared_media.json
+          fi
           git add -A
           if ! git diff --staged --quiet; then
             git commit -m "Chore: commit prepared media before Meta publication [skip ci]"
             git pull origin main --rebase
             git push origin main
-            sleep 2
             echo "MEDIA COMMITTED AND PUSHED TO GITHUB RAW"
           else
             echo "No pre-run media changes to commit."
@@ -99,12 +98,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          if [ ! -f data/prepared_media.json ]; then
+            echo "Error: data/prepared_media.json does not exist. Aborting publication."
+            exit 1
+          fi
           python main.py --publish-prepared
 
       - name: Update Heartbeat & Cloud Status
         if: always()
         run: |
-          python main.py --cloud-status || true
+          python main.py --cloud-status
 
       - name: Phase D - Commit & Push Persistent History
         if: always()
