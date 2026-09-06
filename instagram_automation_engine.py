@@ -43,6 +43,7 @@ from instagram_content_bundle import ContentBundle, ContentIntegrityValidator
 from instagram_media_verifier import InstagramMediaVerifier
 from instagram_final_publish_guard import InstagramFinalPublishGuard
 from instagram_cloud_runtime import InstagramCloudRuntime
+from instagram_content_intelligence import ContentIntelligenceEngine
 from security import RedactingFormatter, redact_token
 
 
@@ -98,6 +99,7 @@ class InstagramAutomationEngine:
         self.media_verifier = InstagramMediaVerifier()
         self.final_publish_guard = InstagramFinalPublishGuard(config=self.config, data_dir=self.data_dir)
         self.cloud_runtime = InstagramCloudRuntime(config=self.config)
+        self.content_intelligence = ContentIntelligenceEngine(config=self.config)
 
         self.normalizer = InstagramContentNormalizer()
         self.acquirer = InstagramMediaAcquirer()
@@ -963,10 +965,14 @@ class InstagramAutomationEngine:
             self.logger.warning("Prepare Media: No content items discovered.")
             return {"status": "FAILED", "reason": "No content items discovered", "prepared": False}
 
-        # 2. Category & Reel balance selection
+        # 2. Content Intelligence Candidate Scoring & Ranking
         published_history = self.final_publish_guard.get_published_history()
+        intel_report = self.content_intelligence.evaluate_and_rank_candidates(raw_items, published_history)
+        ranked_candidates = intel_report.get("ranked_candidates", [])
+
         selected_raw = None
-        for raw_item in raw_items:
+        for cand_info in ranked_candidates:
+            raw_item = cand_info.get("raw_item") or {}
             content = self.normalizer.normalize(raw_item)
             content_id = (content.metadata or {}).get("content_id") or "unknown"
             media_url = content.image_url if content.media_type == "IMAGE" else content.video_url
@@ -1003,6 +1009,10 @@ class InstagramAutomationEngine:
             g_res = self.final_publish_guard.verify_and_guard(bundle)
             if g_res.is_valid:
                 selected_raw = raw_item
+                self.logger.info(
+                    f"Prepare Media Selected Candidate: '{content.title}' "
+                    f"(Score: {cand_info.get('total_score')}/100, Category: {content.category})"
+                )
                 break
 
         if not selected_raw:
