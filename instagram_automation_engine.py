@@ -46,6 +46,7 @@ from instagram_cloud_runtime import InstagramCloudRuntime
 from instagram_content_intelligence import ContentIntelligenceEngine
 from instagram_rights_evidence_engine import InstagramRightsEvidenceEngine
 from instagram_real_video_verifier import InstagramRealVideoVerifier
+from instagram_factual_caption_engine import InstagramFactualCaptionEngine
 from security import RedactingFormatter, redact_token
 
 
@@ -104,6 +105,7 @@ class InstagramAutomationEngine:
         self.content_intelligence = ContentIntelligenceEngine(config=self.config)
         self.rights_engine = InstagramRightsEvidenceEngine()
         self.real_video_verifier = InstagramRealVideoVerifier()
+        self.factual_caption_engine = InstagramFactualCaptionEngine(token=self.config.access_token)
 
         self.normalizer = InstagramContentNormalizer()
         self.acquirer = InstagramMediaAcquirer()
@@ -1068,6 +1070,17 @@ class InstagramAutomationEngine:
             video_dur = v_res.duration_seconds
             media_sha256 = v_res.media_sha256
 
+        source_dom = getattr(content, "source_domain", "") or selected_raw.get("source_domain") or ""
+        cap_res = self.factual_caption_engine.generate_factual_caption(
+            title=content.title,
+            summary=content.summary,
+            category=content.category,
+            source_domain=source_dom,
+            published_history=published_history,
+        )
+        final_caption = cap_res.caption if (cap_res and cap_res.caption) else content.title
+        final_hashtags = cap_res.hashtags if (cap_res and cap_res.hashtags) else (content.hashtags or [])
+
         import uuid
         prep_id = f"prep-{int(time.time())}-{uuid.uuid4().hex[:8]}"
 
@@ -1084,11 +1097,12 @@ class InstagramAutomationEngine:
             "public_url": public_url,
             "media_sha256": media_sha256,
             "media_duration": video_dur,
-            "caption": content.title,
-            "hashtags": content.hashtags or [],
+            "caption": final_caption,
+            "hashtags": final_hashtags,
             "source_url": getattr(content, "source_url", "") or selected_raw.get("source_url") or "",
             "source_title": content.title,
-            "source_domain": getattr(content, "source_domain", "") or selected_raw.get("source_domain") or "",
+            "source_domain": source_dom,
+            "media_rights_status": selected_rights_res.rights_status if selected_rights_res else selected_raw.get("media_rights_status", "OWNED"),
             "rights_status": selected_rights_res.rights_status if selected_rights_res else selected_raw.get("media_rights_status", "OWNED"),
             "rights_evidence": selected_rights_res.rights_evidence if selected_rights_res else selected_raw.get("rights_evidence", ""),
             "license_url": selected_rights_res.license_url if selected_rights_res else selected_raw.get("license_url", ""),
@@ -1190,9 +1204,9 @@ class InstagramAutomationEngine:
             published_at=prep_data.get("prepared_at", ""),
             media_url=public_url,
             media_type=media_type,
-            media_rights_status=prep_data.get("media_rights_status", "RIGHTS_EVIDENCE_MISSING"),
-            rights_evidence_type=prep_data.get("rights_evidence_type", ""),
-            rights_evidence_url=prep_data.get("rights_evidence_url", ""),
+            media_rights_status=prep_data.get("media_rights_status") or prep_data.get("rights_status") or "RIGHTS_EVIDENCE_MISSING",
+            rights_evidence_type=prep_data.get("rights_evidence") or prep_data.get("rights_evidence_type", ""),
+            rights_evidence_url=prep_data.get("license_url") or prep_data.get("rights_evidence_url", ""),
             commercial_use_allowed=prep_data.get("commercial_use_allowed", True),
             caption=caption,
             hashtags=prep_data.get("hashtags", []),

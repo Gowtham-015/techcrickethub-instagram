@@ -118,6 +118,9 @@ class TestProductionArchitectureRepair(unittest.TestCase):
                 "media_type": "REEL",
                 "video_url": "https://example.com/video.mp4",
                 "media_rights_status": "LICENSED",
+                "rights_status": "LICENSED",
+                "license_url": "https://espncricinfo.com/terms",
+                "rights_evidence": "Licensed match highlights",
                 "source_domain": "espncricinfo.com",
                 "source_url": "https://espncricinfo.com/match-final",
             }
