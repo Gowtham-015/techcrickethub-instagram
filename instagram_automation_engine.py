@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 import os
@@ -1118,15 +1119,27 @@ class InstagramAutomationEngine:
         if current_run_id and github_run_id and github_run_id != current_run_id:
             return {"status": "FAILED", "reason": f"Stale GitHub run ID in prepared media: prepared in run {github_run_id}, current run is {current_run_id}", "published": 0}
 
-        full_local = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), local_file.replace("/", os.sep)))
-        if os.path.exists(full_local) and prep_data.get("media_sha256"):
-            try:
-                with open(full_local, "rb") as mf:
-                    actual_sha = hashlib.sha256(mf.read()).hexdigest()
-                if actual_sha != prep_data.get("media_sha256"):
-                    return {"status": "FAILED", "reason": f"Media SHA256 mismatch for prepared asset '{local_file}'", "published": 0}
-            except Exception:
-                pass
+        github_sha = prep_data.get("github_sha")
+        current_sha = os.environ.get("GITHUB_SHA")
+        if current_sha and github_sha and github_sha != current_sha:
+            return {"status": "FAILED", "reason": f"Stale GitHub SHA in prepared media: prepared in commit {github_sha}, current commit is {current_sha}", "published": 0}
+
+        full_local = os.path.abspath(os.path.join(self.data_dir, local_file.replace("/", os.sep)))
+        if not os.path.exists(full_local):
+            repo_root = os.path.dirname(os.path.abspath(__file__))
+            full_local = os.path.abspath(os.path.join(repo_root, local_file.replace("/", os.sep)))
+
+        if not os.path.exists(full_local):
+            return {"status": "FAILED", "reason": f"Prepared local media file not found on disk at '{local_file}'", "published": 0}
+
+        try:
+            with open(full_local, "rb") as mf:
+                actual_sha = hashlib.sha256(mf.read()).hexdigest()
+            prep_sha = prep_data.get("media_sha256")
+            if prep_sha and actual_sha != prep_sha:
+                return {"status": "FAILED", "reason": f"Media SHA256 mismatch for prepared asset '{local_file}' (expected {prep_sha}, got {actual_sha})", "published": 0}
+        except Exception as e:
+            return {"status": "FAILED", "reason": f"Error reading prepared local asset '{local_file}' for SHA256 verification: {e}", "published": 0}
 
         content_id = prep_data.get("content_id")
         public_url = prep_data.get("public_url")
