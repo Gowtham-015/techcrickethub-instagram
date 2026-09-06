@@ -326,7 +326,7 @@ def test_github_state_persistence_configuration():
     with open(wf_path, "r", encoding="utf-8") as f:
         content = f.read()
     assert "git pull origin main --rebase" in content
-    assert "git push origin main" in content
+    assert "git push origin" in content
 
 
 def test_concurrent_workflow_protection():

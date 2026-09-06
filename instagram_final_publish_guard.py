@@ -200,14 +200,13 @@ class InstagramFinalPublishGuard:
             "PUBLIC_DOMAIN",
             "VERIFIED_CC_LICENSE",
             "PERMITTED_COMMERCIAL_REUSE",
-            "CC_LICENSE_ALLOWED",
             "USER_PROVIDED_WITH_PERMISSION",
         }
         rights_status = (getattr(bundle, "media_rights_status", "RIGHTS_EVIDENCE_MISSING") or "RIGHTS_EVIDENCE_MISSING").strip().upper()
         rights_evidence_type = (getattr(bundle, "rights_evidence_type", "") or getattr(bundle, "evidence_type", "") or "").strip().upper()
         rights_evidence_url = (getattr(bundle, "rights_evidence_url", "") or getattr(bundle, "evidence_url", "") or "").strip()
 
-        if rights_status not in allowed_rights or rights_status in ("RIGHTS_EVIDENCE_MISSING", "RIGHTS_NOT_VERIFIED", "UNKNOWN"):
+        if rights_status not in allowed_rights or rights_status in ("RIGHTS_EVIDENCE_MISSING", "RIGHTS_NOT_VERIFIED", "UNKNOWN", "AUTHORIZED", "CC_LICENSE_ALLOWED"):
             return GuardResult(
                 is_valid=False,
                 error_code="RIGHTS_EVIDENCE_MISSING",
@@ -215,11 +214,20 @@ class InstagramFinalPublishGuard:
                 bundle=bundle,
             )
 
-        if rights_status in ("AUTHORIZED", "EXPLICITLY_AUTHORIZED", "CC_LICENSE_ALLOWED") and (not rights_evidence_url or rights_evidence_type in ("", "NONE")):
+        if rights_status == "EXPLICITLY_AUTHORIZED" and (not rights_evidence_url or rights_evidence_type in ("", "NONE")):
             return GuardResult(
                 is_valid=False,
                 error_code="RIGHTS_EVIDENCE_MISSING",
                 message=f"Media rights status '{rights_status}' requires non-empty rights_evidence_url and rights_evidence_type.",
+                bundle=bundle,
+            )
+
+        commercial_allowed = getattr(bundle, "commercial_use_allowed", None)
+        if commercial_allowed is False:
+            return GuardResult(
+                is_valid=False,
+                error_code="LICENSE_NOT_COMMERCIAL",
+                message=f"Media item explicitly prohibits commercial reuse.",
                 bundle=bundle,
             )
 

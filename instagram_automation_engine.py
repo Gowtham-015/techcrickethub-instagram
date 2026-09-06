@@ -1021,9 +1021,34 @@ class InstagramAutomationEngine:
             if asset and asset.url:
                 local_file = asset.url
 
+        # Normalize local_file to repository-relative POSIX path
+        if local_file:
+            base_repo_dir = os.path.dirname(os.path.abspath(__file__))
+            if os.path.isabs(local_file):
+                try:
+                    local_file = os.path.relpath(local_file, base_repo_dir).replace("\\", "/")
+                except ValueError:
+                    local_file = local_file.replace("\\", "/")
+            else:
+                local_file = local_file.replace("\\", "/")
+
+        # Compute SHA256 of prepared local file
+        media_sha256 = ""
+        full_local = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), local_file.replace("/", os.sep)))
+        if os.path.exists(full_local) and os.path.isfile(full_local):
+            try:
+                with open(full_local, "rb") as mf:
+                    media_sha256 = hashlib.sha256(mf.read()).hexdigest()
+            except Exception:
+                pass
+
+        import uuid
+        prep_id = f"prep-{int(time.time())}-{uuid.uuid4().hex[:8]}"
+
         public_url = host.get_public_url(local_file) if local_file else media_url
 
         prepared_data = {
+            "preparation_id": prep_id,
             "content_id": content_id,
             "title": content.title,
             "summary": content.summary,
@@ -1031,11 +1056,17 @@ class InstagramAutomationEngine:
             "media_type": content.media_type,
             "local_file": local_file,
             "public_url": public_url,
+            "media_sha256": media_sha256,
             "caption": content.title,
             "hashtags": content.hashtags or [],
             "source_url": getattr(content, "source_url", "") or "",
             "source_domain": getattr(content, "source_domain", "") or "",
             "media_rights_status": selected_raw.get("media_rights_status", "RIGHTS_EVIDENCE_MISSING"),
+            "rights_evidence_type": selected_raw.get("rights_evidence_type", ""),
+            "rights_evidence_url": selected_raw.get("rights_evidence_url", ""),
+            "commercial_use_allowed": selected_raw.get("commercial_use_allowed", True),
+            "github_run_id": os.environ.get("GITHUB_RUN_ID", ""),
+            "github_sha": os.environ.get("GITHUB_SHA", ""),
             "prepared_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -1048,11 +1079,13 @@ class InstagramAutomationEngine:
         return {
             "status": "PREPARED",
             "prepared": True,
+            "preparation_id": prep_id,
             "content_id": content_id,
             "category": content.category,
             "media_type": content.media_type,
             "public_url": public_url,
             "local_file": local_file,
+            "media_sha256": media_sha256,
         }
 
     def publish_prepared(self) -> Dict[str, Any]:
@@ -1063,16 +1096,37 @@ class InstagramAutomationEngine:
         prepared_file = os.path.join(self.data_dir, "prepared_media.json")
 
         if not os.path.exists(prepared_file):
-            self.logger.info("No prepared_media.json found. Fallback to prepare_media first...")
-            prep_res = self.prepare_media()
-            if not prep_res.get("prepared"):
-                return {"status": "FAILED", "reason": "Could not prepare media for publishing", "published": 0}
+            self.logger.warning("No prepared_media.json found. Preparation required before publication.")
+            return {"status": "FAILED", "reason": "data/prepared_media.json does not exist. Aborting publication.", "published": 0}
 
         try:
             with open(prepared_file, "r", encoding="utf-8") as f:
                 prep_data = json.load(f)
         except Exception as e:
             return {"status": "FAILED", "reason": f"Failed to load prepared_media.json: {e}", "published": 0}
+
+        prep_id = prep_data.get("preparation_id")
+        if not prep_id:
+            return {"status": "FAILED", "reason": "Invalid prepared_media.json: missing preparation_id.", "published": 0}
+
+        local_file = prep_data.get("local_file", "")
+        if any(local_file.startswith(p) for p in ["C:", "D:", "E:", "c:", "d:", "e:"]) or "\\" in local_file:
+            return {"status": "FAILED", "reason": f"Windows absolute path contamination in prepared media metadata: '{local_file}'", "published": 0}
+
+        github_run_id = prep_data.get("github_run_id")
+        current_run_id = os.environ.get("GITHUB_RUN_ID")
+        if current_run_id and github_run_id and github_run_id != current_run_id:
+            return {"status": "FAILED", "reason": f"Stale GitHub run ID in prepared media: prepared in run {github_run_id}, current run is {current_run_id}", "published": 0}
+
+        full_local = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), local_file.replace("/", os.sep)))
+        if os.path.exists(full_local) and prep_data.get("media_sha256"):
+            try:
+                with open(full_local, "rb") as mf:
+                    actual_sha = hashlib.sha256(mf.read()).hexdigest()
+                if actual_sha != prep_data.get("media_sha256"):
+                    return {"status": "FAILED", "reason": f"Media SHA256 mismatch for prepared asset '{local_file}'", "published": 0}
+            except Exception:
+                pass
 
         content_id = prep_data.get("content_id")
         public_url = prep_data.get("public_url")
@@ -1098,6 +1152,9 @@ class InstagramAutomationEngine:
             media_url=public_url,
             media_type=media_type,
             media_rights_status=prep_data.get("media_rights_status", "RIGHTS_EVIDENCE_MISSING"),
+            rights_evidence_type=prep_data.get("rights_evidence_type", ""),
+            rights_evidence_url=prep_data.get("rights_evidence_url", ""),
+            commercial_use_allowed=prep_data.get("commercial_use_allowed", True),
             caption=caption,
             hashtags=prep_data.get("hashtags", []),
         )

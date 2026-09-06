@@ -50,10 +50,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git pull origin main --rebase
 
-      - name: Set up Python 3.10
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
           cache: 'pip'
 
       - name: Install System Dependencies & FFmpeg
@@ -76,36 +76,86 @@ jobs:
         run: |
           python main.py --production-diagnostics
 
-      - name: Phase A - Prepare Media Assets
+      - name: Clean Stale Preparation State
         run: |
-          python main.py --prepare-media || echo "NO_MEDIA_PREPARED"
+          rm -f data/prepared_media.json
+          rm -f data/prepared_media.json.tmp
+          echo "STALE PREPARATION STATE CLEANED"
+
+      - name: Phase A - Prepare Media Assets
+        env:
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          python main.py --prepare-media
+
+      - name: Verify Preparation Metadata
+        run: |
+          if [ ! -f data/prepared_media.json ]; then
+            echo "Error: data/prepared_media.json was not created during preparation phase."
+            exit 1
+          fi
+          python -c "
+          import json, os, sys
+          with open('data/prepared_media.json') as f:
+              d = json.load(f)
+          loc = d.get('local_file', '')
+          if any(loc.startswith(p) for p in ['C:', 'D:', 'E:', 'c:', 'd:', 'e:']) or '\\\\' in loc:
+              print(f'Error: Windows path contamination detected in local_file: {loc}')
+              sys.exit(1)
+          if not d.get('preparation_id'):
+              print('Error: Missing preparation_id in metadata.')
+              sys.exit(1)
+          print('Prepared media metadata verification PASSED.')
+          "
 
       - name: Commit & Push Prepared Media BEFORE Meta Publication
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          mkdir -p data/generated_reels data/acquired_videos media/generated
           if [ -f data/prepared_media.json ]; then
             git add -f data/prepared_media.json
           fi
-          git add -A
+          git add data/
+          if [ -d media ]; then git add media/; fi
           if ! git diff --staged --quiet; then
             git commit -m "Chore: commit prepared media before Meta publication [skip ci]"
             git pull origin main --rebase
-            git push origin main
+            git push origin HEAD:main
             echo "MEDIA COMMITTED AND PUSHED TO GITHUB RAW"
           else
             echo "No pre-run media changes to commit."
           fi
 
+      - name: Verify GitHub Raw Accessibility
+        run: |
+          python -c "
+          import json, urllib.request, sys
+          with open('data/prepared_media.json') as f:
+              d = json.load(f)
+          url = d.get('public_url', '')
+          if not url or not url.startswith('http'):
+              print(f'Error: Invalid public URL for Raw verification: {url}')
+              sys.exit(1)
+          print(f'Verifying GitHub Raw URL accessibility: {url}')
+          req = urllib.request.Request(url, headers={'User-Agent': 'GitHubActions-MediaVerifier/1.0'})
+          with urllib.request.urlopen(req, timeout=15) as resp:
+              code = resp.getcode()
+              length = resp.headers.get('Content-Length')
+              ctype = resp.headers.get('Content-Type', '')
+              print(f'HTTP Status: {code}, Content-Type: {ctype}, Content-Length: {length}')
+              if code != 200:
+                  print('Error: GitHub Raw returned non-200 status.')
+                  sys.exit(1)
+          print('GitHub Raw URL verification PASSED.')
+          "
+
       - name: Phase B/C - Execute Meta Publication
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_SHA: ${{ github.sha }}
         run: |
-          if [ ! -f data/prepared_media.json ]; then
-            echo "Notice: data/prepared_media.json does not exist. No candidate prepared for publication in this cycle."
-            exit 0
-          fi
           python main.py --publish-prepared
 
       - name: Update Heartbeat & Cloud Status
@@ -119,11 +169,56 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           mkdir -p data
-          git add -A
+          git add data/
           if ! git diff --staged --quiet; then
             git commit -m "Chore: update published history, health status, and proof [skip ci]"
             git pull origin main --rebase
-            git push origin main
+            git push origin HEAD:main
             echo "STATE COMMITTED AND PUSHED"
           fi
+
+      - name: Generate Job Summary
+        if: always()
+        run: |
+          python -c "
+          import json, os
+          run_id = os.environ.get('GITHUB_RUN_ID', 'N/A')
+          sha = os.environ.get('GITHUB_SHA', 'N/A')
+          prep_file = 'data/prepared_media.json'
+          proof_file = 'data/production_proof.json'
+          
+          summary = []
+          summary.append('## TechCricketHub Instagram Publisher Execution Summary')
+          summary.append(f'- **Run ID**: {run_id}')
+          summary.append(f'- **Commit SHA**: {sha}')
+          
+          if os.path.exists(prep_file):
+              try:
+                  with open(prep_file) as f:
+                      p = json.load(f)
+                  summary.append(f'- **Preparation ID**: {p.get(\"preparation_id\", \"N/A\")}')
+                  summary.append(f'- **Content ID**: {p.get(\"content_id\", \"N/A\")}')
+                  summary.append(f'- **Category**: {p.get(\"category\", \"N/A\")}')
+                  summary.append(f'- **Rights Status**: {p.get(\"media_rights_status\", \"N/A\")}')
+                  summary.append(f'- **Public URL**: {p.get(\"public_url\", \"N/A\")}')
+              except Exception:
+                  pass
+
+          if os.path.exists(proof_file):
+              try:
+                  with open(proof_file) as f:
+                      pr = json.load(f)
+                  summary.append(f'- **Meta Container ID**: {pr.get(\"meta_container_id\", \"N/A\")}')
+                  summary.append(f'- **Instagram Media ID**: {pr.get(\"instagram_media_id\", \"N/A\")}')
+                  summary.append(f'- **Permalink**: {pr.get(\"instagram_permalink\", \"N/A\")}')
+                  summary.append(f'- **Live Reel Verified**: {pr.get(\"live_reel_verified\", False)}')
+              except Exception:
+                  pass
+
+          summary_path = os.environ.get('GITHUB_STEP_SUMMARY')
+          if summary_path:
+              with open(summary_path, 'a') as sf:
+                  sf.write('\n'.join(summary) + '\n')
+          "
+
 

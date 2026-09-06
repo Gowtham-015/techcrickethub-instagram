@@ -128,6 +128,7 @@ class TestPhase16LiveProductionVerification(unittest.TestCase):
         prepared_file = os.path.join(self.data_dir, "prepared_media.json")
         prep_content = {
             "prepared": True,
+            "preparation_id": "prep-test-dup-101",
             "content_id": "test-dup-101",
             "category": "cricket",
             "media_type": "REEL",

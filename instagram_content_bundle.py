@@ -26,6 +26,9 @@ class ContentBundle:
     hashtags: List[str] = field(default_factory=list)
     match_context: Dict[str, Any] = field(default_factory=dict)
     media_rights_status: str = "LICENSED"  # OWNED, LICENSED, EXPLICITLY_AUTHORIZED, PUBLIC_DOMAIN, VERIFIED_CC_LICENSE, PERMITTED_COMMERCIAL_REUSE
+    rights_evidence_type: str = ""
+    rights_evidence_url: str = ""
+    commercial_use_allowed: Optional[bool] = True
     verification_status: str = "PENDING"  # VERIFIED, REJECTED, CONTENT_INTEGRITY_FAILED
 
     def calculate_media_hash(self, media_bytes: Optional[bytes] = None) -> str:
@@ -53,6 +56,9 @@ class ContentBundle:
             "hashtags": self.hashtags,
             "match_context": self.match_context,
             "media_rights_status": self.media_rights_status,
+            "rights_evidence_type": self.rights_evidence_type,
+            "rights_evidence_url": self.rights_evidence_url,
+            "commercial_use_allowed": self.commercial_use_allowed,
             "verification_status": self.verification_status,
         }
 
