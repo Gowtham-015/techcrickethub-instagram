@@ -207,9 +207,13 @@ class PublicMediaHost:
 
     def get_public_url(self, local_path: str) -> str:
         """Returns standard public URL for local path."""
-        rel_name = os.path.basename(local_path)
-        sub_folder = "data/generated_reels" if local_path.lower().endswith((".mp4", ".mov")) else "media/generated"
-        return f"https://raw.githubusercontent.com/{self.repo}/{self.branch}/{sub_folder}/{rel_name}"
+        normalized = (local_path or "").replace("\\", "/").lstrip("./")
+        if "/" in normalized:
+            rel_path = normalized
+        else:
+            sub_folder = "data/generated_reels" if normalized.lower().endswith((".mp4", ".mov")) else "media/generated"
+            rel_path = f"{sub_folder}/{normalized}"
+        return f"https://raw.githubusercontent.com/{self.repo}/{self.branch}/{rel_path}"
 
     def delete_video(self, local_path: str) -> bool:
         """Deletes local video file if present."""
