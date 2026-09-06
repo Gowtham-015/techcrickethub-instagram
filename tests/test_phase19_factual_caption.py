@@ -135,6 +135,7 @@ class TestPhase19FactualCaption(unittest.TestCase):
                     "video_url": "https://example.com/valid.mp4",
                     "media_rights_status": "OWNED",
                     "rights_evidence": "PROPRIETARY_OWNERSHIP",
+                    "commercial_use_allowed": True,
                     "source_domain": "espncricinfo.com",
                 }
             ]

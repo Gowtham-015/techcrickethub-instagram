@@ -274,8 +274,10 @@ class Config:
                 f"Invalid INSTAGRAM_TIMEOUT_SECONDS value: '{timeout_str}'. Must be a positive number."
             )
 
-        reel_target_percent = int(os.getenv("INSTAGRAM_REEL_TARGET_PERCENT", "80").strip())
-        image_target_percent = int(os.getenv("INSTAGRAM_IMAGE_TARGET_PERCENT", "20").strip())
+        reel_target_percent = int(os.getenv("INSTAGRAM_REEL_TARGET_PERCENT", "100").strip())
+        image_target_percent = int(os.getenv("INSTAGRAM_IMAGE_TARGET_PERCENT", "0").strip())
+        enable_image_fallback_env = os.getenv("INSTAGRAM_ENABLE_IMAGE_FALLBACK", "false").strip().lower()
+        enable_image_fallback = enable_image_fallback_env in ("true", "1", "yes", "on")
 
         config = cls(
             user_id=user_id,

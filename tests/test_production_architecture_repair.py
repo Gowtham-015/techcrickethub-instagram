@@ -121,6 +121,7 @@ class TestProductionArchitectureRepair(unittest.TestCase):
                 "rights_status": "LICENSED",
                 "license_url": "https://espncricinfo.com/terms",
                 "rights_evidence": "Licensed match highlights",
+                "commercial_use_allowed": True,
                 "source_domain": "espncricinfo.com",
                 "source_url": "https://espncricinfo.com/match-final",
             }

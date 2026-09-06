@@ -986,6 +986,11 @@ class InstagramAutomationEngine:
             content_id = (content.metadata or {}).get("content_id") or "unknown"
             media_url = content.image_url if content.media_type == "IMAGE" else content.video_url
 
+            # Reject any non-REEL (IMAGE) candidate in production 100% Reel-only mode
+            if content.media_type != "REEL":
+                self.logger.warning(f"Prepare Media candidate '{content_id}' rejected: Media type '{content.media_type}' is not REEL (100% Reel-only enforced).")
+                continue
+
             # Skip duplicates
             if self.deduplicator.is_duplicate(content_id=content_id, url=media_url):
                 continue
@@ -1086,8 +1091,13 @@ class InstagramAutomationEngine:
             source_domain=source_dom,
             published_history=published_history,
         )
-        final_caption = cap_res.caption if (cap_res and cap_res.caption) else content.title
-        final_hashtags = cap_res.hashtags if (cap_res and cap_res.hashtags) else (content.hashtags or [])
+        if not cap_res or not cap_res.is_valid or not cap_res.caption:
+            reasons_str = "; ".join(cap_res.reasons) if (cap_res and cap_res.reasons) else "Factual caption validation failed."
+            self.logger.warning(f"Factual caption generation failed for candidate '{content_id}': {reasons_str}")
+            return {"status": "FAILED", "reason": f"Factual caption verification failed: {reasons_str}", "prepared": False}
+
+        final_caption = cap_res.caption
+        final_hashtags = cap_res.hashtags or []
 
         import uuid
         prep_id = f"prep-{int(time.time())}-{uuid.uuid4().hex[:8]}"
@@ -1192,6 +1202,10 @@ class InstagramAutomationEngine:
         content_id = prep_data.get("content_id")
         public_url = prep_data.get("public_url")
         media_type = prep_data.get("media_type", "REEL")
+        if media_type != "REEL":
+            self.logger.error(f"Publish Prepared FAILED: Media type '{media_type}' is not REEL (100% Reel-only enforced).")
+            return {"status": "FAILED", "reason": f"Media type '{media_type}' is not REEL (100% Reel-only enforced).", "published": 0}
+
         caption = prep_data.get("caption", prep_data.get("title", ""))
         category = prep_data.get("category", "cricket")
 

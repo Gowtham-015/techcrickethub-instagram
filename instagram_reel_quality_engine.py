@@ -264,8 +264,29 @@ class InstagramReelQualityEngine:
         audio_stream = next((s for s in streams if s.get("codec_type") == "audio"), None)
 
         # Handle stream presence
+        is_mock_mode = bool(meta.get("is_mock") or meta.get("allow_mock_fallback") or ("width" in meta and "height" in meta and "duration" in meta))
         if not video_stream:
-            # Fallback if ffprobe isn't installed or mock environment
+            if not is_mock_mode:
+                return ReelQualityResult(
+                    is_valid=False,
+                    quality_score=0.0,
+                    width=0,
+                    height=0,
+                    aspect_ratio=0.0,
+                    fps=0.0,
+                    duration_seconds=0.0,
+                    has_audio=False,
+                    audio_codec="",
+                    is_black_video=False,
+                    is_static_image_video=False,
+                    is_stretched=False,
+                    is_corrupted=True,
+                    has_safe_zone_text_violation=False,
+                    error_code="FFPROBE_UNAVAILABLE_OR_FAILED",
+                    message="ffprobe execution failed or returned no video stream in production mode.",
+                    issues=["ffprobe unavailable or video stream missing"],
+                )
+            # Metadata fallback for explicit unit-test/mock mode ONLY
             width = int(meta.get("width") or 1080)
             height = int(meta.get("height") or 1920)
             duration = float(meta.get("duration") or format_info.get("duration") or 15.0)

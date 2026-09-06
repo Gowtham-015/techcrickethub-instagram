@@ -197,6 +197,8 @@ class TestPhase17ContentIntelligence(unittest.TestCase):
                     "media_type": "REEL",
                     "video_url": "https://example.com/low.mp4",
                     "media_rights_status": "OWNED",
+                    "rights_evidence": "Account owned media",
+                    "commercial_use_allowed": True,
                     "source_domain": "unknown.com",
                 },
                 {
@@ -207,6 +209,8 @@ class TestPhase17ContentIntelligence(unittest.TestCase):
                     "media_type": "REEL",
                     "video_url": "https://example.com/high.mp4",
                     "media_rights_status": "OWNED",
+                    "rights_evidence": "Account owned media",
+                    "commercial_use_allowed": True,
                     "source_domain": "espncricinfo.com",
                 },
             ]

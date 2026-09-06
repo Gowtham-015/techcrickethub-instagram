@@ -71,23 +71,25 @@ class InstagramRightsEvidenceEngine:
         rights_status = (item.get("media_rights_status") or item.get("rights_status") or "RIGHTS_EVIDENCE_MISSING").strip().upper()
         rights_evidence = item.get("rights_evidence") or item.get("rights_evidence_type") or ""
         license_url = item.get("license_url") or item.get("rights_evidence_url") or ""
-        commercial_use_allowed = item.get("commercial_use_allowed", True)
+        
+        has_comm_flag = "commercial_use_allowed" in item
+        commercial_use_allowed = bool(item.get("commercial_use_allowed", False))
 
         # 1. Reject ambiguous / missing rights statuses
         if rights_status in AMBIGUOUS_RIGHTS_STATUSES or rights_status not in VALID_RIGHTS_STATUSES:
             reasons.append(f"Rejected ambiguous or unauthorized rights status '{rights_status}'. Discovery alone is not authorization.")
 
-        # 2. Reject if commercial use is explicitly prohibited
-        if not commercial_use_allowed:
-            reasons.append("Commercial use is not permitted for this media item.")
+        # 2. Reject missing or false commercial use permission (fail-closed)
+        if not has_comm_flag or not commercial_use_allowed:
+            reasons.append("Explicit commercial_use_allowed = True permission is required and missing.")
 
         # 3. Reject copyrighted match footage without explicit license
         is_match_footage = item.get("is_copyrighted_match_footage", False) or "match_footage" in str(item).lower()
         if is_match_footage and rights_status not in ("OWNED", "LICENSED", "EXPLICITLY_AUTHORIZED"):
             reasons.append("Copyrighted match footage requires explicit OWNED or LICENSED authorization.")
 
-        # 4. Require non-empty rights evidence description or license proof for non-OWNED media
-        if rights_status != "OWNED" and not rights_evidence and not license_url:
+        # 4. Require non-empty rights evidence description or license proof
+        if not rights_evidence and not license_url:
             reasons.append(f"Media with status '{rights_status}' requires item-level rights evidence or license proof URL.")
 
         is_valid = len(reasons) == 0

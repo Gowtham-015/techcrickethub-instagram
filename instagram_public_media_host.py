@@ -52,11 +52,12 @@ class PublicMediaHost:
             else:
                 v_check = InstagramMediaVerifier.validate_meta_media_accessibility(fallback_raw_url, media_type=m_type)
                 self._VERIFICATION_CACHE[cache_key] = v_check
-            if v_check.get("is_valid"):
-                logger.info(f"Fallback URL is already publicly valid ({fallback_raw_url}). Skipping local upload.")
-                return fallback_raw_url
+        # In production mode or default, prefer GitHub Raw canonical host
+        is_production = os.getenv("INSTAGRAM_PRODUCTION_ENABLED", "false").lower() in ("true", "1", "yes", "on")
+        allow_third_party = os.getenv("ALLOW_THIRD_PARTY_HOSTS", "false").lower() in ("true", "1", "yes", "on")
 
-        if os.getenv("SKIP_PUBLIC_UPLOADS", "false").lower() in ("true", "1", "yes") or os.getenv("SKIP_CATBOX_UPLOAD", "false").lower() in ("true", "1", "yes"):
+        if (is_production and not allow_third_party) or not allow_third_party or os.getenv("SKIP_PUBLIC_UPLOADS", "false").lower() in ("true", "1", "yes") or os.getenv("SKIP_CATBOX_UPLOAD", "false").lower() in ("true", "1", "yes"):
+            logger.info(f"Using GitHub Raw canonical host: {fallback_raw_url}")
             return fallback_raw_url
 
         is_video = local_path.lower().endswith((".mp4", ".mov", ".avi"))

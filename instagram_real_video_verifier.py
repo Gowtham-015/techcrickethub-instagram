@@ -106,8 +106,24 @@ class InstagramRealVideoVerifier:
         """Performs complete real video verification on disk file."""
         meta = item_metadata or {}
 
-        # 1. Reject synthetic / AI-generated sports footage flag
-        if meta.get("is_synthetic", False) or meta.get("is_ai_generated", False) or meta.get("synthetic_cricket_footage", False):
+        # 1. Reject synthetic / AI-generated / test / demo media in production mode
+        is_test_mode = meta.get("is_test_mode", False) or meta.get("is_mock", False)
+        fp_lower = (filepath or "").lower().replace("\\", "/")
+        title_lower = (meta.get("title") or "").lower()
+        id_lower = (meta.get("content_id") or "").lower()
+
+        is_test_asset = (
+            "reel_test-video-req" in fp_lower or
+            "generated_reels" in fp_lower or
+            "sample" in fp_lower or
+            "demo" in fp_lower or
+            "test-video" in fp_lower or
+            meta.get("is_synthetic", False) or
+            meta.get("is_ai_generated", False) or
+            meta.get("synthetic_cricket_footage", False)
+        )
+
+        if is_test_asset and not is_test_mode:
             return RealVideoVerificationResult(
                 is_valid=False,
                 video_stream_exists=False,
@@ -119,8 +135,8 @@ class InstagramRealVideoVerifier:
                 media_sha256="",
                 is_html=False,
                 is_corrupted=False,
-                error_code="SYNTHETIC_FOOTAGE_REJECTED",
-                message="Synthetic or AI-generated sports footage is rejected in production.",
+                error_code="TEST_MEDIA_REJECTED",
+                message="Test/demo/sample asset is rejected in production mode.",
             )
 
         # 2. Disk existence check
