@@ -47,6 +47,7 @@ from instagram_content_intelligence import ContentIntelligenceEngine
 from instagram_rights_evidence_engine import InstagramRightsEvidenceEngine
 from instagram_real_video_verifier import InstagramRealVideoVerifier
 from instagram_factual_caption_engine import InstagramFactualCaptionEngine
+from instagram_reel_quality_engine import InstagramReelQualityEngine
 from security import RedactingFormatter, redact_token
 
 
@@ -106,6 +107,7 @@ class InstagramAutomationEngine:
         self.rights_engine = InstagramRightsEvidenceEngine()
         self.real_video_verifier = InstagramRealVideoVerifier()
         self.factual_caption_engine = InstagramFactualCaptionEngine(token=self.config.access_token)
+        self.reel_quality_engine = InstagramReelQualityEngine()
 
         self.normalizer = InstagramContentNormalizer()
         self.acquirer = InstagramMediaAcquirer()
@@ -1067,7 +1069,13 @@ class InstagramAutomationEngine:
             if not v_res.is_valid:
                 self.logger.warning(f"Real video verification failed for prepared asset '{local_file}': {v_res.message}")
                 return {"status": "FAILED", "reason": f"Real video verification failed: {v_res.message}", "prepared": False}
-            video_dur = v_res.duration_seconds
+            
+            q_res = self.reel_quality_engine.validate_reel_quality(full_local, selected_raw)
+            if not q_res.is_valid:
+                self.logger.warning(f"Reel media quality verification failed for asset '{local_file}': {q_res.message}")
+                return {"status": "FAILED", "reason": f"Reel media quality check failed: {q_res.message}", "prepared": False}
+
+            video_dur = q_res.duration_seconds or v_res.duration_seconds
             media_sha256 = v_res.media_sha256
 
         source_dom = getattr(content, "source_domain", "") or selected_raw.get("source_domain") or ""
