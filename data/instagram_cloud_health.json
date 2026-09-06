@@ -1,8 +1,8 @@
 {
-  "worker_id": "runnervmejwal-3527",
+  "worker_id": "runnervmejwal-3731",
   "worker_status": "RUNNING",
-  "started_at": "2026-09-06T06:41:45.617814+00:00",
-  "last_heartbeat": "2026-09-06T06:41:45.617828+00:00",
+  "started_at": "2026-09-06T07:07:40.513387+00:00",
+  "last_heartbeat": "2026-09-06T07:07:40.513395+00:00",
   "uptime_seconds": 0,
   "last_cycle": "N/A",
   "last_publish_attempt": "N/A",
