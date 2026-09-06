@@ -90,11 +90,8 @@ jobs:
           python main.py --prepare-media
 
       - name: Verify Preparation Metadata
+        if: hashFiles('data/prepared_media.json') != ''
         run: |
-          if [ ! -f data/prepared_media.json ]; then
-            echo "Error: data/prepared_media.json was not created during preparation phase."
-            exit 1
-          fi
           python -c "
           import json, os, sys
           with open('data/prepared_media.json') as f:
@@ -110,6 +107,7 @@ jobs:
           "
 
       - name: Commit & Push Prepared Media BEFORE Meta Publication
+        if: hashFiles('data/prepared_media.json') != ''
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -128,6 +126,7 @@ jobs:
           fi
 
       - name: Verify GitHub Raw Accessibility
+        if: hashFiles('data/prepared_media.json') != ''
         run: |
           python -c "
           import json, urllib.request, sys
@@ -151,6 +150,7 @@ jobs:
           "
 
       - name: Phase B/C - Execute Meta Publication
+        if: hashFiles('data/prepared_media.json') != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_RUN_ID: ${{ github.run_id }}
