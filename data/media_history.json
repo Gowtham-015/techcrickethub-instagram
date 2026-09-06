@@ -839,6 +839,48 @@
       "url": "https://fdn.gsmarena.com/imgroot/news/26/09/weekly-deals-4/-184x111/gsmarena_us.jpg",
       "status": "FINAL_GUARD_BLOCKED",
       "processed_at": "2026-09-06T04:40:35.570563+00:00"
+    },
+    {
+      "content_id": "test-valid-2ad7c030",
+      "media_hash": "705b8ecd0fed825e69017b4533778deee5b68bc2beaaebf2fa66aee22d9a1e02",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-2ad7c030.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-06T06:04:01.598967+00:00"
+    },
+    {
+      "content_id": "test-reel-q-1d24078d",
+      "media_hash": "08324ba48b776645ce3ee6dc6d68de0618ca5fce2e9bcf37ed7e0094e62b8fb7",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-1d24078d.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-06T06:04:02.169052+00:00"
+    },
+    {
+      "content_id": "real-7f6dbbb3040a95cb",
+      "media_hash": "291cc7f490d9b37285b56366e0876f703f70e43f13a5109e3c8314b037e53081",
+      "url": "https://techcrunch.com/wp-content/uploads/2023/03/artifact-newspaper-icon.jpg?resize=1200,645",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-06T06:04:14.925834+00:00"
+    },
+    {
+      "content_id": "real-9a324a84e4748ddb",
+      "media_hash": "452000fde86aa8e57be253edc0ae2e0c4fe298a3be36d8fc0dbe176d2b4eee69",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/photo_real-9a324a84e4748ddb.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-06T06:04:15.353253+00:00"
+    },
+    {
+      "content_id": "real-ed110528fa3db074",
+      "media_hash": "2d0b1ae1636f393fd01ce64f053afbfd62ac2eaa5ff515414e810e4a58f0e84e",
+      "url": "https://techcrunch.com/wp-content/uploads/2026/08/Clucky.png?w=1200",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-06T06:04:15.892817+00:00"
+    },
+    {
+      "content_id": "real-81ab35953b27997c",
+      "media_hash": "cd2d125d73079159dd5db99f9a54eaa13c5560b05c13021bba59121cd0116e8b",
+      "url": "https://cdn.arstechnica.net/wp-content/uploads/2025/05/GettyImages-2183782392-1152x648.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-06T06:04:17.244380+00:00"
     }
   ]
 }
