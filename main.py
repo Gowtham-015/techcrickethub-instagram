@@ -873,6 +873,10 @@ def prepare_media_cmd() -> bool:
         print(f"Content ID: {res.get('content_id', 'N/A')}")
         print(f"Public URL: {res.get('public_url', 'N/A')}")
         print("========================================")
+        status = res.get("status")
+        if status in ("NO_CANDIDATES", "BLOCKED", "NO_VALID_CONTENT"):
+            print("Prepare Media completed cleanly (HEALTHY_NO_CONTENT). No candidate prepared.")
+            return True
         return bool(res.get("prepared", False))
     except Exception as e:
         print(f"Error: {redact_token(str(e))}")

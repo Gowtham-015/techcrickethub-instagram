@@ -1006,7 +1006,7 @@ class InstagramAutomationEngine:
 
         if not selected_raw:
             self.logger.warning("Prepare Media: No valid unpublished candidate passed duplicate guard.")
-            return {"status": "FAILED", "reason": "No valid unpublished candidate", "prepared": False}
+            return {"status": "NO_CANDIDATES", "reason": "No valid unpublished candidate passed rights verification and duplicate guard.", "prepared": False}
 
         content = self.normalizer.normalize(selected_raw)
         content_id = (content.metadata or {}).get("content_id") or f"prep-{int(time.time())}"
