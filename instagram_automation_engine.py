@@ -44,6 +44,8 @@ from instagram_media_verifier import InstagramMediaVerifier
 from instagram_final_publish_guard import InstagramFinalPublishGuard
 from instagram_cloud_runtime import InstagramCloudRuntime
 from instagram_content_intelligence import ContentIntelligenceEngine
+from instagram_rights_evidence_engine import InstagramRightsEvidenceEngine
+from instagram_real_video_verifier import InstagramRealVideoVerifier
 from security import RedactingFormatter, redact_token
 
 
@@ -100,6 +102,8 @@ class InstagramAutomationEngine:
         self.final_publish_guard = InstagramFinalPublishGuard(config=self.config, data_dir=self.data_dir)
         self.cloud_runtime = InstagramCloudRuntime(config=self.config)
         self.content_intelligence = ContentIntelligenceEngine(config=self.config)
+        self.rights_engine = InstagramRightsEvidenceEngine()
+        self.real_video_verifier = InstagramRealVideoVerifier()
 
         self.normalizer = InstagramContentNormalizer()
         self.acquirer = InstagramMediaAcquirer()
@@ -971,6 +975,7 @@ class InstagramAutomationEngine:
         ranked_candidates = intel_report.get("ranked_candidates", [])
 
         selected_raw = None
+        selected_rights_res = None
         for cand_info in ranked_candidates:
             raw_item = cand_info.get("raw_item") or {}
             content = self.normalizer.normalize(raw_item)
@@ -981,6 +986,12 @@ class InstagramAutomationEngine:
             if self.deduplicator.is_duplicate(content_id=content_id, url=media_url):
                 continue
             
+            # Verify item-level rights evidence
+            rights_res = self.rights_engine.verify_rights_evidence(raw_item)
+            if not rights_res.is_valid:
+                self.logger.warning(f"Prepare Media candidate '{content_id}' rejected: {rights_res.reasons}")
+                continue
+
             # Skip synthetic reels in production mode
             if self.config.production_enabled and not self.config.dry_run and content.media_type == "REEL":
                 is_synthetic = (
@@ -1002,13 +1013,14 @@ class InstagramAutomationEngine:
                 published_at=getattr(content, "published_at", "") or "",
                 media_url=media_url or "",
                 media_type=content.media_type,
-                media_rights_status=raw_item.get("media_rights_status", "RIGHTS_EVIDENCE_MISSING"),
+                media_rights_status=rights_res.rights_status,
                 caption=content.caption or "",
                 hashtags=content.hashtags or [],
             )
             g_res = self.final_publish_guard.verify_and_guard(bundle)
             if g_res.is_valid:
                 selected_raw = raw_item
+                selected_rights_res = rights_res
                 self.logger.info(
                     f"Prepare Media Selected Candidate: '{content.title}' "
                     f"(Score: {cand_info.get('total_score')}/100, Category: {content.category})"
@@ -1016,7 +1028,7 @@ class InstagramAutomationEngine:
                 break
 
         if not selected_raw:
-            self.logger.warning("Prepare Media: No valid unpublished candidate passed duplicate guard.")
+            self.logger.warning("Prepare Media: No valid unpublished candidate passed duplicate guard and rights verification.")
             return {"status": "NO_CANDIDATES", "reason": "No valid unpublished candidate passed rights verification and duplicate guard.", "prepared": False}
 
         content = self.normalizer.normalize(selected_raw)
@@ -1043,15 +1055,18 @@ class InstagramAutomationEngine:
             else:
                 local_file = local_file.replace("\\", "/")
 
-        # Compute SHA256 of prepared local file
-        media_sha256 = ""
         full_local = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), local_file.replace("/", os.sep)))
+        
+        # Verify real video file technical integrity if file exists on disk
+        video_dur = 15.0
+        media_sha256 = ""
         if os.path.exists(full_local) and os.path.isfile(full_local):
-            try:
-                with open(full_local, "rb") as mf:
-                    media_sha256 = hashlib.sha256(mf.read()).hexdigest()
-            except Exception:
-                pass
+            v_res = self.real_video_verifier.verify_video_file(full_local, selected_raw)
+            if not v_res.is_valid:
+                self.logger.warning(f"Real video verification failed for prepared asset '{local_file}': {v_res.message}")
+                return {"status": "FAILED", "reason": f"Real video verification failed: {v_res.message}", "prepared": False}
+            video_dur = v_res.duration_seconds
+            media_sha256 = v_res.media_sha256
 
         import uuid
         prep_id = f"prep-{int(time.time())}-{uuid.uuid4().hex[:8]}"
@@ -1068,14 +1083,16 @@ class InstagramAutomationEngine:
             "local_file": local_file,
             "public_url": public_url,
             "media_sha256": media_sha256,
+            "media_duration": video_dur,
             "caption": content.title,
             "hashtags": content.hashtags or [],
-            "source_url": getattr(content, "source_url", "") or "",
-            "source_domain": getattr(content, "source_domain", "") or "",
-            "media_rights_status": selected_raw.get("media_rights_status", "RIGHTS_EVIDENCE_MISSING"),
-            "rights_evidence_type": selected_raw.get("rights_evidence_type", ""),
-            "rights_evidence_url": selected_raw.get("rights_evidence_url", ""),
-            "commercial_use_allowed": selected_raw.get("commercial_use_allowed", True),
+            "source_url": getattr(content, "source_url", "") or selected_raw.get("source_url") or "",
+            "source_title": content.title,
+            "source_domain": getattr(content, "source_domain", "") or selected_raw.get("source_domain") or "",
+            "rights_status": selected_rights_res.rights_status if selected_rights_res else selected_raw.get("media_rights_status", "OWNED"),
+            "rights_evidence": selected_rights_res.rights_evidence if selected_rights_res else selected_raw.get("rights_evidence", ""),
+            "license_url": selected_rights_res.license_url if selected_rights_res else selected_raw.get("license_url", ""),
+            "commercial_use_allowed": selected_rights_res.commercial_use_allowed if selected_rights_res else True,
             "github_run_id": os.environ.get("GITHUB_RUN_ID", ""),
             "github_sha": os.environ.get("GITHUB_SHA", ""),
             "prepared_at": datetime.now(timezone.utc).isoformat(),
