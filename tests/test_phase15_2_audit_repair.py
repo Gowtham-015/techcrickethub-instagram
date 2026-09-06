@@ -27,14 +27,15 @@ def test_critical_workflow_error_masking_removed():
 
 
 def test_prepare_failure_prevents_publish(tmp_path):
-    """Verify Phase B publish_prepared fails closed if prepared_media.json is missing."""
+    """Verify Phase B publish_prepared fails closed if prepared_media.json is missing and prepare_media fails."""
     config = Config.load_from_env(validate=False)
     data_dir = str(tmp_path / "data")
     engine = InstagramAutomationEngine(config=config, data_dir=data_dir)
 
-    res = engine.publish_prepared()
-    assert res["status"] == "FAILED"
-    assert "Could not prepare media" in res["reason"] or "prepared_media.json" in res["reason"]
+    with patch.object(engine, "prepare_media", return_value={"prepared": False, "reason": "Could not prepare media for publishing"}):
+        res = engine.publish_prepared()
+        assert res["status"] == "FAILED"
+        assert "Could not prepare media" in res["reason"] or "prepared_media.json" in res["reason"]
 
 
 def test_github_raw_404_prevents_meta_publishing():

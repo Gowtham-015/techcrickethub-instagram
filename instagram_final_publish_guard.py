@@ -103,6 +103,21 @@ class InstagramFinalPublishGuard:
         combined = f"{norm_t}|{norm_s}|{norm_f}"
         return self.calculate_sha256(combined)
 
+    def is_duplicate(self, content_id: str = "", url: str = "") -> bool:
+        """Checks if content_id or URL matches previously published history."""
+        items = self.get_published_history()
+        if content_id:
+            for item in items:
+                if item.get("content_id") == content_id:
+                    return True
+        if url:
+            canon = self.canonicalize_url(url)
+            for item in items:
+                pub_url = item.get("media_url") or item.get("canonical_source_url") or ""
+                if pub_url and self.canonicalize_url(pub_url) == canon:
+                    return True
+        return False
+
     def get_published_history(self) -> List[Dict[str, Any]]:
         """Loads permanent published history from disk."""
         self._ensure_history_files()

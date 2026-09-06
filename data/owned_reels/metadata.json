@@ -1,0 +1,19 @@
+{
+  "items": [
+    {
+      "file": "cricket_reel_01.mp4",
+      "rights_status": "OWNED",
+      "rights_evidence": "Account-owned original cricket media",
+      "rights_evidence_url": "data/owned_reels/metadata.json",
+      "title": "India Cricket Match Highlights Reel",
+      "summary": "Team India displays dominant bowling and relentless precision in the match highlights.",
+      "description": "Team India displays dominant bowling and relentless precision in the match highlights.",
+      "category": "cricket",
+      "publisher": "TechCricketHub",
+      "license": "Owned by TechCricketHub",
+      "attribution_required": false,
+      "commercial_use_allowed": true,
+      "modification_allowed": true
+    }
+  ]
+}

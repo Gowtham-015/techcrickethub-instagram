@@ -27,6 +27,8 @@ data/*
 !data/*.json
 !data/generated_reels/
 !data/generated_reels/*.mp4
+!data/owned_reels/
+!data/owned_reels/*
 data/generated_reels/frame_*.png
 !data/.gitkeep
 !media/generated/

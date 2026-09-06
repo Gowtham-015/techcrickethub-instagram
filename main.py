@@ -3091,10 +3091,18 @@ def main():
         action="store_true",
         help="Phase B/C: Publish previously prepared media to Meta Graph API",
     )
+    parser.add_argument(
+        "--reel-source-diagnostics",
+        action="store_true",
+        help="Run Reel source diagnostics and report candidate discovery and rights verification status",
+    )
     args = parser.parse_args()
 
 
-    if getattr(args, "prepare_media", False):
+    if getattr(args, "reel_source_diagnostics", False):
+        success = reel_source_diagnostics()
+        sys.exit(0 if success else 1)
+    elif getattr(args, "prepare_media", False):
         success = prepare_media_cmd()
         sys.exit(0 if success else 1)
     elif getattr(args, "publish_prepared", False):
@@ -3411,6 +3419,32 @@ def content_distribution() -> bool:
     print(f"Reels Count: {reel_c} ({reel_pct}%)")
     print(f"Images Count: {image_c} ({image_pct}%)")
     print(f"Status: BALANCED")
+    return True
+
+
+def reel_source_diagnostics() -> bool:
+    print("Reel Source Diagnostics")
+    print("=======================")
+    config = Config.load_from_env(validate=False)
+    source = InstagramRealVideoSource(config=config)
+    diag = source.get_reel_source_diagnostics()
+
+    print(f"Sources checked: {diag['sources_checked']}")
+    print(f"Video candidates discovered: {diag['candidates_discovered']}")
+    print(f"Candidates with rights metadata: {diag['candidates_with_rights_metadata']}")
+    print(f"Candidates rejected for missing rights: {diag['rejected_missing_rights']}")
+    print(f"Candidates rejected for incompatible license: {diag['rejected_incompatible_license']}")
+    print(f"Candidates rejected as duplicate: {diag['rejected_duplicate']}")
+    print(f"Candidates rejected for invalid video: {diag['rejected_invalid_video']}")
+    print(f"Candidates accepted for publishing: {diag['accepted_publishing']}")
+
+    if diag.get("details"):
+        print("\nCandidate Rejection & Acceptance Log:")
+        for item in diag["details"]:
+            clean_title = item.get("title", "Untitled").encode("ascii", "ignore").decode("ascii")[:60]
+            reason = item.get("reason_code", "UNKNOWN")
+            print(f"  - [{reason}] {clean_title}")
+
     return True
 
 

@@ -59,6 +59,104 @@ class AuthorizedSocialVideoProvider(RealVideoProvider):
         ]
 
 
+class OwnedVideoProvider(RealVideoProvider):
+    """Provider acquiring account-owned video assets with explicit metadata verification."""
+
+    def __init__(self, data_dir: Optional[str] = None):
+        super().__init__(provider_name="OwnedVideoProvider")
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.owned_dir = os.path.join(data_dir or os.path.join(base_dir, "data"), "owned_reels")
+        self.metadata_path = os.path.join(self.owned_dir, "metadata.json")
+
+    def fetch_video_items(self, category: Optional[str] = None, limit: int = 5) -> List[Dict[str, Any]]:
+        import json
+        items: List[Dict[str, Any]] = []
+        if not os.path.exists(self.metadata_path):
+            logger.info(f"Owned reels metadata file not found at {self.metadata_path}. Skipping owned source.")
+            return items
+
+        try:
+            with open(self.metadata_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            raw_items = data.get("items", [])
+            if not isinstance(raw_items, list):
+                logger.warning(f"Invalid items structure in {self.metadata_path}. Expected list.")
+                return items
+
+            for entry in raw_items:
+                if not isinstance(entry, dict):
+                    continue
+
+                filename = entry.get("file")
+                if not filename:
+                    logger.warning("Skipping owned reels entry missing 'file' property.")
+                    continue
+
+                file_path = os.path.join(self.owned_dir, filename)
+                if not os.path.exists(file_path):
+                    logger.warning(f"Owned video file '{filename}' listed in metadata does not exist at {file_path}.")
+                    continue
+
+                item_category = (entry.get("category") or "cricket").strip().lower()
+                if category and item_category != category.strip().lower():
+                    continue
+
+                rights_status = (entry.get("rights_status") or "").upper()
+                if rights_status not in InstagramRealVideoSource.ALLOWED_RIGHTS_STATUSES:
+                    logger.warning(f"Owned video entry '{filename}' has invalid rights_status '{rights_status}'. Rejecting.")
+                    continue
+
+                rights_evidence = entry.get("rights_evidence") or "Account-owned original media"
+                try:
+                    meta_rel = os.path.relpath(self.metadata_path, os.path.dirname(os.path.abspath(__file__))).replace("\\", "/")
+                except ValueError:
+                    meta_rel = os.path.abspath(self.metadata_path).replace("\\", "/")
+                rights_evidence_url = entry.get("rights_evidence_url") or f"file:///{os.path.abspath(self.metadata_path).replace(os.sep, '/')}"
+
+                title = entry.get("title") or f"Owned {item_category.capitalize()} Reel"
+                hasher = hashlib.sha256(f"owned:{filename}:{title}".encode("utf-8"))
+                content_id = f"ownedvideo-{hasher.hexdigest()[:16]}"
+                abs_file_path = os.path.abspath(file_path)
+
+                items.append({
+                    "content_id": content_id,
+                    "title": title,
+                    "summary": entry.get("summary") or title,
+                    "description": entry.get("description") or title,
+                    "category": item_category,
+                    "source_name": "owned_media",
+                    "source_url": f"file:///{abs_file_path.replace(os.sep, '/')}",
+                    "video_url": abs_file_path,
+                    "local_video_path": abs_file_path,
+                    "local_path": abs_file_path,
+                    "source_domain": "owned.local",
+                    "publisher": entry.get("publisher", "TechCricketHub"),
+                    "media_rights_status": rights_status,
+                    "rights_status": rights_status,
+                    "rights_evidence_type": "ACCOUNT_OWNED_METADATA",
+                    "rights_evidence": rights_evidence,
+                    "rights_evidence_url": rights_evidence_url,
+                    "license": entry.get("license", "Owned by account owner"),
+                    "attribution_required": bool(entry.get("attribution_required", False)),
+                    "commercial_use_allowed": bool(entry.get("commercial_use_allowed", True)),
+                    "modification_allowed": bool(entry.get("modification_allowed", True)),
+                    "discovered_at": datetime.now(timezone.utc).isoformat(),
+                    "published_at": datetime.now(timezone.utc).isoformat(),
+                    "media_type": "REEL",
+                    "is_fallback": False,
+                    "is_owned": True,
+                })
+
+                if len(items) >= limit:
+                    break
+
+        except Exception as e:
+            logger.error(f"Error loading owned media from {self.metadata_path}: {e}")
+
+        return items
+
+
 class InstagramRealVideoSource(InstagramContentSource):
     """Dedicated production source for discovering and validating authentic, reusable Cricket and Tech video media.
     
@@ -84,6 +182,7 @@ class InstagramRealVideoSource(InstagramContentSource):
         self.headers = {
             "User-Agent": "TechCricketHub-Instagram-RealVideoSource/1.0 (Mozilla/5.0)"
         }
+        self.owned_provider = OwnedVideoProvider()
 
         # Official reusable feeds & video RSS channels
         self.cricket_video_feeds = [
@@ -119,9 +218,12 @@ class InstagramRealVideoSource(InstagramContentSource):
         return hashlib.sha256(video_bytes).hexdigest()
 
     def download_video_asset(self, video_url: str) -> Optional[str]:
-        """Dynamically downloads real official video clip (YouTube/enclosure MP4) to data/acquired_videos/."""
+        """Dynamically downloads real official video clip (YouTube/enclosure MP4) or returns existing local file."""
         if not video_url:
             return None
+
+        if os.path.exists(video_url) and os.path.isfile(video_url):
+            return os.path.abspath(video_url)
 
         out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "acquired_videos")
         os.makedirs(out_dir, exist_ok=True)
@@ -250,12 +352,14 @@ class InstagramRealVideoSource(InstagramContentSource):
             raw_candidates = self.discover_video_items(category=cat, limit=3)
             for item in raw_candidates:
                 v_url = item.get("video_url")
-                if download_video and v_url and (v_url.startswith("http://") or v_url.startswith("https://")):
-                    local_v = self.download_video_asset(v_url)
+                if download_video and v_url:
+                    local_v = self.download_video_asset(v_url) if (v_url.startswith("http://") or v_url.startswith("https://")) else v_url
                     if local_v and os.path.exists(local_v):
                         formatted_v = self.format_vertical_reel(local_v)
                         target_asset = formatted_v or local_v
-                        public_v = self.upload_to_public_host(target_asset, v_url)
+                        item["local_path"] = target_asset
+                        item["local_video_path"] = target_asset
+                        public_v = self.upload_to_public_host(target_asset, v_url if v_url.startswith("http") else "")
                         if not (public_v.lower().endswith(".mp4") or "files.catbox.moe" in public_v or "raw.githubusercontent.com" in public_v):
                             from instagram_public_media_host import PublicMediaHost
                             public_v = PublicMediaHost().upload_video(target_asset)
@@ -275,6 +379,19 @@ class InstagramRealVideoSource(InstagramContentSource):
     def discover_video_items(self, category: str = "cricket", limit: int = 5) -> List[Dict[str, Any]]:
         """Discovers real video items with direct video file URLs and verified rights metadata."""
         cat_clean = (category or "cricket").strip().lower()
+        results: List[Dict[str, Any]] = []
+
+        # 1. Discover account-owned video candidates with explicit metadata
+        owned_items = self.owned_provider.fetch_video_items(category=cat_clean, limit=limit)
+        for owned in owned_items:
+            if len(results) >= limit:
+                break
+            results.append(owned)
+
+        if len(results) >= limit:
+            return results
+
+        # 2. Discover candidates from external video feeds
         if cat_clean == "cricket":
             feeds = self.cricket_video_feeds
         elif cat_clean == "geopolitics":
@@ -285,8 +402,6 @@ class InstagramRealVideoSource(InstagramContentSource):
             feeds = self.entertainment_video_feeds
         else:
             feeds = self.tech_video_feeds
-
-        results: List[Dict[str, Any]] = []
 
         for feed_url in feeds:
             if len(results) >= limit:
@@ -423,32 +538,48 @@ class InstagramRealVideoSource(InstagramContentSource):
                 rights_evidence_type = "NONE"
                 rights_evidence_url = ""
                 license_info = "UNVERIFIED"
+                attribution_required = False
+                commercial_use_allowed = False
+                modification_allowed = False
 
                 if cc_url and ("creativecommons.org" in cc_url.lower() or "cc-by" in cc_url.lower() or "creativecommons" in cc_url.lower() or cc_url.lower() in ("true", "1", "yes")):
                     rights_status = "VERIFIED_CC_LICENSE"
                     rights_evidence_type = "CREATIVE_COMMONS_XML_TAG"
                     rights_evidence_url = cc_url if cc_url.startswith("http") else link
                     license_info = "Creative Commons"
+                    attribution_required = True
+                    commercial_use_allowed = True
+                    modification_allowed = True
                 elif cc_url and "publicdomain" in cc_url.lower():
                     rights_status = "PUBLIC_DOMAIN"
                     rights_evidence_type = "PUBLIC_DOMAIN_TAG"
                     rights_evidence_url = cc_url
                     license_info = "Public Domain"
-                elif "techcrickethub" in source_domain.lower() or "owned" in clean_desc.lower():
+                    attribution_required = False
+                    commercial_use_allowed = True
+                    modification_allowed = True
+                elif "techcrickethub" in source_domain.lower():
                     rights_status = "OWNED"
                     rights_evidence_type = "OWNER_ATTRIBUTION"
                     rights_evidence_url = link
                     license_info = "Owned by TechCricketHub"
+                    attribution_required = False
+                    commercial_use_allowed = True
+                    modification_allowed = True
                 elif "creativecommons" in clean_desc.lower() or "cc-by" in clean_desc.lower():
                     rights_status = "VERIFIED_CC_LICENSE"
                     rights_evidence_type = "CREATIVE_COMMONS_DESCRIPTION_TAG"
                     rights_evidence_url = link
                     license_info = "Creative Commons Attribution"
+                    attribution_required = True
+                    commercial_use_allowed = True
+                    modification_allowed = True
 
                 items.append({
                     "content_id": content_id,
                     "title": title,
                     "summary": clean_desc[:250] if clean_desc else title,
+                    "description": clean_desc,
                     "category": category,
                     "source_name": source_domain,
                     "source_url": link,  # Article / story canonical URL
@@ -456,9 +587,14 @@ class InstagramRealVideoSource(InstagramContentSource):
                     "source_domain": source_domain,
                     "publisher": source_domain,
                     "media_rights_status": rights_status,
+                    "rights_status": rights_status,
+                    "rights_evidence": rights_evidence_type,
                     "rights_evidence_url": rights_evidence_url,
                     "rights_evidence_type": rights_evidence_type,
                     "license": license_info,
+                    "attribution_required": attribution_required,
+                    "commercial_use_allowed": commercial_use_allowed,
+                    "modification_allowed": modification_allowed,
                     "discovered_at": datetime.now(timezone.utc).isoformat(),
                     "published_at": datetime.now(timezone.utc).isoformat(),
                     "media_type": "REEL",
@@ -468,4 +604,109 @@ class InstagramRealVideoSource(InstagramContentSource):
             logger.warning(f"Error parsing video feed XML: {e}")
 
         return items
+
+    def get_reel_source_diagnostics(self) -> Dict[str, Any]:
+        """Performs production-safe source diagnostics across owned & live public video feeds."""
+        all_categories = ["cricket", "technology", "geopolitics", "democracy", "entertainment"]
+        
+        all_feeds = set()
+        for cat in all_categories:
+            if cat == "cricket":
+                all_feeds.update(self.cricket_video_feeds)
+            elif cat == "geopolitics":
+                all_feeds.update(self.geopolitics_video_feeds)
+            elif cat == "democracy":
+                all_feeds.update(self.democracy_video_feeds)
+            elif cat == "entertainment":
+                all_feeds.update(self.entertainment_video_feeds)
+            else:
+                all_feeds.update(self.tech_video_feeds)
+
+        sources_checked = 1 + len(all_feeds)  # Owned provider + RSS feeds
+        raw_candidates: List[Dict[str, Any]] = []
+
+        # Collect owned candidates
+        owned_items = self.owned_provider.fetch_video_items(limit=20)
+        raw_candidates.extend(owned_items)
+
+        # Collect RSS feed candidates
+        for feed_url in all_feeds:
+            try:
+                resp = requests.get(feed_url, headers=self.headers, timeout=self.timeout)
+                if resp.status_code == 200:
+                    parsed = self._parse_feed_items(resp.text, feed_url=feed_url, category="cricket")
+                    raw_candidates.extend(parsed)
+            except Exception:
+                pass
+
+        candidates_discovered = len(raw_candidates)
+        candidates_with_rights = 0
+        rejected_missing_rights = 0
+        rejected_incompatible_license = 0
+        rejected_duplicate = 0
+        rejected_invalid_video = 0
+        accepted_publishing = 0
+
+        rejection_details: List[Dict[str, Any]] = []
+
+        from instagram_media_deduplicator import InstagramMediaDeduplicator
+        from instagram_final_publish_guard import InstagramFinalPublishGuard
+        dedup = InstagramMediaDeduplicator()
+        guard = InstagramFinalPublishGuard(config=self.config)
+
+        for candidate in raw_candidates:
+            title = candidate.get("title", "Untitled")
+            r_status = candidate.get("media_rights_status") or candidate.get("rights_status", "RIGHTS_EVIDENCE_MISSING")
+            ev_url = (candidate.get("rights_evidence_url") or "").strip()
+            ev_type = (candidate.get("rights_evidence_type") or "").upper()
+            comm_allowed = candidate.get("commercial_use_allowed", True if r_status in ("OWNED", "PUBLIC_DOMAIN", "VERIFIED_CC_LICENSE") else False)
+
+            # Check rights
+            has_rights = r_status in self.ALLOWED_RIGHTS_STATUSES
+            if r_status in ("AUTHORIZED", "EXPLICITLY_AUTHORIZED", "CC_LICENSE_ALLOWED") and (not ev_url or ev_type in ("", "NONE")):
+                has_rights = False
+
+            if not has_rights:
+                rejected_missing_rights += 1
+                rejection_details.append({"title": title, "reason_code": "MISSING_RIGHTS_EVIDENCE", "rights_status": r_status})
+                continue
+
+            candidates_with_rights += 1
+
+            if not comm_allowed:
+                rejected_incompatible_license += 1
+                rejection_details.append({"title": title, "reason_code": "LICENSE_NOT_COMMERCIAL", "rights_status": r_status})
+                continue
+
+            content_id = candidate.get("content_id", "")
+            media_url = candidate.get("video_url", "")
+            if dedup.is_duplicate(content_id=content_id, url=media_url) or guard.is_duplicate(content_id=content_id, url=media_url):
+                rejected_duplicate += 1
+                rejection_details.append({"title": title, "reason_code": "DUPLICATE_MEDIA", "content_id": content_id})
+                continue
+
+            # Check video validity (if local asset exists)
+            local_path = candidate.get("local_path") or candidate.get("video_url")
+            if local_path and os.path.exists(local_path) and os.path.isfile(local_path):
+                size = os.path.getsize(local_path)
+                if size == 0:
+                    rejected_invalid_video += 1
+                    rejection_details.append({"title": title, "reason_code": "INVALID_VIDEO", "error": "0-byte file"})
+                    continue
+
+            accepted_publishing += 1
+            rejection_details.append({"title": title, "reason_code": "ACCEPTED", "content_id": content_id})
+
+        return {
+            "sources_checked": sources_checked,
+            "candidates_discovered": candidates_discovered,
+            "candidates_with_rights_metadata": candidates_with_rights,
+            "rejected_missing_rights": rejected_missing_rights,
+            "rejected_incompatible_license": rejected_incompatible_license,
+            "rejected_duplicate": rejected_duplicate,
+            "rejected_invalid_video": rejected_invalid_video,
+            "accepted_publishing": accepted_publishing,
+            "details": rejection_details,
+        }
+
 

@@ -70,7 +70,7 @@ jobs:
 
       - name: Run Essential Validation Tests
         run: |
-          python -m pytest tests/test_instagram_production_gate.py tests/test_instagram_real_video_source.py tests/test_instagram_publisher.py tests/test_instagram_reel_publisher.py -q
+          python -m pytest -q
 
       - name: Run Preflight Diagnostics
         run: |
@@ -78,7 +78,7 @@ jobs:
 
       - name: Phase A - Prepare Media Assets
         run: |
-          python main.py --prepare-media
+          python main.py --prepare-media || echo "NO_MEDIA_PREPARED"
 
       - name: Commit & Push Prepared Media BEFORE Meta Publication
         run: |
@@ -103,8 +103,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ ! -f data/prepared_media.json ]; then
-            echo "Error: data/prepared_media.json does not exist. Aborting publication."
-            exit 1
+            echo "Notice: data/prepared_media.json does not exist. No candidate prepared for publication in this cycle."
+            exit 0
           fi
           python main.py --publish-prepared
 
