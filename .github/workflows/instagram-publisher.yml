@@ -2,7 +2,7 @@
 name: TechCricketHub Instagram Publisher
 
 
-on:
+'on':
   schedule:
     # Staggered 3-times-an-hour schedule off the hour boundary
     - cron: '7,27,47 * * * *'
