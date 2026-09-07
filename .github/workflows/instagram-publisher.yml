@@ -117,7 +117,7 @@ jobs:
           git add data/
           if [ -d media ]; then git add media/; fi
           if ! git diff --staged --quiet; then
-            git commit -m "Chore: commit prepared media before Meta publication [skip ci]"
+            git commit -m "Chore: commit prepared media before Meta publication"
             git pull origin main --rebase
             git push origin HEAD:main
             echo "MEDIA COMMITTED AND PUSHED TO GITHUB RAW"
@@ -171,7 +171,7 @@ jobs:
           mkdir -p data
           git add data/
           if ! git diff --staged --quiet; then
-            git commit -m "Chore: update published history, health status, and proof [skip ci]"
+            git commit -m "Chore: update published history, health status, and proof"
             git pull origin main --rebase
             git push origin HEAD:main
             echo "STATE COMMITTED AND PUSHED"
