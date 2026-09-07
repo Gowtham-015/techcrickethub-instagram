@@ -1595,6 +1595,34 @@
       "url": "https://techcrunch.com/wp-content/uploads/2026/09/GettyImages-1182217069.jpg?resize=1200,800",
       "status": "FINAL_GUARD_BLOCKED",
       "processed_at": "2026-09-07T19:20:55.911623+00:00"
+    },
+    {
+      "content_id": "test-valid-01be0181",
+      "media_hash": "66036a18c16650c6674e0f33177225438acbc45486feb1fa8c546520cf83ff76",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-01be0181.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-07T22:11:50.911688+00:00"
+    },
+    {
+      "content_id": "test-reel-q-f1b87e71",
+      "media_hash": "495d4459ddb21aefab0beac98b2792e4dd7f37d499404bc528ab228a7286cb51",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-f1b87e71.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-07T22:11:51.487461+00:00"
+    },
+    {
+      "content_id": "real-1a32bee2571e71fc",
+      "media_hash": "20830c0c2ca04420e38d8da3569bcb757727979fb6afdaaef06299a320828c02",
+      "url": "https://techcrunch.com/wp-content/uploads/2026/07/Chain-of-thought-picture.png?resize=1200,800",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-07T22:12:00.552770+00:00"
+    },
+    {
+      "content_id": "real-d24f83b0db4ae41a",
+      "media_hash": "c4b2b425d15619a06578ad786b74ed1baaa0decbd09a5bb33807d8e91db6dda6",
+      "url": "https://fdn.gsmarena.com/imgroot/news/26/09/huawei-pura-x-view-full-specs-prices-release-date/-184x111/gsmarena_000.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-07T22:12:03.543576+00:00"
     }
   ]
 }
