@@ -1483,6 +1483,34 @@
       "url": "https://fdn.gsmarena.com/imgroot/news/26/09/oppo-find-x10-series-launch-september/-184x111/gsmarena_00.jpg",
       "status": "FINAL_GUARD_BLOCKED",
       "processed_at": "2026-09-07T14:17:07.952009+00:00"
+    },
+    {
+      "content_id": "test-valid-1c7a78e7",
+      "media_hash": "04e9f80fa85bc8d09b117a7c0f325f8fa6dd03eb8e89908b124aeeb16dea4add",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-1c7a78e7.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-07T14:24:43.458039+00:00"
+    },
+    {
+      "content_id": "test-reel-q-c1319617",
+      "media_hash": "8fad43d391de696726c0b1f8b0b131e627df09a46666d5c717e3538383fec9f6",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-c1319617.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-07T14:24:43.961978+00:00"
+    },
+    {
+      "content_id": "real-8e3e3344c8445936",
+      "media_hash": "26a211e71d81d5235bf89ad6d291003105c37de05ae78a7bf12a3c31fba96219",
+      "url": "https://cdn.arstechnica.net/wp-content/uploads/2026/08/LakeMariner-1152x648.png",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-07T14:24:53.242707+00:00"
+    },
+    {
+      "content_id": "real-2985f06486e627d0",
+      "media_hash": "a22613a43094bf8681004cc5a341d169b620c14dfb439462f207303b77f84e15",
+      "url": "https://p.imgci.com/db/PICTURES/CMS/396500/396540.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-07T14:24:54.901605+00:00"
     }
   ]
 }
