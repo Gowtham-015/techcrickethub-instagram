@@ -141,12 +141,15 @@ class TestPhase17ContentIntelligence(unittest.TestCase):
 
     def test_freshness_time_decay(self):
         """Verify FreshnessScorer decays score based on article age."""
+        from datetime import datetime, timezone, timedelta
         scorer = FreshnessScorer()
 
-        score_fresh = scorer.calculate_freshness_score("2026-09-06T16:00:00Z")
+        recent_ts = (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat()
+        score_fresh = scorer.calculate_freshness_score(recent_ts)
         self.assertTrue(score_fresh >= 85)
 
-        score_old = scorer.calculate_freshness_score("2026-09-01T10:00:00Z")
+        old_ts = (datetime.now(timezone.utc) - timedelta(days=5)).isoformat()
+        score_old = scorer.calculate_freshness_score(old_ts)
         self.assertTrue(score_old <= 35)
 
     def test_source_reliability_scoring(self):
