@@ -1427,6 +1427,62 @@
       "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-b8cb7d70.mp4",
       "status": "PROCESSED",
       "processed_at": "2026-09-07T11:12:04.288221+00:00"
+    },
+    {
+      "content_id": "test-valid-5f47169e",
+      "media_hash": "719dca152d822afccba5e200ac8d4747331d362a3c2a971a0f605b7ad4e8adf6",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-5f47169e.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-07T14:16:17.317511+00:00"
+    },
+    {
+      "content_id": "test-reel-q-e51d1d9e",
+      "media_hash": "f2ee9689c3192cd359b5ac8d15bae1c0d014fab4f3cf52cefcdecc1fbade0e48",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-e51d1d9e.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-07T14:16:17.819752+00:00"
+    },
+    {
+      "content_id": "real-04e5397e1700f4a2",
+      "media_hash": "113a3fd055c2621a79e6bf8fd1bb5911e9be27e3629ac66fa7b52745d876539f",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/photo_real-04e5397e1700f4a2.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-07T14:16:57.664444+00:00"
+    },
+    {
+      "content_id": "real-c368a5f1c412b7c7",
+      "media_hash": "a331717be54cb9653a3e19ed469eab48e37e856680c7cba71deebb7d73a4e6cb",
+      "url": "https://p.imgci.com/db/PICTURES/CMS/422200/422203.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-07T14:16:59.276066+00:00"
+    },
+    {
+      "content_id": "real-b3183a3be7c6e0e0",
+      "media_hash": "8976d3d1b91f17abb1e73d84df6e65335d64302df58961a993bba92eaa0fb7d9",
+      "url": "https://fdn.gsmarena.com/imgroot/news/26/09/vivo-x500-certified/-184x111/gsmarena_000.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-07T14:17:02.725668+00:00"
+    },
+    {
+      "content_id": "real-fdd49d3a7f8e4ffd",
+      "media_hash": "079f0d309505b4717b59c321b0afd24feb3f39c47ef30663cd75dd13f32f4a58",
+      "url": "https://fdn.gsmarena.com/imgroot/news/26/09/samsung-galaxy-a07s-ofic/-184x111/gsmarena_00.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-07T14:17:04.182923+00:00"
+    },
+    {
+      "content_id": "real-0d059c06dd3b221b",
+      "media_hash": "a003028e30324e51cec97b3ca3b44898d7cd4c128f98e527fb15bb9eacf2e5a9",
+      "url": "https://fdn.gsmarena.com/imgroot/news/26/09/iphone-18-pro-max-demo-unit-leak/-184x111/gsmarena_00.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-07T14:17:05.730787+00:00"
+    },
+    {
+      "content_id": "real-6db8768d0d0a667f",
+      "media_hash": "6713c30a60bc0319465909d73751efc69398507d3d77596ddd45e618c1ac0cdf",
+      "url": "https://fdn.gsmarena.com/imgroot/news/26/09/oppo-find-x10-series-launch-september/-184x111/gsmarena_00.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-07T14:17:07.952009+00:00"
     }
   ]
 }

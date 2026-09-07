@@ -231,12 +231,22 @@ class InstagramFinalPublishGuard:
                 bundle=bundle,
             )
 
-        if media_bytes is None and bundle.media_url and os.path.exists(bundle.media_url):
-            try:
-                with open(bundle.media_url, "rb") as mf:
-                    media_bytes = mf.read()
-            except Exception:
-                pass
+        local_path = bundle.media_url or ""
+        if media_bytes is None and local_path:
+            if not os.path.isabs(local_path):
+                base_dir = self.data_dir
+                repo_dir = os.path.dirname(os.path.abspath(__file__))
+                for root in (base_dir, repo_dir):
+                    candidate_p = os.path.abspath(os.path.join(root, local_path.replace("/", os.sep)))
+                    if os.path.exists(candidate_p):
+                        local_path = candidate_p
+                        break
+            if os.path.exists(local_path) and os.path.isfile(local_path):
+                try:
+                    with open(local_path, "rb") as mf:
+                        media_bytes = mf.read()
+                except Exception:
+                    pass
 
         published_items = self.get_published_history()
 
@@ -307,22 +317,25 @@ class InstagramFinalPublishGuard:
                 )
 
         # 6. Media Bytes SHA256 Check
+        target_media_hash = bundle.media_hash
         if media_bytes:
-            media_hash = self.calculate_sha256(media_bytes)
+            target_media_hash = self.calculate_sha256(media_bytes)
+
+        if target_media_hash:
             recorded_hashes = self.get_media_hashes()
-            if media_hash in recorded_hashes:
+            if target_media_hash in recorded_hashes:
                 return GuardResult(
                     is_valid=False,
                     error_code="DUPLICATE_MEDIA",
-                    message=f"Exact media byte SHA256 '{media_hash[:12]}' was already published.",
+                    message=f"Exact media byte SHA256 '{target_media_hash[:12]}' was already published.",
                     bundle=bundle,
                 )
             for item in published_items:
-                if item.get("media_hash") == media_hash:
+                if item.get("media_hash") == target_media_hash:
                     return GuardResult(
                         is_valid=False,
                         error_code="DUPLICATE_MEDIA",
-                        message=f"Media hash '{media_hash[:12]}' matched published history record.",
+                        message=f"Media hash '{target_media_hash[:12]}' matched published history record.",
                         bundle=bundle,
                     )
 
@@ -384,6 +397,22 @@ class InstagramFinalPublishGuard:
         m_hash = bundle.media_hash
         if media_bytes:
             m_hash = self.calculate_sha256(media_bytes)
+        elif bundle.media_url:
+            local_path = bundle.media_url
+            if not os.path.isabs(local_path):
+                base_dir = self.data_dir
+                repo_dir = os.path.dirname(os.path.abspath(__file__))
+                for root in (base_dir, repo_dir):
+                    candidate_p = os.path.abspath(os.path.join(root, local_path.replace("/", os.sep)))
+                    if os.path.exists(candidate_p):
+                        local_path = candidate_p
+                        break
+            if os.path.exists(local_path) and os.path.isfile(local_path):
+                try:
+                    with open(local_path, "rb") as mf:
+                        m_hash = self.calculate_sha256(mf.read())
+                except Exception:
+                    pass
 
         record = {
             "instagram_media_id": media_id,

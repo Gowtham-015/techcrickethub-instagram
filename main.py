@@ -4033,6 +4033,7 @@ def validate_owned_media() -> bool:
     print("-" * 175)
 
     all_ready = True
+    seen_binary_hashes = {}
     for item in items:
         filename = item.get("file", "")
         category = item.get("category", "cricket")
@@ -4047,6 +4048,19 @@ def validate_owned_media() -> bool:
             all_ready = False
             continue
 
+        # Check binary video content hash uniqueness across manifest
+        import hashlib
+        try:
+            with open(file_path, "rb") as mf:
+                b_hash = hashlib.sha256(mf.read()).hexdigest()
+            if b_hash in seen_binary_hashes:
+                print(f"ERROR: Duplicate binary video hash! '{filename}' is byte-for-byte identical to '{seen_binary_hashes[b_hash]}'")
+                all_ready = False
+            else:
+                seen_binary_hashes[b_hash] = filename
+        except Exception:
+            pass
+
         r_res = rights_engine.verify_rights_evidence(item)
         v_res = video_verifier.verify_video_file(file_path, item)
         q_res = quality_engine.validate_reel_quality(file_path, item)
@@ -4054,7 +4068,8 @@ def validate_owned_media() -> bool:
         v_valid_str = "PASS" if v_res.is_valid else f"FAIL ({v_res.error_code})"
         q_valid_str = "PASS" if q_res.is_valid else f"FAIL ({q_res.error_code})"
 
-        is_ready = r_res.is_valid and v_res.is_valid and q_res.is_valid
+        is_unique_hash = (b_hash in seen_binary_hashes and seen_binary_hashes[b_hash] == filename)
+        is_ready = r_res.is_valid and v_res.is_valid and q_res.is_valid and is_unique_hash
         if not is_ready:
             all_ready = False
             ready_str = "NOT READY"

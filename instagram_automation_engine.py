@@ -1109,7 +1109,37 @@ class InstagramAutomationEngine:
                 if is_synthetic:
                     quality_rejected_count += 1
                     continue
-            
+
+            # Deduplicate by physical binary video content hash
+            cand_local_file = raw_item.get("local_path") or raw_item.get("video_url") or media_url or ""
+            cand_sha256 = ""
+            if cand_local_file:
+                base_repo_dir = os.path.dirname(os.path.abspath(__file__))
+                cand_full_path = cand_local_file
+                if not os.path.isabs(cand_full_path):
+                    for root in (self.data_dir, base_repo_dir):
+                        test_p = os.path.abspath(os.path.join(root, cand_local_file.replace("/", os.sep)))
+                        if os.path.exists(test_p):
+                            cand_full_path = test_p
+                            break
+                if os.path.exists(cand_full_path) and os.path.isfile(cand_full_path):
+                    try:
+                        with open(cand_full_path, "rb") as mf:
+                            cand_sha256 = hashlib.sha256(mf.read()).hexdigest()
+                    except Exception:
+                        pass
+
+            if cand_sha256:
+                recorded_m_hashes = self.final_publish_guard.get_media_hashes()
+                pub_hist = self.final_publish_guard.get_published_history()
+                hist_m_hashes = {i.get("media_hash") for i in pub_hist if i.get("media_hash")}
+                if cand_sha256 in recorded_m_hashes or cand_sha256 in hist_m_hashes:
+                    self.logger.warning(
+                        f"Prepare Media candidate '{content_id}' rejected: Video binary hash '{cand_sha256[:12]}' matches previously published Reel in history (DUPLICATE_MEDIA_BYTES)."
+                    )
+                    quality_rejected_count += 1
+                    continue
+
             bundle = ContentBundle(
                 content_id=content_id,
                 category=content.category,
@@ -1120,6 +1150,7 @@ class InstagramAutomationEngine:
                 published_at=getattr(content, "published_at", "") or "",
                 media_url=media_url or "",
                 media_type=content.media_type,
+                media_hash=cand_sha256,
                 media_rights_status=rights_res.rights_status,
                 caption=content.caption or "",
                 hashtags=content.hashtags or [],
