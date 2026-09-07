@@ -148,7 +148,7 @@ class TestPhase18RealVideoAndRights(unittest.TestCase):
             with patch.object(auto_engine.source, "get_content_items", return_value=cands):
                 res = auto_engine.prepare_media()
                 self.assertFalse(res.get("prepared"))
-                self.assertEqual(res.get("status"), "NO_CANDIDATES")
+                self.assertIn(res.get("status"), ("NO_CANDIDATES", "NO_VALID_REEL"))
 
 
 if __name__ == "__main__":

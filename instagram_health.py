@@ -56,6 +56,11 @@ class InstagramHealthTracker:
             "last_published_at": None,
             "last_publish_error": None,
             "consecutive_publish_failures": 0,
+            "consecutive_no_valid_reel_runs": 0,
+            "last_valid_reel_at": None,
+            "last_no_valid_reel_at": None,
+            "rights_rejection_count": 0,
+            "video_quality_rejection_count": 0,
             "production_paused": False,
             "pause_reason": None,
             "live_test_count": 0,
@@ -130,11 +135,13 @@ class InstagramHealthTracker:
         self._save_health(data)
 
     def record_publish_success(self, media_id: str, is_live_test: bool = False) -> None:
-        """Records successful publishing attempt and resets consecutive failures."""
+        """Records successful publishing attempt and resets consecutive failures and starvation counters."""
         data = self._load_health()
         now_iso = datetime.now(timezone.utc).isoformat()
         data["last_published_at"] = now_iso
+        data["last_valid_reel_at"] = now_iso
         data["consecutive_publish_failures"] = 0
+        data["consecutive_no_valid_reel_runs"] = 0
         data["last_publish_error"] = None
         data["items_published"] = int(data.get("items_published") or 0) + 1
 
@@ -142,6 +149,16 @@ class InstagramHealthTracker:
             data["last_live_test_at"] = now_iso
             data["live_test_count"] = int(data.get("live_test_count") or 0) + 1
 
+        self._save_health(data)
+
+    def record_no_valid_reel_run(self, rights_rejections: int = 0, quality_rejections: int = 0) -> None:
+        """Records a run cycle where no valid Reel was available (starvation tracking)."""
+        data = self._load_health()
+        now_iso = datetime.now(timezone.utc).isoformat()
+        data["last_no_valid_reel_at"] = now_iso
+        data["consecutive_no_valid_reel_runs"] = int(data.get("consecutive_no_valid_reel_runs") or 0) + 1
+        data["rights_rejection_count"] = int(data.get("rights_rejection_count") or 0) + rights_rejections
+        data["video_quality_rejection_count"] = int(data.get("video_quality_rejection_count") or 0) + quality_rejections
         self._save_health(data)
 
     def record_publish_failure(self, error: str, max_consecutive_failures: int = 3) -> None:
@@ -166,6 +183,7 @@ class InstagramHealthTracker:
         """Safely resets temporary production pause state & failure counters."""
         data = self._load_health()
         data["consecutive_publish_failures"] = 0
+        data["consecutive_no_valid_reel_runs"] = 0
         data["production_paused"] = False
         data["pause_reason"] = None
         data["live_test_count"] = 0
@@ -187,15 +205,20 @@ class InstagramHealthTracker:
         return self._load_health()
 
     def get_production_health_summary(self) -> Dict[str, Any]:
-        """Returns structured production health diagnosis (HEALTHY, DEGRADED, PAUSED, STOPPED)."""
+        """Returns structured production health diagnosis (HEALTHY, DEGRADED, PAUSED, STOPPED, CONTENT_STARVATION)."""
         data = self._load_health()
         status = data.get("status", "STOPPED")
         paused = data.get("production_paused", False)
+        no_valid_runs = int(data.get("consecutive_no_valid_reel_runs") or 0)
 
         if paused:
             health_label = "PAUSED"
+        elif no_valid_runs >= 3:
+            health_label = "CONTENT_STARVATION"
         elif status == "RUNNING":
             health_label = "DEGRADED" if (data.get("last_error") or data.get("last_publish_error")) else "HEALTHY"
+        elif no_valid_runs >= 1:
+            health_label = "NO_VALID_REEL"
         else:
             health_label = "STOPPED"
 

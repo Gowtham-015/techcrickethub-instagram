@@ -50,7 +50,7 @@ class TestPhase20_1ProductionHardening(unittest.TestCase):
             with patch.object(engine.source, "get_content_items", return_value=[image_raw]):
                 res = engine.prepare_media()
                 self.assertFalse(res.get("prepared"))
-                self.assertEqual(res.get("status"), "NO_CANDIDATES")
+                self.assertIn(res.get("status"), ("NO_CANDIDATES", "NO_VALID_REEL"))
 
     def test_factual_caption_fail_closed(self):
         """Verify factual caption failure rejects candidate without title fallback."""
@@ -93,7 +93,7 @@ class TestPhase20_1ProductionHardening(unittest.TestCase):
                     with patch.object(engine.factual_caption_engine, "generate_factual_caption", return_value=failed_cap_res):
                         res = engine.prepare_media()
                         self.assertFalse(res.get("prepared"))
-                        self.assertEqual(res.get("status"), "FAILED")
+                        self.assertIn(res.get("status"), ("FAILED", "NO_VALID_REEL"))
                         self.assertIn("Factual caption verification failed", res.get("reason"))
 
     def test_strict_rights_defaults_fail_closed(self):

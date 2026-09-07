@@ -92,6 +92,14 @@ class InstagramRightsEvidenceEngine:
         if not rights_evidence and not license_url:
             reasons.append(f"Media with status '{rights_status}' requires item-level rights evidence or license proof URL.")
 
+        # 5. Reject placeholder license URLs and enforce meaningful evidence for LICENSED / AUTHORIZED / CC
+        if license_url and "example.com" in license_url.lower():
+            reasons.append("Placeholder license URLs (e.g. example.com) are forbidden as production rights evidence.")
+
+        if rights_status in ("EXPLICITLY_AUTHORIZED", "LICENSED", "VERIFIED_CC_LICENSE", "CC_LICENSE_ALLOWED"):
+            if not license_url and (not rights_evidence or rights_evidence.upper() in ("NONE", "UNVERIFIED", "UNKNOWN")):
+                reasons.append(f"Status '{rights_status}' requires explicit license URL or verified evidence payload.")
+
         is_valid = len(reasons) == 0
         if not is_valid:
             logger.warning(f"Rights verification REJECTED for '{item.get('content_id', 'unknown')}': {reasons}")

@@ -951,44 +951,140 @@ class InstagramAutomationEngine:
         self.logger.info("Executing Phase A: Prepare Media...")
         prepared_file = os.path.join(self.data_dir, "prepared_media.json")
         
-        # 1. Discover raw candidates
-        raw_items = []
+        # 1. Discover raw items (video media items + news context items)
+        video_items: List[Dict[str, Any]] = []
+        news_items: List[Dict[str, Any]] = []
+
         if self.source:
             from instagram_real_video_source import InstagramRealVideoSource
             if isinstance(self.source, InstagramRealVideoSource):
                 if getattr(self.config, "reel_discovery_enabled", False):
                     s_items = self.source.get_content_items()
                     if isinstance(s_items, list):
-                        raw_items.extend(s_items)
+                        video_items.extend(s_items)
             else:
                 s_items = self.source.get_content_items()
                 if isinstance(s_items, list):
-                    raw_items.extend(s_items)
+                    video_items.extend(s_items)
+
         if hasattr(self, "news_source") and self.news_source and self.news_source != self.source:
             n_items = self.news_source.get_content_items()
             if isinstance(n_items, list):
-                raw_items.extend(n_items)
+                news_items.extend(n_items)
 
-        if not raw_items:
-            self.logger.warning("Prepare Media: No content items discovered.")
-            return {"status": "FAILED", "reason": "No content items discovered", "prepared": False}
+        # Ensure owned video assets are always present as media source candidates
+        from instagram_real_video_source import OwnedVideoProvider
+        owned_prov = OwnedVideoProvider(data_dir=self.data_dir)
+        owned_assets = owned_prov.fetch_video_items(limit=20)
 
-        # 2. Content Intelligence Candidate Scoring & Ranking
+        # 2. Extract valid rights-verified Reel media assets
+        valid_video_assets = []
+        for v_item in video_items + owned_assets:
+            if not isinstance(v_item, dict):
+                continue
+            r_res = self.rights_engine.verify_rights_evidence(v_item)
+            if r_res.is_valid:
+                valid_video_assets.append(v_item)
+
+        # Deduplicate valid video assets by local_path/video_url
+        unique_video_assets = []
+        seen_asset_paths = set()
+        for v_asset in valid_video_assets:
+            path_key = v_asset.get("local_path") or v_asset.get("video_url") or ""
+            if path_key and path_key not in seen_asset_paths:
+                seen_asset_paths.add(path_key)
+                unique_video_assets.append(v_asset)
+
+        # 3. Decouple & Pair News Context with Rights-Verified Reel Media Assets
+        candidate_pool: List[Dict[str, Any]] = []
+        
+        # A. Paired Candidates: Fresh news context + Authorized video asset
+        if news_items and unique_video_assets:
+            for n_item in news_items:
+                n_cat = (n_item.get("category") or "cricket").strip().lower()
+                n_title = n_item.get("title") or ""
+                n_summary = n_item.get("summary") or n_title
+                n_url = n_item.get("source_url") or n_item.get("link") or ""
+
+                # Match video asset by category
+                matching_assets = [a for a in unique_video_assets if (a.get("category") or "cricket").strip().lower() == n_cat]
+                if not matching_assets:
+                    matching_assets = unique_video_assets
+
+                for v_asset in matching_assets:
+                    v_url = v_asset.get("source_url") or v_asset.get("video_url") or ""
+                    v_local = v_asset.get("local_path") or v_asset.get("video_url") or ""
+                    r_status = v_asset.get("rights_status") or v_asset.get("media_rights_status") or "OWNED"
+                    r_evidence = v_asset.get("rights_evidence") or "Account-owned original media asset"
+                    r_evidence_url = v_asset.get("rights_evidence_url") or v_asset.get("license_url") or ""
+
+                    hasher = hashlib.sha256(f"newsreel:{n_url}:{v_local}:{n_title}".encode("utf-8"))
+                    paired_content_id = f"newsreel-{hasher.hexdigest()[:16]}"
+
+                    candidate_pool.append({
+                        "content_id": paired_content_id,
+                        "title": n_title,
+                        "summary": n_summary,
+                        "category": n_cat,
+                        "media_type": "REEL",
+                        "source_name": n_item.get("source_name") or "NewsSource",
+                        "source_url": n_url,
+                        "information_source_url": n_url,
+                        "media_source_url": v_url,
+                        "video_url": v_url,
+                        "local_path": v_local,
+                        "local_video_path": v_local,
+                        "source_domain": n_item.get("source_domain") or "news.local",
+                        "publisher": n_item.get("publisher") or "TechCricketHub",
+                        "media_rights_status": r_status,
+                        "rights_status": r_status,
+                        "rights_evidence": r_evidence,
+                        "rights_evidence_url": r_evidence_url,
+                        "license_url": r_evidence_url,
+                        "license": v_asset.get("license", "Owned by account owner"),
+                        "attribution_required": bool(v_asset.get("attribution_required", False)),
+                        "commercial_use_allowed": bool(v_asset.get("commercial_use_allowed", True)),
+                        "modification_allowed": bool(v_asset.get("modification_allowed", True)),
+                        "discovered_at": datetime.now(timezone.utc).isoformat(),
+                        "is_owned": bool(v_asset.get("is_owned", True)),
+                    })
+
+        # B. Standalone Authorized Video Assets
+        for v_asset in unique_video_assets:
+            v_url = v_asset.get("source_url") or v_asset.get("video_url") or ""
+            r_evidence_url = v_asset.get("rights_evidence_url") or v_asset.get("license_url") or ""
+            c_copy = dict(v_asset)
+            c_copy["information_source_url"] = v_url
+            c_copy["media_source_url"] = v_url
+            c_copy["rights_evidence_url"] = r_evidence_url
+            c_copy["license_url"] = r_evidence_url
+            candidate_pool.append(c_copy)
+
+        if not candidate_pool:
+            self.logger.warning("Prepare Media: No valid Reel candidates discovered.")
+            self.health_tracker.record_no_valid_reel_run(rights_rejections=len(video_items))
+            return {"status": "NO_VALID_REEL", "reason": "No valid Reel candidates discovered.", "prepared": False}
+
+        # 4. Content Intelligence Candidate Scoring & Ranking
         published_history = self.final_publish_guard.get_published_history()
-        intel_report = self.content_intelligence.evaluate_and_rank_candidates(raw_items, published_history)
+        intel_report = self.content_intelligence.evaluate_and_rank_candidates(candidate_pool, published_history)
         ranked_candidates = intel_report.get("ranked_candidates", [])
 
         selected_raw = None
         selected_rights_res = None
+        rights_rejected_count = 0
+        quality_rejected_count = 0
+
         for cand_info in ranked_candidates:
             raw_item = cand_info.get("raw_item") or {}
             content = self.normalizer.normalize(raw_item)
-            content_id = (content.metadata or {}).get("content_id") or "unknown"
+            content_id = (content.metadata or {}).get("content_id") or raw_item.get("content_id") or "unknown"
             media_url = content.image_url if content.media_type == "IMAGE" else content.video_url
 
             # Reject any non-REEL (IMAGE) candidate in production 100% Reel-only mode
             if content.media_type != "REEL":
                 self.logger.warning(f"Prepare Media candidate '{content_id}' rejected: Media type '{content.media_type}' is not REEL (100% Reel-only enforced).")
+                quality_rejected_count += 1
                 continue
 
             # Skip duplicates
@@ -999,6 +1095,7 @@ class InstagramAutomationEngine:
             rights_res = self.rights_engine.verify_rights_evidence(raw_item)
             if not rights_res.is_valid:
                 self.logger.warning(f"Prepare Media candidate '{content_id}' rejected: {rights_res.reasons}")
+                rights_rejected_count += 1
                 continue
 
             # Skip synthetic reels in production mode
@@ -1010,6 +1107,7 @@ class InstagramAutomationEngine:
                     "sample" in (media_url or "").lower()
                 )
                 if is_synthetic:
+                    quality_rejected_count += 1
                     continue
             
             bundle = ContentBundle(
@@ -1017,8 +1115,8 @@ class InstagramAutomationEngine:
                 category=content.category,
                 title=content.title,
                 summary=content.summary,
-                source_url=getattr(content, "source_url", "") or "",
-                source_domain=getattr(content, "source_domain", "") or "",
+                source_url=getattr(content, "source_url", "") or raw_item.get("source_url") or "",
+                source_domain=getattr(content, "source_domain", "") or raw_item.get("source_domain") or "",
                 published_at=getattr(content, "published_at", "") or "",
                 media_url=media_url or "",
                 media_type=content.media_type,
@@ -1038,10 +1136,11 @@ class InstagramAutomationEngine:
 
         if not selected_raw:
             self.logger.warning("Prepare Media: No valid unpublished candidate passed duplicate guard and rights verification.")
-            return {"status": "NO_CANDIDATES", "reason": "No valid unpublished candidate passed rights verification and duplicate guard.", "prepared": False}
+            self.health_tracker.record_no_valid_reel_run(rights_rejections=rights_rejected_count, quality_rejections=quality_rejected_count)
+            return {"status": "NO_VALID_REEL", "reason": "No valid unpublished Reel candidate passed rights verification and duplicate guard.", "prepared": False}
 
         content = self.normalizer.normalize(selected_raw)
-        content_id = (content.metadata or {}).get("content_id") or f"prep-{int(time.time())}"
+        content_id = (content.metadata or {}).get("content_id") or selected_raw.get("content_id") or f"prep-{int(time.time())}"
         media_url = content.image_url if content.media_type == "IMAGE" else content.video_url
 
         from instagram_public_media_host import PublicMediaHost
@@ -1073,12 +1172,14 @@ class InstagramAutomationEngine:
             v_res = self.real_video_verifier.verify_video_file(full_local, selected_raw)
             if not v_res.is_valid:
                 self.logger.warning(f"Real video verification failed for prepared asset '{local_file}': {v_res.message}")
-                return {"status": "FAILED", "reason": f"Real video verification failed: {v_res.message}", "prepared": False}
+                self.health_tracker.record_no_valid_reel_run(quality_rejections=1)
+                return {"status": "NO_VALID_REEL", "reason": f"Real video verification failed: {v_res.message}", "prepared": False}
             
             q_res = self.reel_quality_engine.validate_reel_quality(full_local, selected_raw)
             if not q_res.is_valid:
                 self.logger.warning(f"Reel media quality verification failed for asset '{local_file}': {q_res.message}")
-                return {"status": "FAILED", "reason": f"Reel media quality check failed: {q_res.message}", "prepared": False}
+                self.health_tracker.record_no_valid_reel_run(quality_rejections=1)
+                return {"status": "NO_VALID_REEL", "reason": f"Reel media quality check failed: {q_res.message}", "prepared": False}
 
             video_dur = q_res.duration_seconds or v_res.duration_seconds
             media_sha256 = v_res.media_sha256
@@ -1094,7 +1195,8 @@ class InstagramAutomationEngine:
         if not cap_res or not cap_res.is_valid or not cap_res.caption:
             reasons_str = "; ".join(cap_res.reasons) if (cap_res and cap_res.reasons) else "Factual caption validation failed."
             self.logger.warning(f"Factual caption generation failed for candidate '{content_id}': {reasons_str}")
-            return {"status": "FAILED", "reason": f"Factual caption verification failed: {reasons_str}", "prepared": False}
+            self.health_tracker.record_no_valid_reel_run(quality_rejections=1)
+            return {"status": "NO_VALID_REEL", "reason": f"Factual caption verification failed: {reasons_str}", "prepared": False}
 
         final_caption = cap_res.caption
         final_hashtags = cap_res.hashtags or []
@@ -1103,6 +1205,10 @@ class InstagramAutomationEngine:
         prep_id = f"prep-{int(time.time())}-{uuid.uuid4().hex[:8]}"
 
         public_url = host.get_public_url(local_file) if local_file else media_url
+
+        info_source_url = selected_raw.get("information_source_url") or getattr(content, "source_url", "") or selected_raw.get("source_url") or ""
+        media_src_url = selected_raw.get("media_source_url") or selected_raw.get("video_url") or info_source_url
+        rights_ev_url = selected_rights_res.license_url if selected_rights_res else (selected_raw.get("rights_evidence_url") or selected_raw.get("license_url") or "")
 
         prepared_data = {
             "preparation_id": prep_id,
@@ -1117,14 +1223,18 @@ class InstagramAutomationEngine:
             "media_duration": video_dur,
             "caption": final_caption,
             "hashtags": final_hashtags,
-            "source_url": getattr(content, "source_url", "") or selected_raw.get("source_url") or "",
+            "information_source_url": info_source_url,
+            "media_source_url": media_src_url,
+            "source_url": info_source_url,
             "source_title": content.title,
             "source_domain": source_dom,
             "media_rights_status": selected_rights_res.rights_status if selected_rights_res else selected_raw.get("media_rights_status", "OWNED"),
             "rights_status": selected_rights_res.rights_status if selected_rights_res else selected_raw.get("media_rights_status", "OWNED"),
             "rights_evidence": selected_rights_res.rights_evidence if selected_rights_res else selected_raw.get("rights_evidence", ""),
-            "license_url": selected_rights_res.license_url if selected_rights_res else selected_raw.get("license_url", ""),
+            "rights_evidence_url": rights_ev_url,
+            "license_url": rights_ev_url,
             "commercial_use_allowed": selected_rights_res.commercial_use_allowed if selected_rights_res else True,
+            "modification_allowed": bool(selected_raw.get("modification_allowed", True)),
             "github_run_id": os.environ.get("GITHUB_RUN_ID", ""),
             "github_sha": os.environ.get("GITHUB_SHA", ""),
             "prepared_at": datetime.now(timezone.utc).isoformat(),

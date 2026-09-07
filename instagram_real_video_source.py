@@ -558,14 +558,6 @@ class InstagramRealVideoSource(InstagramContentSource):
                     attribution_required = False
                     commercial_use_allowed = True
                     modification_allowed = True
-                elif "techcrickethub" in source_domain.lower():
-                    rights_status = "OWNED"
-                    rights_evidence_type = "OWNER_ATTRIBUTION"
-                    rights_evidence_url = link
-                    license_info = "Owned by TechCricketHub"
-                    attribution_required = False
-                    commercial_use_allowed = True
-                    modification_allowed = True
                 elif "creativecommons" in clean_desc.lower() or "cc-by" in clean_desc.lower():
                     rights_status = "VERIFIED_CC_LICENSE"
                     rights_evidence_type = "CREATIVE_COMMONS_DESCRIPTION_TAG"

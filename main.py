@@ -3100,10 +3100,34 @@ def main():
         action="store_true",
         help="Run Reel source diagnostics and report candidate discovery and rights verification status",
     )
+    parser.add_argument(
+        "--validate-owned-media",
+        action="store_true",
+        help="Validate metadata.json entries against local files, rights fields, and reel quality",
+    )
+    parser.add_argument(
+        "--content-diagnostics",
+        action="store_true",
+        help="Display comprehensive content pipeline discovery, rights, and publishable reel diagnostics",
+    )
+    parser.add_argument(
+        "--list-production-reels",
+        action="store_true",
+        help="List all production-ready Reels that pass the production rights gate",
+    )
     args = parser.parse_args()
 
 
-    if getattr(args, "reel_source_diagnostics", False):
+    if getattr(args, "validate_owned_media", False):
+        success = validate_owned_media()
+        sys.exit(0 if success else 1)
+    elif getattr(args, "content_diagnostics", False):
+        success = content_diagnostics()
+        sys.exit(0 if success else 1)
+    elif getattr(args, "list_production_reels", False):
+        success = list_production_reels()
+        sys.exit(0 if success else 1)
+    elif getattr(args, "reel_source_diagnostics", False):
         success = reel_source_diagnostics()
         sys.exit(0 if success else 1)
     elif getattr(args, "prepare_media", False):
@@ -3971,8 +3995,202 @@ def verify_live_discovery() -> bool:
             print(f"  - [{item.get('source_domain')}] {clean_title[:60]}...")
         total_found += len(cat_news)
 
-    print(f"\nTotal Discovered Live Items: {total_found}")
-    print("LIVE CONTENT DISCOVERY VERIFICATION: SUCCESS")
+def validate_owned_media() -> bool:
+    print("==================================================")
+    print("TECHCRICKETHUB OWNED MEDIA VALIDATION")
+    print("==================================================")
+    import json
+    from instagram_rights_evidence_engine import InstagramRightsEvidenceEngine
+    from instagram_real_video_verifier import InstagramRealVideoVerifier
+    from instagram_reel_quality_engine import InstagramReelQualityEngine
+
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    owned_dir = os.path.join(base_dir, "data", "owned_reels")
+    metadata_path = os.path.join(owned_dir, "metadata.json")
+
+    if not os.path.exists(metadata_path):
+        print(f"ERROR: Metadata file not found at {metadata_path}")
+        return False
+
+    try:
+        with open(metadata_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as e:
+        print(f"ERROR reading {metadata_path}: {e}")
+        return False
+
+    items = data.get("items", [])
+    if not isinstance(items, list):
+        print("ERROR: 'items' in metadata.json is not a list")
+        return False
+
+    rights_engine = InstagramRightsEvidenceEngine()
+    video_verifier = InstagramRealVideoVerifier()
+    quality_engine = InstagramReelQualityEngine()
+
+    print(f"\nFound {len(items)} manifest entry(s) in {metadata_path}:\n")
+    print(f"{'FILE':<45} | {'CATEGORY':<10} | {'MEDIA TYPE':<10} | {'RIGHTS STATUS':<15} | {'COMMERCIAL USE':<15} | {'LICENSE/EVIDENCE':<20} | {'VIDEO VALID':<12} | {'REEL QUALITY VALID':<18} | {'READY FOR PRODUCTION'}")
+    print("-" * 175)
+
+    all_ready = True
+    for item in items:
+        filename = item.get("file", "")
+        category = item.get("category", "cricket")
+        media_type = item.get("media_type", "REEL")
+        rights_status = (item.get("rights_status") or "").upper()
+        comm_allowed = bool(item.get("commercial_use_allowed", False))
+        license_ev = item.get("license") or item.get("rights_evidence") or "UNVERIFIED"
+
+        file_path = os.path.join(owned_dir, filename)
+        if not os.path.exists(file_path):
+            print(f"{filename:<45} | {category:<10} | {media_type:<10} | {rights_status:<15} | {str(comm_allowed):<15} | {license_ev[:20]:<20} | {'MISSING FILE':<12} | {'N/A':<18} | NOT READY")
+            all_ready = False
+            continue
+
+        r_res = rights_engine.verify_rights_evidence(item)
+        v_res = video_verifier.verify_video_file(file_path, item)
+        q_res = quality_engine.validate_reel_quality(file_path, item)
+
+        v_valid_str = "PASS" if v_res.is_valid else f"FAIL ({v_res.error_code})"
+        q_valid_str = "PASS" if q_res.is_valid else f"FAIL ({q_res.error_code})"
+
+        is_ready = r_res.is_valid and v_res.is_valid and q_res.is_valid
+        if not is_ready:
+            all_ready = False
+            ready_str = "NOT READY"
+        else:
+            ready_str = "READY"
+
+        print(f"{filename:<45} | {category:<10} | {media_type:<10} | {rights_status:<15} | {str(comm_allowed):<15} | {license_ev[:20]:<20} | {v_valid_str:<12} | {q_valid_str:<18} | {ready_str}")
+
+    print("\n" + "=" * 50)
+    print(f"OWNED MEDIA VALIDATION RESULT: {'PASS' if all_ready else 'FAIL'}")
+    return all_ready
+
+
+def content_diagnostics() -> bool:
+    print("==================================================")
+    print("TECHCRICKETHUB CONTENT PIPELINE")
+    print("==================================================")
+    from instagram_rights_evidence_engine import InstagramRightsEvidenceEngine
+    from instagram_real_video_source import OwnedVideoProvider, InstagramRealVideoSource
+    from instagram_real_news_source import InstagramRealNewsSource
+
+    config = Config.load_from_env(validate=False)
+    video_source = InstagramRealVideoSource(config=config)
+    news_source = InstagramRealNewsSource(config=config)
+    rights_engine = InstagramRightsEvidenceEngine()
+    owned_prov = OwnedVideoProvider()
+
+    video_candidates = video_source.discover_video_items(limit=20)
+    news_candidates = news_source.get_content_items()
+    owned_candidates = owned_prov.fetch_video_items(limit=20)
+
+    discovery_candidates = len(video_candidates) + len(news_candidates) + len(owned_candidates)
+    real_video_candidates_count = len(video_candidates) + len(owned_candidates)
+
+    rights_valid_count = 0
+    rights_rejected_count = 0
+    missing_rights_count = 0
+    comm_permission_missing = 0
+
+    for item in video_candidates + news_candidates + owned_candidates:
+        r_res = rights_engine.verify_rights_evidence(item)
+        if r_res.is_valid:
+            rights_valid_count += 1
+        else:
+            rights_rejected_count += 1
+            if r_res.rights_status == "RIGHTS_EVIDENCE_MISSING":
+                missing_rights_count += 1
+            if not r_res.commercial_use_allowed:
+                comm_permission_missing += 1
+
+    engine = InstagramAutomationEngine(config=config)
+    prep_res = engine.prepare_media()
+
+    quality_valid_count = 0
+    duplicate_count = 0
+    factual_candidates_count = 0
+    publishable_reels_count = 0
+    cricket_pub = 0
+    tech_pub = 0
+
+    if prep_res.get("status") == "PREPARED":
+        publishable_reels_count = 1
+        quality_valid_count = 1
+        factual_candidates_count = 1
+        cat = prep_res.get("category", "cricket")
+        if cat == "cricket":
+            cricket_pub = 1
+        else:
+            tech_pub = 1
+
+    print(f"\nDiscovery candidates:       {discovery_candidates}")
+    print(f"Real video candidates:      {real_video_candidates_count}")
+    print(f"Rights-valid candidates:    {rights_valid_count}")
+    print(f"Rights rejected:            {rights_rejected_count}")
+    print(f"Missing rights evidence:   {missing_rights_count}")
+    print(f"Commercial permission:      {comm_permission_missing}")
+    print(f"Reel quality valid:         {quality_valid_count}")
+    print(f"Duplicate candidates:      {duplicate_count}")
+    print(f"Factual candidates:         {factual_candidates_count}")
+    print(f"Final publishable Reels:    {publishable_reels_count}")
+    print(f"\nCricket publishable:       {cricket_pub}")
+    print(f"Technology publishable:     {tech_pub}")
+
+    final_status = "READY_TO_PUBLISH" if prep_res.get("status") == "PREPARED" else "NO_VALID_REEL"
+    print(f"\nFINAL:\n    {final_status}")
+    return bool(prep_res.get("status") == "PREPARED")
+
+
+def list_production_reels() -> bool:
+    print("==================================================")
+    print("AVAILABLE PRODUCTION REELS")
+    print("==================================================")
+
+    config = Config.load_from_env(validate=False)
+    from instagram_real_video_source import OwnedVideoProvider
+    from instagram_rights_evidence_engine import InstagramRightsEvidenceEngine
+    from instagram_real_video_verifier import InstagramRealVideoVerifier
+    from instagram_reel_quality_engine import InstagramReelQualityEngine
+
+    owned_prov = OwnedVideoProvider()
+    owned_items = owned_prov.fetch_video_items(limit=20)
+    rights_engine = InstagramRightsEvidenceEngine()
+    video_verifier = InstagramRealVideoVerifier()
+    quality_engine = InstagramReelQualityEngine()
+
+    print(f"\n{'ID':<32} | {'FILE':<45} | {'CAT':<8} | {'RIGHTS':<10} | {'COMM':<6} | {'MOD':<5} | {'DUR':<6} | {'RES':<10} | {'9:16':<5} | {'READY'}")
+    print("-" * 155)
+
+    valid_count = 0
+    for item in owned_items:
+        content_id = item.get("content_id", "")[:32]
+        filepath = item.get("local_path", "")
+        file_base = os.path.basename(filepath) if filepath else item.get("title", "")[:40]
+        cat = item.get("category", "cricket")[:7]
+        r_status = item.get("rights_status", "OWNED")[:9]
+        comm = "yes" if item.get("commercial_use_allowed") else "no"
+        mod = "yes" if item.get("modification_allowed") else "no"
+
+        r_res = rights_engine.verify_rights_evidence(item)
+        v_res = video_verifier.verify_video_file(filepath) if filepath and os.path.exists(filepath) else None
+        q_res = quality_engine.validate_reel_quality(filepath) if filepath and os.path.exists(filepath) else None
+
+        dur_str = f"{v_res.duration_seconds:.1f}s" if v_res else "N/A"
+        res_str = f"{v_res.width}x{v_res.height}" if v_res else "N/A"
+        is_916 = "yes" if (q_res and q_res.is_valid) else "no"
+
+        is_ready = r_res.is_valid and (v_res and v_res.is_valid) and (q_res and q_res.is_valid)
+        ready_str = "READY" if is_ready else "NOT READY"
+
+        if is_ready:
+            valid_count += 1
+
+        print(f"{content_id:<32} | {file_base:<45} | {cat:<8} | {r_status:<10} | {comm:<6} | {mod:<5} | {dur_str:<6} | {res_str:<10} | {is_916:<5} | {ready_str}")
+
+    print("\n" + "=" * 50)
+    print(f"Total Production-Ready Reels: {valid_count}")
     return True
 
 

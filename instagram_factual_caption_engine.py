@@ -74,9 +74,9 @@ class FactualityVerifier:
         # Extract numbers (excluding small common counts like 1, 2)
         numbers = set(re.findall(r"\b\d{2,}\b", text))
 
-        # Extract quotes inside "..." or '...'
+        # Extract quotes inside "..." or '...' (avoiding contractions like Women's, it's)
         quotes = set(re.findall(r'"([^"]+)"', text))
-        quotes.update(re.findall(r"'([^']+)'", text))
+        quotes.update(re.findall(r"(?<=[\s\(\[\{])'([^']+)'(?=[\s\)\.\,\!\?\]\}])", text))
 
         return {"numbers": numbers, "quotes": quotes, "scores": scores}
 
