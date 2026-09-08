@@ -1623,6 +1623,27 @@
       "url": "https://fdn.gsmarena.com/imgroot/news/26/09/huawei-pura-x-view-full-specs-prices-release-date/-184x111/gsmarena_000.jpg",
       "status": "FINAL_GUARD_BLOCKED",
       "processed_at": "2026-09-07T22:12:03.543576+00:00"
+    },
+    {
+      "content_id": "test-valid-15ceb60c",
+      "media_hash": "0742f153acee7855ef0167bbfe1d466bfd18e61f14409976502ee07aef33009a",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-15ceb60c.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-08T00:36:53.088172+00:00"
+    },
+    {
+      "content_id": "test-reel-q-8729907a",
+      "media_hash": "d00e04b38758d910a67be744e7cdfa07379b618b583f414e20aef66955b12819",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-8729907a.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-08T00:36:53.678980+00:00"
+    },
+    {
+      "content_id": "real-8bc59ed235812690",
+      "media_hash": "913401196cf67e4fd2bee71b17ee0d0c41aa34b9751f376bc61670677a11e6b2",
+      "url": "https://fdn.gsmarena.com/imgroot/news/26/09/xiaomi-pad-9-pro-max-official/-184x111/gsmarena_000.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-08T00:37:02.909374+00:00"
     }
   ]
 }
