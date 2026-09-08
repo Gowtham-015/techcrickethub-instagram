@@ -1644,6 +1644,41 @@
       "url": "https://fdn.gsmarena.com/imgroot/news/26/09/xiaomi-pad-9-pro-max-official/-184x111/gsmarena_000.jpg",
       "status": "FINAL_GUARD_BLOCKED",
       "processed_at": "2026-09-08T00:37:02.909374+00:00"
+    },
+    {
+      "content_id": "test-valid-c651bca1",
+      "media_hash": "f06ad9bfafa85441d23bc3a77ea2f47b6169bc423973a50cbcfe90c001cdfe93",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-c651bca1.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-08T05:20:51.321486+00:00"
+    },
+    {
+      "content_id": "test-reel-q-21aae8d3",
+      "media_hash": "217b54b6e4ee4d00fa42cd9dfdb29fe40a6e8a8ff6220fa901d855be5d9eed24",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-21aae8d3.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-08T05:20:51.816344+00:00"
+    },
+    {
+      "content_id": "real-b17dc09043848365",
+      "media_hash": "5d479402f4f466581c467aaf8e722c46dd1f3dcab10425ec9282e156275f10f9",
+      "url": "https://techcrunch.com/wp-content/uploads/2026/09/Construction-worker-Ray-Bans.png?resize=1200,800",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-08T05:20:59.792331+00:00"
+    },
+    {
+      "content_id": "real-d505cd3e9f85acb9",
+      "media_hash": "7dfca366c4a1968907228c60ebc4f4825a1b58cbf3fcda443cd21079b1e9ef0b",
+      "url": "https://p.imgci.com/db/PICTURES/CMS/422200/422212.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-08T05:21:02.549134+00:00"
+    },
+    {
+      "content_id": "real-53429dfcc9eefd57",
+      "media_hash": "3152794d68e1c0256e3e814a9f63f4d7e06fa79d70ad5357b33d876f1ccf593a",
+      "url": "https://p.imgci.com/db/PICTURES/CMS/413500/413516.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-08T05:21:04.778764+00:00"
     }
   ]
 }
