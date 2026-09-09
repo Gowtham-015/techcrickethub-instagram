@@ -1980,6 +1980,55 @@
       "url": "https://techcrunch.com/wp-content/uploads/2026/06/GettyImages-2278736523.jpeg?resize=1200,798",
       "status": "FINAL_GUARD_BLOCKED",
       "processed_at": "2026-09-08T23:24:08.029486+00:00"
+    },
+    {
+      "content_id": "test-valid-ccba3348",
+      "media_hash": "8cdc239a1359e962c4bec40a6e63c7195284c10338149867e7232a7155851229",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-ccba3348.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-09T01:23:40.568516+00:00"
+    },
+    {
+      "content_id": "test-reel-q-b3da6f21",
+      "media_hash": "94a5b79a8540175e28bc122b05ae3fba26f29c8e904c65caa3589c0fd8060024",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-b3da6f21.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-09T01:23:41.329902+00:00"
+    },
+    {
+      "content_id": "real-2518be1c902d01e9",
+      "media_hash": "bb511947fd179c37e11bc787320e88310c214acc1006fc4204f1dfe334013af4",
+      "url": "https://cdn.arstechnica.net/wp-content/uploads/2026/01/TV_OLED83B5PUA_brilliant-lg-oled-picture_features_900x600.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-09T01:23:57.041336+00:00"
+    },
+    {
+      "content_id": "real-33dd142ded42c5d0",
+      "media_hash": "2d370e450e5636e56ac87b264e2a8e2720b703a1f94ea969ad3ebf509b490d3a",
+      "url": "https://cdn.arstechnica.net/wp-content/uploads/2026/09/hitmanbox1-1152x648-1788901163.png",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-09T01:23:58.284829+00:00"
+    },
+    {
+      "content_id": "real-773ef20446a207b6",
+      "media_hash": "5ffc0671d59b2584d2a7de882b6f1344bbbd8232b96ebcc6f0706d0f34da48b7",
+      "url": "https://cdn.arstechnica.net/wp-content/uploads/2023/07/exploit-vulnerability-security.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-09T01:23:59.697901+00:00"
+    },
+    {
+      "content_id": "real-dc7a15763b2ae380",
+      "media_hash": "961c08d33e09041881e591a7dd791bc2e15c98ac858f5e5c22e85a4a2e7a4be2",
+      "url": "https://cdn.arstechnica.net/wp-content/uploads/2026/09/news-090826a-lg-1152x648.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-09T01:24:01.166372+00:00"
+    },
+    {
+      "content_id": "real-878d6f9876925c65",
+      "media_hash": "c693fe9c91e75e8cadc308b07d29c3941f4fb7dcf1330a273110a48ee14a7890",
+      "url": "https://cdn.arstechnica.net/wp-content/uploads/2026/09/GettyImages-2229834435-1152x648.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-09T01:24:02.557915+00:00"
     }
   ]
 }
