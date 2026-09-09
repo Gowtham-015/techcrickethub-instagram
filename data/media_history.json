@@ -2274,6 +2274,41 @@
       "url": "https://cdn.arstechnica.net/wp-content/uploads/2026/09/AIrPods-5-1152x648.jpg",
       "status": "FINAL_GUARD_BLOCKED",
       "processed_at": "2026-09-09T21:21:12.508907+00:00"
+    },
+    {
+      "content_id": "test-valid-c39ae06f",
+      "media_hash": "c121c647c2a7f35470a9dca8b3755f74f80afec4edb5418fc192f07d05d00bc8",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-c39ae06f.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-09T23:26:32.919934+00:00"
+    },
+    {
+      "content_id": "test-reel-q-12c4cd7e",
+      "media_hash": "8c51890a4d92067acb6d08e8db2de9c803ead564f31cfd6ef7f9de138e44a6f4",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-12c4cd7e.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-09T23:26:33.580105+00:00"
+    },
+    {
+      "content_id": "real-1a2dd573beeeee93",
+      "media_hash": "511310959146dc6356d1d32ed28d406700bacbebec910b9c35bfae3323137909",
+      "url": "https://techcrunch.com/wp-content/uploads/2024/10/matt-mullenweg-bling-watch.jpg?resize=1200,799",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-09T23:26:43.711982+00:00"
+    },
+    {
+      "content_id": "real-4a48c34314553fb4",
+      "media_hash": "02c7ebad48ab0a46757ca91de7d7e2ace998f6d393d9a346d0f345df91331b58",
+      "url": "https://techcrunch.com/wp-content/uploads/2026/09/openai-getty.jpg?resize=1200,800",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-09T23:26:44.469888+00:00"
+    },
+    {
+      "content_id": "real-819da7f43e7b80b2",
+      "media_hash": "293366c3a998379bd2f3a5b154b97ca524b76f3046828e737545cee22914eea1",
+      "url": "https://techcrunch.com/wp-content/uploads/2026/09/GettyImages-2001268132.jpeg?resize=1200,800",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-09T23:26:45.209983+00:00"
     }
   ]
 }
