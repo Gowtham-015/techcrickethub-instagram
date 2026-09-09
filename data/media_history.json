@@ -2071,6 +2071,76 @@
       "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-4434e960.mp4",
       "status": "PROCESSED",
       "processed_at": "2026-09-09T11:40:09.968625+00:00"
+    },
+    {
+      "content_id": "test-valid-496715b7",
+      "media_hash": "40ef0c194c4a4f99c5793abbd991e3e7b703310b6e26e0c0f77bf4c838bd0647",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-496715b7.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-09T15:21:45.533388+00:00"
+    },
+    {
+      "content_id": "test-reel-q-fbf46660",
+      "media_hash": "c87337ebac211ccad6a9981c38ac91f213fded41078129cb68fba9dc405cf781",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-fbf46660.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-09T15:21:46.203709+00:00"
+    },
+    {
+      "content_id": "real-3f6ebeabcc3b31f5",
+      "media_hash": "ff432b12b8c0a35900e7886ca2fd4704b4c41578f434b89410f889ba0b72e05d",
+      "url": "https://techcrunch.com/wp-content/uploads/2023/11/81752CC3-0EA6-4B02-A8FB-D98234DEFDA5.jpeg?w=1170",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-09T15:22:14.808658+00:00"
+    },
+    {
+      "content_id": "real-863e3ba7851c2e71",
+      "media_hash": "73ca06501f852e281c82023ead89a6c6de9ad3ff3295b2d952d818c05fc48843",
+      "url": "https://techcrunch.com/wp-content/uploads/2026/09/GettyImages-2063425288.jpg?resize=1200,818",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-09T15:22:23.047235+00:00"
+    },
+    {
+      "content_id": "real-ead7d6d7d5cc2fa5",
+      "media_hash": "428963ddd06b50b2b5007d9383c366ba2b919705d504d6481fac78037bdcb291",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/media/generated/photo_real-ead7d6d7d5cc2fa5.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-09T15:22:23.699413+00:00"
+    },
+    {
+      "content_id": "real-a4ba57207eabc289",
+      "media_hash": "f95ac8eeeac0d8ed7d83aa473c367e1ef9df1269588cbaecfac36350e5725206",
+      "url": "https://techcrunch.com/wp-content/uploads/2026/09/uber-black-india.jpg?resize=1200,800",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-09T15:22:24.417566+00:00"
+    },
+    {
+      "content_id": "real-a086540ed296849a",
+      "media_hash": "996aeb2564c3f64be545ee01f59aa47efe87f657a81f7112a5d33e551f8791ee",
+      "url": "https://cdn.arstechnica.net/wp-content/uploads/2024/03/GettyImages-588701496-1152x648.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-09T15:22:25.476313+00:00"
+    },
+    {
+      "content_id": "real-c7726d3d0e64da3c",
+      "media_hash": "f70f4f9e3989e599304ef04bdc0e1570042e0239de1a29a5daca8e5d6f4da73f",
+      "url": "https://cdn.arstechnica.net/wp-content/uploads/2026/09/chatgpt-jesus2-1-1152x648.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-09T15:22:26.466090+00:00"
+    },
+    {
+      "content_id": "real-3fb433d1f6f6b24a",
+      "media_hash": "dd7438f7826fefc75ca76f15bf287dca3fa9506805d92bf14ccdab6501e216f6",
+      "url": "https://p.imgci.com/db/PICTURES/CMS/422200/422297.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-09T15:22:30.161873+00:00"
+    },
+    {
+      "content_id": "real-fbfd68ea9a83aeb1",
+      "media_hash": "0d3deaf2ddb299ea4a1e20c9c3a8e3cd4d702d3ccbe9715c77a19cdad57c24fd",
+      "url": "https://techcrunch.com/wp-content/uploads/2026/09/instinct-email.jpeg?w=1200",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-09T15:23:04.221136+00:00"
     }
   ]
 }
