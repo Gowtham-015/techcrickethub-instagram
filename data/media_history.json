@@ -2491,6 +2491,76 @@
       "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-02bd392e.mp4",
       "status": "PROCESSED",
       "processed_at": "2026-09-10T19:16:37.556209+00:00"
+    },
+    {
+      "content_id": "test-valid-499cd4b0",
+      "media_hash": "6f616614475c3865bef973c38ffc00013ecf7ce380a2b98e429b37761e24b3b9",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-499cd4b0.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-10T21:16:02.958881+00:00"
+    },
+    {
+      "content_id": "test-reel-q-4e9fefa5",
+      "media_hash": "7cc0195c215643569c756bf42b3daea2ec1844e589ed84d4dc754e68a777c7d6",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-4e9fefa5.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-10T21:16:03.540578+00:00"
+    },
+    {
+      "content_id": "real-7ff4f0a91f253ce1",
+      "media_hash": "6f803d46e63fc16c78f9cb2f41ec74503fc93dc7ff7c241cd7dee2809c805a5d",
+      "url": "https://techcrunch.com/wp-content/uploads/2026/08/GettyImages-2287646148.jpg?resize=1200,901",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-10T21:16:11.569815+00:00"
+    },
+    {
+      "content_id": "real-221978eef85fd80e",
+      "media_hash": "0f17e7918b54fd80a163a41d01aaed27fa40cc4de8efa6b8d074d41dafb3fb87",
+      "url": "https://techcrunch.com/wp-content/uploads/2026/09/furo-cofounders.jpg?resize=1200,900",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-10T21:16:12.280448+00:00"
+    },
+    {
+      "content_id": "real-fbc187c5d9f06995",
+      "media_hash": "3453d97b359eb8e91b82bfd1f5637501420080eb875b3e129f1ecccb6313ea94",
+      "url": "https://techcrunch.com/wp-content/uploads/2026/09/meta-muse-app-GettyImages-2293792137.jpg?w=1024",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-10T21:16:12.895476+00:00"
+    },
+    {
+      "content_id": "real-6102cce289378461",
+      "media_hash": "544bce234903b85cb020677720f9d04478d95b780a070d16716969a62ba1549a",
+      "url": "https://cdn.arstechnica.net/wp-content/uploads/2026/09/linkedin-headquarters-1152x648-1789072079.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-10T21:16:13.865506+00:00"
+    },
+    {
+      "content_id": "real-7a3c6483dec2c209",
+      "media_hash": "1dfa8f3545f1325db2c59cfcc6e68679462fde2be447701de35d27725b7399b8",
+      "url": "https://cdn.arstechnica.net/wp-content/uploads/2026/09/Envision-1152x648-1789054779.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-10T21:16:14.748385+00:00"
+    },
+    {
+      "content_id": "real-ffcca2cbf5a813ef",
+      "media_hash": "d8987a721d481b8f38201b1bee8ef55f0c7d10c2898c34b2f32fed7bf89d4b4a",
+      "url": "https://cdn.arstechnica.net/wp-content/uploads/2026/09/Hero_Image_4.width-1600.format-webp-1152x648.png",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-10T21:16:15.496935+00:00"
+    },
+    {
+      "content_id": "real-24e3cec0b25935d1",
+      "media_hash": "08db92f7579a3927d1abe95ab616ff82b97ee2986a768e1091894501287720f2",
+      "url": "https://cdn.arstechnica.net/wp-content/uploads/2026/09/GettyImages-2271644469-1024x648.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-10T21:16:16.292345+00:00"
+    },
+    {
+      "content_id": "real-ff00b3ab76c3a613",
+      "media_hash": "0956583d377a0b843945dbc6838314f49284ec3b73f93f6fdae06c4b65a53ae5",
+      "url": "https://cdn.arstechnica.net/wp-content/uploads/2026/09/PicardManeuverScreenshot.png",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-10T21:16:17.070192+00:00"
     }
   ]
 }
