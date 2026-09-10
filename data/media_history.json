@@ -2309,6 +2309,41 @@
       "url": "https://techcrunch.com/wp-content/uploads/2026/09/GettyImages-2001268132.jpeg?resize=1200,800",
       "status": "FINAL_GUARD_BLOCKED",
       "processed_at": "2026-09-09T23:26:45.209983+00:00"
+    },
+    {
+      "content_id": "test-valid-5f5e421c",
+      "media_hash": "bd98aa5c0a5e3669736d6514e3971f64462248f703363bbc6dd0b0932127b2cc",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-5f5e421c.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-10T01:18:50.177475+00:00"
+    },
+    {
+      "content_id": "test-reel-q-7396b077",
+      "media_hash": "24834221247045d1772283b558573e3e6803072a7ced8df0f21ea2c1c4e4f3d0",
+      "url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_real-7396b077.mp4",
+      "status": "PROCESSED",
+      "processed_at": "2026-09-10T01:18:51.027138+00:00"
+    },
+    {
+      "content_id": "real-0da524025769ff42",
+      "media_hash": "a3b2ec7a4b3c93c706f62ef55185d050b549ce6a106c0594b3bd2400513a6ce2",
+      "url": "https://techcrunch.com/wp-content/uploads/2026/02/GettyImages-2221463618.jpg?resize=1200,800",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-10T01:19:06.260719+00:00"
+    },
+    {
+      "content_id": "real-c7db1b382d67b3d9",
+      "media_hash": "5dc76892d67d5a249aade19f8a63d0dc01cce20fed8aa7bdf5ccc634e99decc5",
+      "url": "https://cdn.arstechnica.net/wp-content/uploads/2023/09/code-vulnerability-security-1000x648.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-10T01:19:08.479013+00:00"
+    },
+    {
+      "content_id": "real-723e73a13f9ab364",
+      "media_hash": "98a2342b37fd0f9630403be43dbf19fe052e57928a0b669adeb4ecd37ba9f30d",
+      "url": "https://cdn.arstechnica.net/wp-content/uploads/2026/09/GettyImages-2237740895-1024x648.jpg",
+      "status": "FINAL_GUARD_BLOCKED",
+      "processed_at": "2026-09-10T01:19:09.812482+00:00"
     }
   ]
 }
