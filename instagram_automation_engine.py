@@ -6,6 +6,8 @@ import signal
 import sys
 import time
 
+import re
+import urllib.parse
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -48,6 +50,7 @@ from instagram_rights_evidence_engine import InstagramRightsEvidenceEngine
 from instagram_real_video_verifier import InstagramRealVideoVerifier
 from instagram_factual_caption_engine import InstagramFactualCaptionEngine
 from instagram_reel_quality_engine import InstagramReelQualityEngine
+from instagram_content_analytics import InstagramContentAnalytics
 from security import RedactingFormatter, redact_token
 
 
@@ -108,6 +111,7 @@ class InstagramAutomationEngine:
         self.real_video_verifier = InstagramRealVideoVerifier()
         self.factual_caption_engine = InstagramFactualCaptionEngine(token=self.config.access_token)
         self.reel_quality_engine = InstagramReelQualityEngine()
+        self.content_analytics = InstagramContentAnalytics()
 
         self.normalizer = InstagramContentNormalizer()
         self.acquirer = InstagramMediaAcquirer()
@@ -1110,8 +1114,33 @@ class InstagramAutomationEngine:
                     quality_rejected_count += 1
                     continue
 
-            # Deduplicate by physical binary video content hash
+            # Deduplicate by canonical media URL and filename against published_history
             cand_local_file = raw_item.get("local_path") or raw_item.get("video_url") or media_url or ""
+            from instagram_public_media_host import PublicMediaHost
+            host = PublicMediaHost()
+            prospective_public_url = host.get_public_url(cand_local_file) if cand_local_file else (media_url or "")
+
+            is_already_published = False
+            for pub_item in published_history:
+                pub_media = pub_item.get("media_url") or pub_item.get("canonical_source_url") or ""
+                if pub_media and cand_local_file:
+                    pub_base = os.path.basename(urllib.parse.urlparse(pub_media).path)
+                    cand_base = os.path.basename(cand_local_file.replace("\\", "/"))
+                    if cand_base and pub_base:
+                        clean_cand_base = re.sub(r"(_reel_916)+(\.mp4)$", r"\2", cand_base, flags=re.IGNORECASE)
+                        clean_pub_base = re.sub(r"(_reel_916)+(\.mp4)$", r"\2", pub_base, flags=re.IGNORECASE)
+                        if clean_cand_base == clean_pub_base:
+                            is_already_published = True
+                            break
+
+            if is_already_published:
+                self.logger.warning(
+                    f"Prepare Media candidate '{content_id}' rejected: Candidate media '{cand_local_file}' matches previously published Reel in history."
+                )
+                quality_rejected_count += 1
+                continue
+
+            # Deduplicate by physical binary video content hash
             cand_sha256 = ""
             if cand_local_file:
                 base_repo_dir = os.path.dirname(os.path.abspath(__file__))
@@ -1148,7 +1177,7 @@ class InstagramAutomationEngine:
                 source_url=getattr(content, "source_url", "") or raw_item.get("source_url") or "",
                 source_domain=getattr(content, "source_domain", "") or raw_item.get("source_domain") or "",
                 published_at=getattr(content, "published_at", "") or "",
-                media_url=media_url or "",
+                media_url=prospective_public_url,
                 media_type=content.media_type,
                 media_hash=cand_sha256,
                 media_rights_status=rights_res.rights_status,
@@ -1164,6 +1193,11 @@ class InstagramAutomationEngine:
                     f"(Score: {cand_info.get('total_score')}/100, Category: {content.category})"
                 )
                 break
+            else:
+                self.logger.warning(
+                    f"Prepare Media candidate '{content_id}' rejected by final publish guard: {g_res.message}"
+                )
+                quality_rejected_count += 1
 
         if not selected_raw:
             self.logger.warning("Prepare Media: No valid unpublished candidate passed duplicate guard and rights verification.")
@@ -1216,12 +1250,16 @@ class InstagramAutomationEngine:
             media_sha256 = v_res.media_sha256
 
         source_dom = getattr(content, "source_domain", "") or selected_raw.get("source_domain") or ""
+        media_event_match = bool(selected_raw.get("media_event_match", False if selected_raw.get("is_owned") else True))
+        story_fingerprint = self.final_publish_guard.calculate_fact_fingerprint(content.title, content.summary)
+
         cap_res = self.factual_caption_engine.generate_factual_caption(
             title=content.title,
             summary=content.summary,
             category=content.category,
             source_domain=source_dom,
             published_history=published_history,
+            media_event_match=media_event_match,
         )
         if not cap_res or not cap_res.is_valid or not cap_res.caption:
             reasons_str = "; ".join(cap_res.reasons) if (cap_res and cap_res.reasons) else "Factual caption validation failed."
@@ -1252,6 +1290,8 @@ class InstagramAutomationEngine:
             "public_url": public_url,
             "media_sha256": media_sha256,
             "media_duration": video_dur,
+            "story_fingerprint": story_fingerprint,
+            "media_event_match": media_event_match,
             "caption": final_caption,
             "hashtags": final_hashtags,
             "information_source_url": info_source_url,
@@ -1355,7 +1395,7 @@ class InstagramAutomationEngine:
         if not verifier_res.get("is_valid"):
             err_msg = verifier_res.get("error", "Public media verification failed")
             self.logger.error(f"Publish Prepared FAILED: Public media accessibility verification failed for {public_url}: {err_msg}")
-            return {"status": "FAILED", "reason": err_msg, "published": 0}
+            return {"status": "GITHUB_RAW_MEDIA_UNAVAILABLE", "reason": err_msg, "published": 0}
 
         bundle = ContentBundle(
             content_id=content_id,
@@ -1378,6 +1418,7 @@ class InstagramAutomationEngine:
         g_res = self.final_publish_guard.verify_and_guard(bundle)
         if not g_res.is_valid:
             self.logger.warning(f"Publish Prepared BLOCKED by duplicate guard: {g_res.message}")
+            self.health_tracker.record_duplicate_block(g_res.message)
             try:
                 os.remove(prepared_file)
             except Exception:
@@ -1437,6 +1478,10 @@ class InstagramAutomationEngine:
                     if is_verified:
                         self.final_publish_guard.record_published_item(bundle=bundle, media_id=pub_res.media_id)
                         self.health_tracker.record_publish_success(media_id=pub_res.media_id)
+                        try:
+                            self.content_analytics.record_published_item(bundle=bundle, media_id=pub_res.media_id, creation_id=pub_res.creation_id)
+                        except Exception as analytics_err:
+                            self.logger.warning(f"Analytics recording error: {analytics_err}")
                         try:
                             os.remove(prepared_file)
                         except Exception:

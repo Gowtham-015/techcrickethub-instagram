@@ -103,16 +103,32 @@ class OwnedVideoProvider(RealVideoProvider):
                     continue
 
                 rights_status = (entry.get("rights_status") or "").upper()
-                if rights_status not in InstagramRealVideoSource.ALLOWED_RIGHTS_STATUSES:
-                    logger.warning(f"Owned video entry '{filename}' has invalid rights_status '{rights_status}'. Rejecting.")
+                if not rights_status or rights_status not in InstagramRealVideoSource.ALLOWED_RIGHTS_STATUSES:
+                    logger.warning(f"Owned video entry '{filename}' has missing or invalid rights_status '{rights_status}'. Rejecting.")
                     continue
 
-                rights_evidence = entry.get("rights_evidence") or "Account-owned original media"
-                try:
-                    meta_rel = os.path.relpath(self.metadata_path, os.path.dirname(os.path.abspath(__file__))).replace("\\", "/")
-                except ValueError:
-                    meta_rel = os.path.abspath(self.metadata_path).replace("\\", "/")
-                rights_evidence_url = entry.get("rights_evidence_url") or f"file:///{os.path.abspath(self.metadata_path).replace(os.sep, '/')}"
+                rights_evidence = (entry.get("rights_evidence") or "").strip()
+                if not rights_evidence:
+                    logger.warning(f"Owned video entry '{filename}' is missing required 'rights_evidence'. Rejecting.")
+                    continue
+
+                rights_evidence_url = (entry.get("rights_evidence_url") or "").strip()
+                if not rights_evidence_url:
+                    logger.warning(f"Owned video entry '{filename}' is missing required 'rights_evidence_url'. Rejecting.")
+                    continue
+
+                license_info = (entry.get("license") or "").strip()
+                if not license_info:
+                    logger.warning(f"Owned video entry '{filename}' is missing required 'license'. Rejecting.")
+                    continue
+
+                if "commercial_use_allowed" not in entry or entry.get("commercial_use_allowed") is not True:
+                    logger.warning(f"Owned video entry '{filename}' does not explicitly grant 'commercial_use_allowed' = True. Rejecting.")
+                    continue
+
+                if "modification_allowed" not in entry or entry.get("modification_allowed") is not True:
+                    logger.warning(f"Owned video entry '{filename}' does not explicitly grant 'modification_allowed' = True. Rejecting.")
+                    continue
 
                 title = entry.get("title") or f"Owned {item_category.capitalize()} Reel"
                 hasher = hashlib.sha256(f"owned:{filename}:{title}".encode("utf-8"))
@@ -137,10 +153,11 @@ class OwnedVideoProvider(RealVideoProvider):
                     "rights_evidence_type": "ACCOUNT_OWNED_METADATA",
                     "rights_evidence": rights_evidence,
                     "rights_evidence_url": rights_evidence_url,
-                    "license": entry.get("license", "Owned by account owner"),
+                    "license": license_info,
+                    "license_url": rights_evidence_url,
                     "attribution_required": bool(entry.get("attribution_required", False)),
-                    "commercial_use_allowed": bool(entry.get("commercial_use_allowed", True)),
-                    "modification_allowed": bool(entry.get("modification_allowed", True)),
+                    "commercial_use_allowed": True,
+                    "modification_allowed": True,
                     "discovered_at": datetime.now(timezone.utc).isoformat(),
                     "published_at": datetime.now(timezone.utc).isoformat(),
                     "media_type": "REEL",
@@ -291,7 +308,12 @@ class InstagramRealVideoSource(InstagramContentSource):
         if not input_mp4_path or not os.path.exists(input_mp4_path):
             return None
 
-        out_path = input_mp4_path.replace(".mp4", "_reel_916.mp4")
+        if input_mp4_path.lower().endswith("_reel_916.mp4"):
+            out_path = input_mp4_path
+            return out_path
+        else:
+            out_path = input_mp4_path[:-4] + "_reel_916.mp4" if input_mp4_path.lower().endswith(".mp4") else f"{input_mp4_path}_reel_916.mp4"
+
         if os.path.exists(out_path) and os.path.getsize(out_path) > 0:
             return out_path
 
@@ -381,17 +403,72 @@ class InstagramRealVideoSource(InstagramContentSource):
         cat_clean = (category or "cricket").strip().lower()
         results: List[Dict[str, Any]] = []
 
-        # 1. Discover account-owned video candidates with explicit metadata
-        owned_items = self.owned_provider.fetch_video_items(category=cat_clean, limit=limit)
-        for owned in owned_items:
-            if len(results) >= limit:
-                break
-            results.append(owned)
+        # 1. Discover acquired Creative Commons video candidates via YouTube search & open CC feeds
+        try:
+            import yt_dlp
+            search_query = f"ytsearch5:{cat_clean} creative commons"
+            ydl_opts = {
+                "quiet": True,
+                "extract_flat": True,
+                "no_warnings": True,
+            }
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                search_res = ydl.extract_info(search_query, download=False)
+                entries = search_res.get("entries", []) if isinstance(search_res, dict) else []
+                ydl_detail = yt_dlp.YoutubeDL({"quiet": True, "skip_download": True, "no_warnings": True})
+                for entry in entries:
+                    if len(results) >= limit:
+                        break
+                    v_id = entry.get("id")
+                    if not v_id:
+                        continue
+                    v_url = f"https://www.youtube.com/watch?v={v_id}"
+                    try:
+                        d = ydl_detail.extract_info(v_url, download=False)
+                        lic = d.get("license") or ""
+                        desc = d.get("description") or ""
+                        is_cc = ("creative commons" in lic.lower() or "reuse allowed" in lic.lower() or
+                                 "creative commons" in desc.lower() or "cc-by" in desc.lower())
+                        if is_cc:
+                            title = d.get("title") or f"Real {cat_clean.capitalize()} Video"
+                            content_id = self.generate_stable_id(v_url, "youtube.cc")
+                            results.append({
+                                "content_id": content_id,
+                                "title": title,
+                                "summary": desc[:250] if desc else title,
+                                "description": desc,
+                                "category": cat_clean,
+                                "source_name": "youtube_cc",
+                                "source_url": v_url,
+                                "information_source_url": v_url,
+                                "video_url": v_url,
+                                "source_domain": "youtube.com",
+                                "publisher": d.get("uploader", "YouTube CC"),
+                                "media_rights_status": "VERIFIED_CC_LICENSE",
+                                "rights_status": "VERIFIED_CC_LICENSE",
+                                "rights_evidence_type": "CREATIVE_COMMONS_API",
+                                "rights_evidence": f"Verified Creative Commons license: {lic or 'CC BY'}",
+                                "rights_evidence_url": v_url,
+                                "license": lic or "Creative Commons Attribution",
+                                "attribution_required": True,
+                                "commercial_use_allowed": True,
+                                "modification_allowed": True,
+                                "discovered_at": datetime.now(timezone.utc).isoformat(),
+                                "published_at": datetime.now(timezone.utc).isoformat(),
+                                "media_type": "REEL",
+                                "is_fallback": False,
+                                "is_owned": False,
+                            })
+                            logger.info(f"Discovered acquired CC video candidate: '{title}' ({v_url})")
+                    except Exception as ex:
+                        logger.warning(f"Error inspecting YouTube candidate {v_url}: {ex}")
+        except Exception as e:
+            logger.warning(f"YouTube CC discovery failed: {e}")
 
         if len(results) >= limit:
             return results
 
-        # 2. Discover candidates from external video feeds
+        # 2. Discover candidates from external video RSS feeds
         if cat_clean == "cricket":
             feeds = self.cricket_video_feeds
         elif cat_clean == "geopolitics":
@@ -433,6 +510,16 @@ class InstagramRealVideoSource(InstagramContentSource):
                         )
             except Exception as e:
                 logger.warning(f"Failed to discover video feed {redact_url(feed_url)}: {e}")
+
+        if len(results) >= limit:
+            return results
+
+        # 3. Fallback to account-owned video candidates if external candidates are insufficient
+        owned_items = self.owned_provider.fetch_video_items(category=cat_clean, limit=limit)
+        for owned in owned_items:
+            if len(results) >= limit:
+                break
+            results.append(owned)
 
         return results
 

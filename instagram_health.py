@@ -40,7 +40,13 @@ class InstagramHealthTracker:
             "last_heartbeat": None,
             "last_cycle_at": None,
             "last_success_at": None,
+            "last_attempted_run": None,
+            "last_successful_run": None,
             "last_error": None,
+            "workflow_runs_total": 0,
+            "workflow_runs_failed": 0,
+            "consecutive_failures": 0,
+            "consecutive_no_content_runs": 0,
             "cycles_completed": 0,
             "items_processed": 0,
             "items_published": 0,
@@ -60,7 +66,12 @@ class InstagramHealthTracker:
             "last_valid_reel_at": None,
             "last_no_valid_reel_at": None,
             "rights_rejection_count": 0,
+            "duplicate_rejection_count": 0,
             "video_quality_rejection_count": 0,
+            "discovery_failures": 0,
+            "meta_failures": 0,
+            "github_raw_failures": 0,
+            "preparation_failures": 0,
             "production_paused": False,
             "pause_reason": None,
             "live_test_count": 0,
@@ -161,6 +172,15 @@ class InstagramHealthTracker:
         data["video_quality_rejection_count"] = int(data.get("video_quality_rejection_count") or 0) + quality_rejections
         self._save_health(data)
 
+    def record_duplicate_block(self, reason: str = "") -> None:
+        """Records a pre-publish duplicate safety block without incrementing publish failures."""
+        data = self._load_health()
+        now_iso = datetime.now(timezone.utc).isoformat()
+        data["last_duplicate_block_at"] = now_iso
+        data["duplicate_blocks_count"] = int(data.get("duplicate_blocks_count") or 0) + 1
+        data["last_duplicate_block_reason"] = redact_token(reason)
+        self._save_health(data)
+
     def record_publish_failure(self, error: str, max_consecutive_failures: int = 3) -> None:
         """Records publish failure and triggers safety pause if limit reached."""
         data = self._load_health()
@@ -200,13 +220,140 @@ class InstagramHealthTracker:
             data["optimization_recommendations"] = int(data.get("optimization_recommendations") or 0) + 1
         self._save_health(data)
 
-    def get_health_summary(self) -> Dict[str, Any]:
-        """Returns copy of current health status summary."""
-        return self._load_health()
+    def record_workflow_run(self, success: bool, status_label: str = "COMPLETED", failure_type: Optional[str] = None) -> None:
+        """Records workflow run execution timestamp, success/failure counters, and consecutive run tracking."""
+        data = self._load_health()
+        now_iso = datetime.now(timezone.utc).isoformat()
+        data["last_attempted_run"] = now_iso
+        data["workflow_runs_total"] = int(data.get("workflow_runs_total") or 0) + 1
+
+        if success:
+            data["last_successful_run"] = now_iso
+            data["consecutive_failures"] = 0
+            if status_label in ("NO_FRESH_NEWS", "NO_VALID_REEL", "HEALTHY_NO_CONTENT"):
+                data["consecutive_no_content_runs"] = int(data.get("consecutive_no_content_runs") or 0) + 1
+            else:
+                data["consecutive_no_content_runs"] = 0
+        else:
+            data["workflow_runs_failed"] = int(data.get("workflow_runs_failed") or 0) + 1
+            data["consecutive_failures"] = int(data.get("consecutive_failures") or 0) + 1
+            if failure_type == "DISCOVERY":
+                data["discovery_failures"] = int(data.get("discovery_failures") or 0) + 1
+            elif failure_type == "META":
+                data["meta_failures"] = int(data.get("meta_failures") or 0) + 1
+            elif failure_type == "GITHUB_RAW":
+                data["github_raw_failures"] = int(data.get("github_raw_failures") or 0) + 1
+            elif failure_type == "PREPARATION":
+                data["preparation_failures"] = int(data.get("preparation_failures") or 0) + 1
+
+        self._save_health(data)
+
+    def record_discovery_failure(self) -> None:
+        """Increments discovery failure counter."""
+        data = self._load_health()
+        data["discovery_failures"] = int(data.get("discovery_failures") or 0) + 1
+        self._save_health(data)
+
+    def record_meta_failure(self) -> None:
+        """Increments Meta API failure counter."""
+        data = self._load_health()
+        data["meta_failures"] = int(data.get("meta_failures") or 0) + 1
+        self._save_health(data)
+
+    def record_github_raw_failure(self) -> None:
+        """Increments GitHub Raw failure counter."""
+        data = self._load_health()
+        data["github_raw_failures"] = int(data.get("github_raw_failures") or 0) + 1
+        self._save_health(data)
+
+    def record_preparation_failure(self) -> None:
+        """Increments media preparation failure counter."""
+        data = self._load_health()
+        data["preparation_failures"] = int(data.get("preparation_failures") or 0) + 1
+        self._save_health(data)
+
+    def record_duplicate_rejection(self) -> None:
+        """Increments duplicate story rejection counter."""
+        data = self._load_health()
+        data["duplicate_rejection_count"] = int(data.get("duplicate_rejection_count") or 0) + 1
+        self._save_health(data)
+
+    def detect_execution_gap(self, threshold_hours: float = 6.0) -> bool:
+        """Detects if no successful execution has occurred within threshold_hours."""
+        data = self._load_health()
+        last_succ = data.get("last_successful_run") or data.get("last_success_at")
+        if not last_succ:
+            return False
+        try:
+            dt_succ = datetime.fromisoformat(last_succ.replace("Z", "+00:00"))
+            now_dt = datetime.now(timezone.utc)
+            gap_hours = (now_dt - dt_succ).total_seconds() / 3600.0
+            return gap_hours > threshold_hours
+        except Exception:
+            return False
+
+    def detect_repeated_discovery_failures(self, threshold: int = 3) -> bool:
+        """Detects if discovery failures exceed threshold."""
+        data = self._load_health()
+        return int(data.get("discovery_failures") or 0) >= threshold
+
+    def detect_repeated_rights_failures(self, threshold: int = 3) -> bool:
+        """Detects if rights rejections exceed threshold."""
+        data = self._load_health()
+        return int(data.get("rights_rejection_count") or 0) >= threshold
+
+    def detect_repeated_meta_failures(self, threshold: int = 3) -> bool:
+        """Detects if Meta API failures exceed threshold."""
+        data = self._load_health()
+        return int(data.get("meta_failures") or 0) >= threshold or int(data.get("consecutive_publish_failures") or 0) >= threshold
+
+    def detect_repeated_no_content(self, threshold: int = 3) -> bool:
+        """Detects if consecutive runs with no content / no fresh news exceed threshold."""
+        data = self._load_health()
+        return int(data.get("consecutive_no_content_runs") or 0) >= threshold or int(data.get("consecutive_no_valid_reel_runs") or 0) >= threshold
+
+    def detect_duplicate_protection_failures(self, threshold: int = 3) -> bool:
+        """Detects if duplicate rejections exceed threshold."""
+        data = self._load_health()
+        return int(data.get("duplicate_rejection_count") or 0) >= threshold
+
+    def get_monitoring_status(self) -> Dict[str, Any]:
+        """Returns 24/7 monitoring evaluation status (HEALTHY, WARNING, DEGRADED) and active health alerts."""
+        data = self._load_health()
+        alerts: List[str] = []
+
+        if self.detect_execution_gap(threshold_hours=6.0):
+            alerts.append("ABNORMAL_EXECUTION_GAP: No successful run within last 6 hours.")
+
+        if self.detect_repeated_discovery_failures(threshold=3):
+            alerts.append(f"REPEATED_DISCOVERY_FAILURES: {data.get('discovery_failures', 0)} discovery failures recorded.")
+
+        if self.detect_repeated_rights_failures(threshold=3):
+            alerts.append(f"REPEATED_RIGHTS_FAILURES: {data.get('rights_rejection_count', 0)} rights rejections recorded.")
+
+        if self.detect_repeated_meta_failures(threshold=3):
+            alerts.append(f"REPEATED_META_FAILURES: {data.get('meta_failures', 0)} Meta API failures recorded.")
+
+        if self.detect_repeated_no_content(threshold=3):
+            alerts.append(f"REPEATED_NO_CONTENT: {data.get('consecutive_no_content_runs', 0)} consecutive runs without fresh content.")
+
+        if self.detect_duplicate_protection_failures(threshold=3):
+            alerts.append(f"DUPLICATE_PROTECTION_FAILURES: {data.get('duplicate_rejection_count', 0)} duplicate rejections recorded.")
+
+        if int(data.get("consecutive_failures") or 0) >= 3 or data.get("production_paused"):
+            status = "DEGRADED"
+        elif alerts:
+            status = "WARNING"
+        else:
+            status = "HEALTHY"
+
+        data["monitoring_status"] = status
+        data["active_alerts"] = alerts
+        return data
 
     def get_production_health_summary(self) -> Dict[str, Any]:
         """Returns structured production health diagnosis (HEALTHY, DEGRADED, PAUSED, STOPPED, CONTENT_STARVATION)."""
-        data = self._load_health()
+        data = self.get_monitoring_status()
         status = data.get("status", "STOPPED")
         paused = data.get("production_paused", False)
         no_valid_runs = int(data.get("consecutive_no_valid_reel_runs") or 0)
@@ -224,6 +371,10 @@ class InstagramHealthTracker:
 
         data["health_label"] = health_label
         return data
+
+    def get_health_summary(self) -> Dict[str, Any]:
+        """Alias for get_production_health_summary to support backwards compatibility across tests."""
+        return self.get_production_health_summary()
 
     def reset_test_state(self) -> None:
         """Resets health state file for clean testing."""
