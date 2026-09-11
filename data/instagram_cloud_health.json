@@ -1,8 +1,8 @@
 {
-  "worker_id": "runnervmlun5p-4428",
+  "worker_id": "runnervmlun5p-3718",
   "worker_status": "RUNNING",
-  "started_at": "2026-09-10T23:17:31.717360+00:00",
-  "last_heartbeat": "2026-09-10T23:17:31.717373+00:00",
+  "started_at": "2026-09-11T01:16:17.045150+00:00",
+  "last_heartbeat": "2026-09-11T01:16:17.045165+00:00",
   "uptime_seconds": 0,
   "last_cycle": "N/A",
   "last_publish_attempt": "N/A",
