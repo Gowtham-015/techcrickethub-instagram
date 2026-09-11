@@ -172,6 +172,7 @@ class InstagramFactualCaptionEngine:
         source_domain: Optional[str] = None,
         published_history: Optional[List[Dict[str, Any]]] = None,
         item_index: int = 0,
+        media_event_match: bool = True,
     ) -> CaptionGenerationResult:
         category_clean = (category or "cricket").strip().lower()
         clean_title = ContentSanitizer.sanitize_content(title or "", token=self.token)
