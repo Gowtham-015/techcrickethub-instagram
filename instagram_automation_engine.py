@@ -1001,6 +1001,7 @@ class InstagramAutomationEngine:
 
         # 3. Decouple & Pair News Context with Rights-Verified Reel Media Assets
         candidate_pool: List[Dict[str, Any]] = []
+        published_history = self.final_publish_guard.get_published_history()
         
         # A. Paired Candidates: Fresh news context + Authorized video asset
         if news_items and unique_video_assets:

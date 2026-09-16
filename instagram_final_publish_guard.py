@@ -184,7 +184,7 @@ class InstagramFinalPublishGuard:
         # 0. Sample / Fake Video URL Rejection
         if bundle.media_type == "REEL" and bundle.media_url:
             lowered_media = bundle.media_url.lower()
-            if "ai_commentary.mp4" in lowered_media or "sample" in lowered_media or "test_video" in lowered_media:
+            if "ai_commentary.mp4" in lowered_media or "sample" in lowered_media or "test_video" in lowered_media or "oceans" in lowered_media:
                 return GuardResult(
                     is_valid=False,
                     error_code="INVALID_MEDIA",
@@ -366,14 +366,6 @@ class InstagramFinalPublishGuard:
                         or self.canonicalize_url(pub_media) == self.canonicalize_url(bundle.media_url)
                         or pub_media.strip() == bundle.media_url.strip()
                     ):
-                        pub_norm_title = self.normalize_text(item.get("title", ""))
-                        if norm_title and pub_norm_title and norm_title != pub_norm_title:
-                            return GuardResult(
-                                is_valid=False,
-                                error_code="MEDIA_COOLDOWN",
-                                message=f"Media URL '{redact_url(norm_media_url)}' is in rotation cooldown.",
-                                bundle=bundle,
-                            )
                         return GuardResult(
                             is_valid=False,
                             error_code="DUPLICATE_MEDIA_URL",

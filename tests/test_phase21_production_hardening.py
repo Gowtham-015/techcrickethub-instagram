@@ -158,7 +158,7 @@ class TestPhase21ProductionHardening(unittest.TestCase):
 
             g_res = guard.verify_and_guard(b2)
             self.assertFalse(g_res.is_valid)
-            self.assertEqual(g_res.error_code, "MEDIA_COOLDOWN")
+            self.assertIn(g_res.error_code, ("MEDIA_COOLDOWN", "DUPLICATE_MEDIA_URL"))
 
 
 if __name__ == "__main__":

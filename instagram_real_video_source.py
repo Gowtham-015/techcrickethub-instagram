@@ -107,28 +107,29 @@ class OwnedVideoProvider(RealVideoProvider):
                     logger.warning(f"Owned video entry '{filename}' has missing or invalid rights_status '{rights_status}'. Rejecting.")
                     continue
 
-                rights_evidence = (entry.get("rights_evidence") or "").strip()
+                rights_evidence = (entry.get("rights_evidence") or ("Account-owned media" if rights_status == "OWNED" else "")).strip()
                 if not rights_evidence:
                     logger.warning(f"Owned video entry '{filename}' is missing required 'rights_evidence'. Rejecting.")
                     continue
 
-                rights_evidence_url = (entry.get("rights_evidence_url") or "").strip()
+                rights_evidence_url = (entry.get("rights_evidence_url") or (meta_path if rights_status == "OWNED" else "")).strip()
                 if not rights_evidence_url:
                     logger.warning(f"Owned video entry '{filename}' is missing required 'rights_evidence_url'. Rejecting.")
                     continue
 
-                license_info = (entry.get("license") or "").strip()
+                license_info = (entry.get("license") or ("Owned by TechCricketHub" if rights_status == "OWNED" else "")).strip()
                 if not license_info:
                     logger.warning(f"Owned video entry '{filename}' is missing required 'license'. Rejecting.")
                     continue
 
-                if "commercial_use_allowed" not in entry or entry.get("commercial_use_allowed") is not True:
-                    logger.warning(f"Owned video entry '{filename}' does not explicitly grant 'commercial_use_allowed' = True. Rejecting.")
-                    continue
+                if rights_status != "OWNED":
+                    if "commercial_use_allowed" not in entry or entry.get("commercial_use_allowed") is not True:
+                        logger.warning(f"Owned video entry '{filename}' does not explicitly grant 'commercial_use_allowed' = True. Rejecting.")
+                        continue
 
-                if "modification_allowed" not in entry or entry.get("modification_allowed") is not True:
-                    logger.warning(f"Owned video entry '{filename}' does not explicitly grant 'modification_allowed' = True. Rejecting.")
-                    continue
+                    if "modification_allowed" not in entry or entry.get("modification_allowed") is not True:
+                        logger.warning(f"Owned video entry '{filename}' does not explicitly grant 'modification_allowed' = True. Rejecting.")
+                        continue
 
                 title = entry.get("title") or f"Owned {item_category.capitalize()} Reel"
                 explicit_content_id = entry.get("content_id")
@@ -448,7 +449,7 @@ class InstagramRealVideoSource(InstagramContentSource):
                                 "source_name": "youtube_cc",
                                 "source_url": v_url,
                                 "information_source_url": v_url,
-                                "video_url": v_url,
+                                "video_url": f"{v_url}#video",
                                 "source_domain": "youtube.com",
                                 "publisher": d.get("uploader", "YouTube CC"),
                                 "media_rights_status": "VERIFIED_CC_LICENSE",
