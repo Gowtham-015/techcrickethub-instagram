@@ -1,4 +1,28 @@
 {
-  "items": [],
+  "items": [
+    {
+      "content_id": "news-fresh-stage2-1789580298",
+      "media_id": "18106357658004846",
+      "creation_id": "18094748351300654",
+      "title": "India Defeat Australia in Thrilling Final Test Match Victory \ud83c\uddee\ud83c\uddf3\ud83c\udfcf",
+      "category": "cricket",
+      "topic": "Indian Cricket News",
+      "published_at": "2026-09-16T22:30:00Z",
+      "permalink": "",
+      "media_type": "REEL",
+      "source_url": "https://espncricinfo.com/match-final-stage2-live",
+      "media_url": "https://raw.githubusercontent.com/Gowtham-015/techcrickethub-instagram/main/data/generated_reels/reel_news-fresh-stage2-1789580298.mp4",
+      "reach": 0,
+      "views": 0,
+      "likes": 0,
+      "comments": 0,
+      "shares": 0,
+      "saves": 0,
+      "engagement_rate": 0.0,
+      "insights_synced": false,
+      "created_at": "2026-09-16T18:05:42.836960+00:00",
+      "updated_at": "2026-09-16T18:05:42.836960+00:00"
+    }
+  ],
   "last_synced_at": null
 }
