@@ -1651,7 +1651,6 @@ def production_check() -> bool:
             print(f"Telegram Isolation: FAILED ({telegram_refs})")
             return False
 
-        gate_reason_str = ", ".join(gate_res.reasons) if getattr(gate_res, "reasons", None) else (getattr(gate_res, "reason", "") or pause_reason)
         if can_pub:
             print("\nStatus: READY")
         else:
@@ -1662,6 +1661,34 @@ def production_check() -> bool:
         print(f"Readiness Check Error: {redact_token(str(e))}")
         print("Status: FAILED")
         return False
+
+
+def recover_production_cmd() -> bool:
+    """Controlled operator state reset clearing production_paused and consecutive failure counters.
+    Guaranteed ZERO publishing: does not create media or call Meta Graph API.
+    Does NOT alter published history or erase health logs.
+    """
+    print("==========================================")
+    print("CONTROLLED PRODUCTION RECOVERY")
+    print("==========================================")
+    tracker = InstagramHealthTracker()
+    h_data = tracker.get_monitoring_status()
+    print(f"Current State: Paused={h_data.get('production_paused', False)}, Pause Reason={h_data.get('pause_reason', 'N/A')}")
+
+    h_data["production_paused"] = False
+    h_data["pause_reason"] = None
+    h_data["consecutive_publish_failures"] = 0
+    h_data["last_error"] = None
+    h_data["last_publish_error"] = None
+    tracker._save_health(h_data)
+
+    print("Controlled State Reset Applied:")
+    print("  - production_paused: false")
+    print("  - pause_reason: None")
+    print("  - consecutive_publish_failures: 0")
+    print("==========================================")
+    print("NO POST WAS PUBLISHED")
+    return True
 
 
 def production_test() -> bool:
@@ -3157,10 +3184,18 @@ def main():
         action="store_true",
         help="Display historical content analytics and sync Meta Graph API insights",
     )
+    parser.add_argument(
+        "--recover-production",
+        action="store_true",
+        help="Controlled operator reset clearing production_paused and consecutive failure counters without publishing media or altering published history",
+    )
     args = parser.parse_args()
 
 
-    if getattr(args, "content_analytics", False):
+    if getattr(args, "recover_production", False):
+        success = recover_production_cmd()
+        sys.exit(0 if success else 1)
+    elif getattr(args, "content_analytics", False):
         success = run_content_analytics()
         sys.exit(0 if success else 1)
     elif getattr(args, "production_smoke_test", False):

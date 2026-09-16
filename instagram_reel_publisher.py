@@ -99,7 +99,7 @@ class InstagramReelPublisher:
 
     def get_container_status(self, creation_id: str) -> dict:
         """Fetches the processing status of an Instagram media container."""
-        return self.client.get(f"/{creation_id}", params={"fields": "status_code,status"})
+        return self.client.get(f"/{creation_id}", params={"fields": "status_code,status,error_message,error"})
 
     def create_reel_container(self, video_url: str, caption: Optional[str] = None) -> PublishResult:
         """Creates a Reel media container on Meta Graph API and returns creation_id."""
@@ -147,7 +147,6 @@ class InstagramReelPublisher:
             # 2. Acquire Atomic Publish Lock for Meta API calls
             from instagram_publish_lock import InstagramPublishLock
             with InstagramPublishLock(timeout_seconds=10.0):
-                # Create Reel media container
                 payload = {
                     "media_type": "REELS",
                     "video_url": video_url.strip(),
@@ -187,24 +186,25 @@ class InstagramReelPublisher:
                         self.client.logger.info("Reel container status is FINISHED.")
                         break
                     elif status_code == "ERROR":
-                        err_msg = status_data.get("status", "Container processing failed with ERROR status.")
+                        err_detail = status_data.get("error_message") or status_data.get("error") or status_data.get("status") or "Container processing failed on Meta servers"
+                        safe_err_str = redact_token(str(err_detail), token=self.client.access_token)
                         raise InstagramAPIError(
-                            f"Reel processing failed on Meta servers: {err_msg}",
+                            f"META_CONTAINER_ERROR: {safe_err_str} (Creation ID: {creation_id}, Attempt: {attempt})",
                             token=self.client.access_token,
                         )
                     elif status_code == "EXPIRED":
                         raise InstagramAPIError(
-                            "Reel container expired before publishing. Please recreate container.",
+                            f"META_CONTAINER_EXPIRED: Reel container '{creation_id}' expired before publishing.",
                             token=self.client.access_token,
                         )
-                    elif status_code == "IN_PROGRESS" or not status_code:
+                    elif status_code in ("IN_PROGRESS", "IN_PROGRESS_POLLING") or not status_code:
                         self.client.logger.info(f"Reel processing in progress. Status: {last_status}")
                         if attempt < self.max_attempts:
                             time.sleep(self.poll_interval_seconds)
 
                 if not is_finished:
                     raise InstagramAPIError(
-                        f"Reel container status polling timed out after {self.max_attempts} attempts. Last status: {last_status}",
+                        f"META_CONTAINER_TIMEOUT: Reel container polling timed out after {self.max_attempts} attempts. Last status: {last_status}",
                         token=self.client.access_token,
                     )
 

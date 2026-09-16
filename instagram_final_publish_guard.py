@@ -129,13 +129,7 @@ class InstagramFinalPublishGuard:
         try:
             with open(self.published_history_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                items = data.get("items", [])
-                if not items:
-                    root_hist = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "instagram_published_history.json")
-                    if os.path.exists(root_hist) and root_hist != os.path.abspath(self.published_history_file):
-                        with open(root_hist, "r", encoding="utf-8") as rf:
-                            return json.load(rf).get("items", [])
-                return items
+                return data.get("items", [])
         except Exception as e:
             logger.error(f"Failed to load published history: {e}")
             return []
