@@ -55,7 +55,7 @@ def test_publish_reel_success(mock_client):
     )
     mock_client.get.assert_called_once_with(
         "/18000000000000001",
-        params={"fields": "status_code,status,error_message,error"},
+        params={"fields": "status_code,status,error_message"},
     )
     mock_client.post.assert_any_call(
         "/37982406558040899/media_publish",

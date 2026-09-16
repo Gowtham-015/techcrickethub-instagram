@@ -99,7 +99,7 @@ class InstagramReelPublisher:
 
     def get_container_status(self, creation_id: str) -> dict:
         """Fetches the processing status of an Instagram media container."""
-        return self.client.get(f"/{creation_id}", params={"fields": "status_code,status,error_message,error"})
+        return self.client.get(f"/{creation_id}", params={"fields": "status_code,status,error_message"})
 
     def create_reel_container(self, video_url: str, caption: Optional[str] = None) -> PublishResult:
         """Creates a Reel media container on Meta Graph API and returns creation_id."""
