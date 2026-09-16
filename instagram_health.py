@@ -385,6 +385,10 @@ class InstagramHealthTracker:
         """Alias for get_production_health_summary to support backwards compatibility across tests."""
         return self.get_production_health_summary()
 
+    def get_health_status(self) -> Dict[str, Any]:
+        """Returns monitoring health status dictionary."""
+        return self.get_monitoring_status()
+
     def reset_test_state(self) -> None:
         """Resets health state file for clean testing."""
         self._save_health(self._default_state())

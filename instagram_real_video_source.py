@@ -112,7 +112,7 @@ class OwnedVideoProvider(RealVideoProvider):
                     logger.warning(f"Owned video entry '{filename}' is missing required 'rights_evidence'. Rejecting.")
                     continue
 
-                rights_evidence_url = (entry.get("rights_evidence_url") or (meta_path if rights_status == "OWNED" else "")).strip()
+                rights_evidence_url = (entry.get("rights_evidence_url") or (self.metadata_path if rights_status == "OWNED" else "")).strip()
                 if not rights_evidence_url:
                     logger.warning(f"Owned video entry '{filename}' is missing required 'rights_evidence_url'. Rejecting.")
                     continue
@@ -196,6 +196,7 @@ class InstagramRealVideoSource(InstagramContentSource):
         "PERMITTED_COMMERCIAL_REUSE",
         "CC_LICENSE_ALLOWED",
         "USER_PROVIDED_WITH_PERMISSION",
+        "ORIGINAL_GENERATED",
     }
 
     def __init__(self, config: Optional[Config] = None, timeout: int = 15):

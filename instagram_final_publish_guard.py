@@ -111,11 +111,16 @@ class InstagramFinalPublishGuard:
                 if item.get("content_id") == content_id:
                     return True
         if url:
+            from instagram_public_media_host import normalize_reel_filename
             canon = self.canonicalize_url(url)
+            norm_url_fn = normalize_reel_filename(url) if url.lower().endswith((".mp4", ".mov", ".avi")) or "reel" in url.lower() or "owned" in url.lower() else ""
             for item in items:
                 pub_url = item.get("media_url") or item.get("canonical_source_url") or ""
-                if pub_url and self.canonicalize_url(pub_url) == canon:
-                    return True
+                if pub_url:
+                    if self.canonicalize_url(pub_url) == canon:
+                        return True
+                    if norm_url_fn and normalize_reel_filename(pub_url) == norm_url_fn:
+                        return True
         return False
 
     def get_published_history(self) -> List[Dict[str, Any]]:
@@ -124,7 +129,13 @@ class InstagramFinalPublishGuard:
         try:
             with open(self.published_history_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                return data.get("items", [])
+                items = data.get("items", [])
+                if not items:
+                    root_hist = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "instagram_published_history.json")
+                    if os.path.exists(root_hist) and root_hist != os.path.abspath(self.published_history_file):
+                        with open(root_hist, "r", encoding="utf-8") as rf:
+                            return json.load(rf).get("items", [])
+                return items
         except Exception as e:
             logger.error(f"Failed to load published history: {e}")
             return []
@@ -201,6 +212,7 @@ class InstagramFinalPublishGuard:
             "VERIFIED_CC_LICENSE",
             "PERMITTED_COMMERCIAL_REUSE",
             "USER_PROVIDED_WITH_PERMISSION",
+            "ORIGINAL_GENERATED",
         }
         rights_status = (getattr(bundle, "media_rights_status", "RIGHTS_EVIDENCE_MISSING") or "RIGHTS_EVIDENCE_MISSING").strip().upper()
         rights_evidence_type = (getattr(bundle, "rights_evidence_type", "") or getattr(bundle, "evidence_type", "") or "").strip().upper()

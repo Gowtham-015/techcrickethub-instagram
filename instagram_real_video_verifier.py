@@ -112,14 +112,15 @@ class InstagramRealVideoVerifier:
         title_lower = (meta.get("title") or "").lower()
         id_lower = (meta.get("content_id") or "").lower()
 
-        is_test_asset = (
+        r_status = (meta.get("media_rights_status") or meta.get("rights_status") or "").upper()
+        is_original_gen = (r_status == "ORIGINAL_GENERATED" or "generated-news-reel" in id_lower or "generated-news-reel" in fp_lower)
+
+        is_test_asset = not is_original_gen and (
             "reel_test-video-req" in fp_lower or
-            "generated_reels" in fp_lower or
             "sample" in fp_lower or
             "demo" in fp_lower or
             "test-video" in fp_lower or
             meta.get("is_synthetic", False) or
-            meta.get("is_ai_generated", False) or
             meta.get("synthetic_cricket_footage", False)
         )
 

@@ -1613,10 +1613,18 @@ def production_check() -> bool:
 
         tracker = InstagramHealthTracker()
         health = tracker.get_production_health_summary()
-        print(f"Health: PASSED ({health.get('health_label', 'STOPPED')})")
+        h_data = tracker.get_health_status()
+        is_paused = h_data.get("production_paused", False)
+        pause_reason = h_data.get("pause_reason") or health.get("pause_reason") or "N/A"
+        health_label = "PAUSED" if is_paused else health.get("health_label", "STOPPED")
+        print(f"Health: {'PAUSED' if is_paused else 'PASSED'} ({health_label})")
+        if is_paused:
+            print(f"Pause Reason: {pause_reason}")
 
         gate_res = gate.evaluate(config, tracker)
-        print(f"Production Gate: PASSED ({gate_res.status})")
+        can_pub = gate_res.can_publish and not is_paused
+        gate_status_str = "BLOCKED" if not can_pub else gate_res.status
+        print(f"Production Gate: {gate_status_str}")
         print("Security: PASSED")
 
         # Telegram Isolation Audit
@@ -1643,7 +1651,11 @@ def production_check() -> bool:
             print(f"Telegram Isolation: FAILED ({telegram_refs})")
             return False
 
-        print("\nStatus: READY")
+        gate_reason_str = ", ".join(gate_res.reasons) if getattr(gate_res, "reasons", None) else (getattr(gate_res, "reason", "") or pause_reason)
+        if can_pub:
+            print("\nStatus: READY")
+        else:
+            print(f"\nStatus: BLOCKED / NOT READY (Reason: {gate_reason_str})")
         print("NO POST WAS PUBLISHED")
         return True
     except Exception as e:
