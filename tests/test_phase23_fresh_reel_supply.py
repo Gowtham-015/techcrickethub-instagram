@@ -170,6 +170,20 @@ class TestPhase23FreshReelSupply(unittest.TestCase):
             engine.news_source = MagicMock()
             engine.news_source.get_content_items.return_value = [published_story]
             
+            from instagram_content_bundle import ContentBundle
+            b = ContentBundle(
+                content_id="pub-story-01",
+                category="cricket",
+                title="East Zone vs South Zone Duleep Trophy Thriller - Unstoppable Action 🇮🇳🏏",
+                summary="East Zone battle South Zone",
+                source_url="https://cricinfo.com/duleep",
+                source_domain="cricinfo.com",
+                published_at="2026-09-01T10:00:00Z",
+                media_url="https://raw.githubusercontent.com/test/video.mp4",
+                media_type="REEL",
+            )
+            engine.final_publish_guard.record_published_item(bundle=b, media_id="12345")
+            
             res = engine.prepare_media()
             self.assertEqual(res.get("status"), "NO_VALID_REEL")
 

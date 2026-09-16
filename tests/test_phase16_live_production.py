@@ -141,7 +141,8 @@ class TestPhase16LiveProductionVerification(unittest.TestCase):
         with open(prepared_file, "w", encoding="utf-8") as f:
             json.dump(prep_content, f)
 
-        # Mock public accessibility check to pass
+        engine.config.dry_run = False
+        engine.health_tracker.reset_health()
         with patch("instagram_media_verifier.InstagramMediaVerifier.validate_meta_media_accessibility", return_value={"is_valid": True}):
             # Mock final publish guard to pass initially
             guard_mock = MagicMock()

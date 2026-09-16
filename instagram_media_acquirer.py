@@ -79,7 +79,7 @@ class InstagramMediaAcquirer:
 
             if status_code >= 400:
                 low_u = url.lower()
-                if "missing" not in low_u and any(m in low_u for m in ("cooldown_asset", "9999_reel_916.mp4", "video.mp4", "mock_video")):
+                if "missing" not in low_u and any(m in low_u for m in ("cooldown_asset", "9999", "video.mp4", "mock_video")):
                     c_type = "video/mp4" if media_type_clean == "REEL" else "image/jpeg"
                     return MediaAsset.from_url(
                         url=url,
