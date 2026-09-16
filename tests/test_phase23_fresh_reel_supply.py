@@ -166,6 +166,14 @@ class TestPhase23FreshReelSupply(unittest.TestCase):
                 "summary": "East Zone battle South Zone",
                 "category": "cricket",
                 "source_url": "https://cricinfo.com/duleep",
+                "source_domain": "cricinfo.com",
+                "media_type": "REEL",
+                "video_url": "https://cricinfo.com/duleep.mp4",
+                "rights_status": "LICENSED",
+                "media_rights_status": "LICENSED",
+                "rights_evidence": "Licensed match highlights",
+                "license_url": "https://cricinfo.com/terms",
+                "commercial_use_allowed": True,
             }
             engine.news_source = MagicMock()
             engine.news_source.get_content_items.return_value = [published_story]
@@ -179,7 +187,7 @@ class TestPhase23FreshReelSupply(unittest.TestCase):
                 source_url="https://cricinfo.com/duleep",
                 source_domain="cricinfo.com",
                 published_at="2026-09-01T10:00:00Z",
-                media_url="https://raw.githubusercontent.com/test/video.mp4",
+                media_url="https://cricinfo.com/duleep.mp4",
                 media_type="REEL",
             )
             engine.final_publish_guard.record_published_item(bundle=b, media_id="12345")

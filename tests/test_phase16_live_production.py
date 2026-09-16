@@ -142,7 +142,11 @@ class TestPhase16LiveProductionVerification(unittest.TestCase):
             json.dump(prep_content, f)
 
         engine.config.dry_run = False
-        engine.health_tracker.reset_health()
+        h_status = engine.health_tracker.get_monitoring_status()
+        h_status["production_paused"] = False
+        h_status["pause_reason"] = None
+        h_status["consecutive_publish_failures"] = 0
+        engine.health_tracker._save_health(h_status)
         with patch("instagram_media_verifier.InstagramMediaVerifier.validate_meta_media_accessibility", return_value={"is_valid": True}):
             # Mock final publish guard to pass initially
             guard_mock = MagicMock()
