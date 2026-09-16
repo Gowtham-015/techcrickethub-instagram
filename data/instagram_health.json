@@ -19,8 +19,12 @@
   "last_live_test_at": "2026-08-24T18:43:30.224089+00:00",
   "analytics_events_recorded": 7287,
   "last_valid_reel_at": "2026-09-11T18:43:50.675282+00:00",
-  "consecutive_no_valid_reel_runs": 3,
-  "last_no_valid_reel_at": "2026-09-11T18:44:06.393294+00:00",
+  "consecutive_no_valid_reel_runs": 7,
+  "last_no_valid_reel_at": "2026-09-16T15:08:48.604442+00:00",
   "rights_rejection_count": 66,
-  "video_quality_rejection_count": 33
+  "video_quality_rejection_count": 40,
+  "duplicate_rejection_count": 2,
+  "duplicate_blocks_count": 2,
+  "last_duplicate_block_reason": "Near-duplicate title detected (similarity 0.829): 'East Zone vs South Zone Duleep Trophy Thriller' vs published 'East Zone vs South Zone Duleep Trophy Thriller - Unstoppable Action \ud83c\uddee\ud83c\uddf3\ud83c\udfcf'.",
+  "last_duplicate_block_at": "2026-09-16T15:05:22.751919+00:00"
 }
