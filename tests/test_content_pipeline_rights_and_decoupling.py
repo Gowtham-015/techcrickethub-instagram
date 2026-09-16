@@ -189,9 +189,9 @@ def test_corrupt_mp4_rejected(tmp_path):
     assert res.is_corrupted or not res.video_stream_exists
 
 
-def test_news_and_authorized_video_decoupling_and_preparation():
+def test_news_and_authorized_video_decoupling_and_preparation(tmp_path):
     config = Config.load_from_env(validate=False)
-    engine = InstagramAutomationEngine(config=config)
+    engine = InstagramAutomationEngine(config=config, data_dir=str(tmp_path))
     prep_res = engine.prepare_media()
     
     assert prep_res.get("status") == "PREPARED"
