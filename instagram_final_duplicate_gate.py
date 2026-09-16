@@ -203,11 +203,20 @@ class InstagramFinalDuplicateGate:
 
         # 6. Media URL Comparison
         if bundle.media_url and "maxresdefault.jpg" not in bundle.media_url:
-            norm_media_url = self.canonicalize_url(bundle.media_url)
+            from instagram_public_media_host import normalize_reel_media_url, normalize_reel_filename
+            norm_media_url = normalize_reel_media_url(bundle.media_url)
+            cand_base = normalize_reel_filename(bundle.media_url)
             for item in published_items:
-                pub_media = item.get("media_url", "")
+                pub_media = item.get("media_url", "") or item.get("canonical_source_url", "")
                 if pub_media and "maxresdefault.jpg" not in pub_media:
-                    if self.canonicalize_url(pub_media) == norm_media_url:
+                    pub_norm = normalize_reel_media_url(pub_media)
+                    pub_base = normalize_reel_filename(pub_media)
+                    if (
+                        pub_norm == norm_media_url
+                        or (pub_base and cand_base and pub_base == cand_base)
+                        or self.canonicalize_url(pub_media) == self.canonicalize_url(bundle.media_url)
+                        or pub_media.strip() == bundle.media_url.strip()
+                    ):
                         return GateResult(
                             is_valid=False,
                             error_code="DUPLICATE_MEDIA_URL",

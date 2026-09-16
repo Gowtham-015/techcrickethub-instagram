@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import logging
 import hashlib
@@ -11,6 +12,35 @@ from security import redact_token, redact_url
 logger = logging.getLogger("PublicMediaHost")
 
 
+def normalize_reel_filename(filename: str) -> str:
+    """Idempotently normalizes reel filenames to single _reel_916.mp4 extension."""
+    if not filename:
+        return ""
+    base = os.path.basename(filename.replace("\\", "/"))
+    clean = re.sub(r"(_reel_916)+(\.mp4)?$", "", base, flags=re.IGNORECASE)
+    clean = re.sub(r"\.mp4$", "", clean, flags=re.IGNORECASE)
+    return f"{clean}_reel_916.mp4"
+
+
+def normalize_reel_media_url(url: str) -> str:
+    """Normalizes GitHub Raw or local URLs to a canonical media identity string."""
+    if not url:
+        return ""
+    try:
+        parsed = urllib.parse.urlparse(url.strip())
+        path = parsed.path.rstrip("/")
+        if not path:
+            return url.strip().lower()
+        filename = os.path.basename(path)
+        if filename.lower().endswith((".mp4", ".mov", ".avi")):
+            norm_filename = normalize_reel_filename(filename)
+            dir_path = os.path.dirname(path)
+            return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}{dir_path}/{norm_filename}".lower()
+        return urllib.parse.urlunparse((parsed.scheme.lower(), parsed.netloc.lower(), path, "", "", "")).lower()
+    except Exception:
+        return url.strip().lower()
+
+
 class PublicMediaHost:
     """Production Public Media Host providing reliable public CDN delivery,
     multi-host upload fallbacks (Catbox -> Litterbox -> Authenticated GitHub Raw),
@@ -20,6 +50,9 @@ class PublicMediaHost:
     SUPPORTED_IMAGE_MIMES = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
     SUPPORTED_VIDEO_MIMES = {"video/mp4", "video/quicktime", "video/x-m4v"}
     _VERIFICATION_CACHE: Dict[Any, Any] = {}
+
+    normalize_reel_filename = staticmethod(normalize_reel_filename)
+    normalize_reel_media_url = staticmethod(normalize_reel_media_url)
 
     def __init__(self, repo_owner_repo: str = "Gowtham-015/techcrickethub-instagram", branch: str = "main"):
         self.repo = os.getenv("GITHUB_REPOSITORY", repo_owner_repo)
@@ -210,10 +243,14 @@ class PublicMediaHost:
         """Returns standard public URL for local path."""
         normalized = (local_path or "").replace("\\", "/").lstrip("./")
         if "/" in normalized:
-            rel_path = normalized
+            dir_part, base_part = os.path.split(normalized)
+            if base_part.lower().endswith((".mp4", ".mov")):
+                base_part = normalize_reel_filename(base_part)
+            rel_path = f"{dir_part}/{base_part}" if dir_part else base_part
         else:
+            base_part = normalize_reel_filename(normalized) if normalized.lower().endswith((".mp4", ".mov")) else normalized
             sub_folder = "data/generated_reels" if normalized.lower().endswith((".mp4", ".mov")) else "media/generated"
-            rel_path = f"{sub_folder}/{normalized}"
+            rel_path = f"{sub_folder}/{base_part}"
         return f"https://raw.githubusercontent.com/{self.repo}/{self.branch}/{rel_path}"
 
     def delete_video(self, local_path: str) -> bool:

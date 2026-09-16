@@ -1,0 +1,43 @@
+# Run full CI unit test suite on push, pull_request, and manual dispatch
+name: TechCricketHub Instagram CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ci-test-job:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout Instagram Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install System Dependencies & FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          echo "FFMPEG INSTALLED"
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          echo "DEPENDENCIES INSTALLED"
+
+      - name: Run Full Unit Test Suite
+        run: |
+          python -m pytest -q

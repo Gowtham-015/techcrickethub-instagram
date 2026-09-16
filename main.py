@@ -914,11 +914,15 @@ def publish_prepared_cmd() -> bool:
         config = Config.load_from_env(validate=False)
         engine = InstagramAutomationEngine(config=config)
         res = engine.publish_prepared()
-        print(f"Status: {res.get('status')}")
+        status_val = res.get("status")
+        print(f"Status: {status_val}")
         print(f"Published Count: {res.get('published', 0)}")
         if res.get("media_id"):
             print(f"Instagram Media ID: {res.get('media_id')}")
         print("========================================")
+        if status_val in ("BLOCKED", "DUPLICATE_BLOCKED"):
+            print(f"Publish Prepared BLOCKED by duplicate guard (DUPLICATE_BLOCKED): {res.get('reason', '')}")
+            return True
         return bool(res.get("published", 0) > 0 or res.get("dry_run"))
     except Exception as e:
         print(f"Error: {redact_token(str(e))}")

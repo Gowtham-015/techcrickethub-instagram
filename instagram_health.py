@@ -278,6 +278,15 @@ class InstagramHealthTracker:
         data["duplicate_rejection_count"] = int(data.get("duplicate_rejection_count") or 0) + 1
         self._save_health(data)
 
+    def record_duplicate_block(self, reason: str = "") -> None:
+        """Records a duplicate safety block without incrementing consecutive publish failures or pausing production."""
+        data = self._load_health()
+        data["duplicate_rejection_count"] = int(data.get("duplicate_rejection_count") or 0) + 1
+        data["duplicate_blocks_count"] = int(data.get("duplicate_blocks_count") or 0) + 1
+        data["last_duplicate_block_reason"] = reason
+        data["last_duplicate_block_at"] = datetime.now(timezone.utc).isoformat()
+        self._save_health(data)
+
     def detect_execution_gap(self, threshold_hours: float = 6.0) -> bool:
         """Detects if no successful execution has occurred within threshold_hours."""
         data = self._load_health()

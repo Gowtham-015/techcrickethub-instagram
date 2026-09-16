@@ -236,6 +236,11 @@ class InstagramFactualCaptionEngine:
             caption_parts.insert(5, f"🔗 Verified Source: {source_domain}")
             caption_parts.insert(6, "")
 
+        if not media_event_match:
+            insert_idx = 7 if source_domain else 5
+            caption_parts.insert(insert_idx, f"Visual: TechCricketHub original {category_clean} Reel.")
+            caption_parts.insert(insert_idx + 1, "")
+
         final_caption = "\n".join(caption_parts).strip()
         final_caption = ContentSanitizer.sanitize_content(final_caption, token=self.token)
 

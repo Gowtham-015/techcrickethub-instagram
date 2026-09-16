@@ -1018,6 +1018,28 @@ class InstagramAutomationEngine:
                 for v_asset in matching_assets:
                     v_url = v_asset.get("source_url") or v_asset.get("video_url") or ""
                     v_local = v_asset.get("local_path") or v_asset.get("video_url") or ""
+                    
+                    # Skip video assets already published in history
+                    from instagram_public_media_host import normalize_reel_filename
+                    v_base = normalize_reel_filename(v_local) if v_local else ""
+                    v_cid = v_asset.get("content_id")
+                    v_exp_cid = v_asset.get("explicit_content_id")
+                    v_gen_cid = v_asset.get("generated_content_id")
+                    
+                    is_v_published = False
+                    for pub_item in published_history:
+                        pub_cid = pub_item.get("content_id")
+                        if pub_cid and (pub_cid == v_cid or (v_exp_cid and pub_cid == v_exp_cid) or (v_gen_cid and pub_cid == v_gen_cid)):
+                            is_v_published = True
+                            break
+                        pub_media = pub_item.get("media_url") or pub_item.get("canonical_source_url") or ""
+                        if pub_media and v_base:
+                            if normalize_reel_filename(pub_media) == v_base:
+                                is_v_published = True
+                                break
+                    if is_v_published:
+                        continue
+
                     r_status = v_asset.get("rights_status") or v_asset.get("media_rights_status") or "OWNED"
                     r_evidence = v_asset.get("rights_evidence") or "Account-owned original media asset"
                     r_evidence_url = v_asset.get("rights_evidence_url") or v_asset.get("license_url") or ""
@@ -1114,24 +1136,34 @@ class InstagramAutomationEngine:
                     quality_rejected_count += 1
                     continue
 
-            # Deduplicate by canonical media URL and filename against published_history
+            # Deduplicate by canonical media URL, filename, and content_id against published_history
             cand_local_file = raw_item.get("local_path") or raw_item.get("video_url") or media_url or ""
-            from instagram_public_media_host import PublicMediaHost
+            from instagram_public_media_host import PublicMediaHost, normalize_reel_filename, normalize_reel_media_url
             host = PublicMediaHost()
             prospective_public_url = host.get_public_url(cand_local_file) if cand_local_file else (media_url or "")
 
+            exp_id = raw_item.get("explicit_content_id")
+            gen_id = raw_item.get("generated_content_id")
+            norm_cand_url = normalize_reel_media_url(prospective_public_url)
+            norm_cand_base = normalize_reel_filename(cand_local_file)
+
             is_already_published = False
             for pub_item in published_history:
+                pub_cid = pub_item.get("content_id")
+                if pub_cid and (pub_cid == content_id or (exp_id and pub_cid == exp_id) or (gen_id and pub_cid == gen_id)):
+                    is_already_published = True
+                    break
+
                 pub_media = pub_item.get("media_url") or pub_item.get("canonical_source_url") or ""
-                if pub_media and cand_local_file:
-                    pub_base = os.path.basename(urllib.parse.urlparse(pub_media).path)
-                    cand_base = os.path.basename(cand_local_file.replace("\\", "/"))
-                    if cand_base and pub_base:
-                        clean_cand_base = re.sub(r"(_reel_916)+(\.mp4)$", r"\2", cand_base, flags=re.IGNORECASE)
-                        clean_pub_base = re.sub(r"(_reel_916)+(\.mp4)$", r"\2", pub_base, flags=re.IGNORECASE)
-                        if clean_cand_base == clean_pub_base:
-                            is_already_published = True
-                            break
+                if pub_media:
+                    pub_norm_url = normalize_reel_media_url(pub_media)
+                    pub_base = normalize_reel_filename(pub_media)
+                    if (
+                        (pub_norm_url and norm_cand_url and pub_norm_url == norm_cand_url)
+                        or (pub_base and norm_cand_base and pub_base == norm_cand_base)
+                    ):
+                        is_already_published = True
+                        break
 
             if is_already_published:
                 self.logger.warning(

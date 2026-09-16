@@ -131,12 +131,16 @@ class OwnedVideoProvider(RealVideoProvider):
                     continue
 
                 title = entry.get("title") or f"Owned {item_category.capitalize()} Reel"
+                explicit_content_id = entry.get("content_id")
                 hasher = hashlib.sha256(f"owned:{filename}:{title}".encode("utf-8"))
-                content_id = f"ownedvideo-{hasher.hexdigest()[:16]}"
+                generated_content_id = f"ownedvideo-{hasher.hexdigest()[:16]}"
+                content_id = explicit_content_id or generated_content_id
                 abs_file_path = os.path.abspath(file_path)
 
                 items.append({
                     "content_id": content_id,
+                    "explicit_content_id": explicit_content_id,
+                    "generated_content_id": generated_content_id,
                     "title": title,
                     "summary": entry.get("summary") or title,
                     "description": entry.get("description") or title,
@@ -308,11 +312,14 @@ class InstagramRealVideoSource(InstagramContentSource):
         if not input_mp4_path or not os.path.exists(input_mp4_path):
             return None
 
-        if input_mp4_path.lower().endswith("_reel_916.mp4"):
-            out_path = input_mp4_path
-            return out_path
-        else:
-            out_path = input_mp4_path[:-4] + "_reel_916.mp4" if input_mp4_path.lower().endswith(".mp4") else f"{input_mp4_path}_reel_916.mp4"
+        from instagram_public_media_host import normalize_reel_filename
+        dir_name = os.path.dirname(input_mp4_path)
+        base_name = os.path.basename(input_mp4_path)
+        norm_name = normalize_reel_filename(base_name)
+        out_path = os.path.join(dir_name, norm_name) if dir_name else norm_name
+
+        if os.path.abspath(input_mp4_path) == os.path.abspath(out_path):
+            return input_mp4_path
 
         if os.path.exists(out_path) and os.path.getsize(out_path) > 0:
             return out_path
