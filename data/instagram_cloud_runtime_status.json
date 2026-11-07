@@ -1,8 +1,8 @@
 {
-  "worker_id": "cloud-worker-3574",
+  "worker_id": "cloud-worker-3806",
   "runtime_status": "RUNNING",
-  "started_at": "2026-11-07T18:58:07.843590+00:00",
-  "last_heartbeat": "2026-11-07T18:58:07.843603+00:00",
+  "started_at": "2026-11-07T22:42:16.663866+00:00",
+  "last_heartbeat": "2026-11-07T22:42:16.663879+00:00",
   "uptime_seconds": 0,
   "laptop_required": false,
   "cloud_worker_required": true,
